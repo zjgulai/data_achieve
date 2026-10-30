@@ -1,0 +1,4 @@
+# Rendered reports and QA screenshots from the insight-report spike
+insight-report/out/
+__pycache__/
+*.pyc

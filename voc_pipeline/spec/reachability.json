@@ -1,0 +1,111 @@
+{
+ "generated_at": "runtime",
+ "repo_facts": {
+  "tiktok_table_count": 21,
+  "tiktok_tables": [
+   "creator",
+   "creator_snapshot",
+   "video",
+   "video_snapshot",
+   "comment",
+   "comment_snapshot",
+   "hashtag",
+   "hashtag_snapshot",
+   "video_hashtag",
+   "trend_topic",
+   "sound",
+   "transcript",
+   "shop",
+   "product",
+   "product_snapshot",
+   "product_review",
+   "creator_commerce",
+   "video_product",
+   "creator_product",
+   "ad",
+   "ad_creative"
+  ],
+  "task_brief_said_tables": 20,
+  "discrepancy": 1,
+  "reddit_documented_fields": 76
+ },
+ "sources": [
+  {
+   "source": "tiktok_canonical_tables",
+   "tables_or_fields": 21,
+   "has_text": true,
+   "has_author": true,
+   "has_timestamp": false,
+   "has_product_identity": true,
+   "has_variant_identity": false,
+   "has_engagement": true,
+   "has_review_layer": true,
+   "gates": {
+    "G0": "human_required",
+    "G1": "partial",
+    "G2": "conditional",
+    "G3": "pass",
+    "G4": "pass",
+    "G5": "pass",
+    "G6": "pass",
+    "G7": "blocked",
+    "G8": "blocked"
+   },
+   "first_block": "G1",
+   "note": "表结构支持视频/评论/商品/达人，但 product 与 Amazon ASIN、颜色/尺码 variant 之间没有已验证 crosswalk；G1 的 exact-variant 谓词无法成立。"
+  },
+  {
+   "source": "reddit_76_field_actor",
+   "tables_or_fields": 76,
+   "has_text": true,
+   "has_author": true,
+   "has_timestamp": true,
+   "has_product_identity": false,
+   "has_variant_identity": false,
+   "has_engagement": true,
+   "has_review_layer": false,
+   "gates": {
+    "G0": "human_required",
+    "G1": "blocked",
+    "G2": "conditional",
+    "G3": "pass",
+    "G4": "pass",
+    "G5": "pass",
+    "G6": "pass",
+    "G7": "blocked",
+    "G8": "blocked"
+   },
+   "first_block": "G1",
+   "note": "76 字段足以做 occurrence / canonical / annotation，但没有任何商品或 variant 标识；只能回答品类级问题，不能回答 exact-variant 体验。"
+  },
+  {
+   "source": "amazon_product_fields",
+   "tables_or_fields": 8,
+   "has_text": false,
+   "has_author": false,
+   "has_timestamp": true,
+   "has_product_identity": true,
+   "has_variant_identity": true,
+   "has_engagement": false,
+   "has_review_layer": false,
+   "gates": {
+    "G0": "human_required",
+    "G1": "pass",
+    "G2": "conditional",
+    "G3": "pass",
+    "G4": "pass",
+    "G5": "blocked",
+    "G6": "blocked",
+    "G7": "blocked",
+    "G8": "blocked"
+   },
+   "first_block": "G5",
+   "note": "PDP 可以冻结 parent/child/variant 与聚合评分；评论正文需要登录态，当前抓取路径返回 302。没有评论正文就没有 consumer occurrence。"
+  }
+ ],
+ "verdict": {
+  "with_existing_normalized_tables_only": "G0 需要人写；TikTok 与 Reddit 都卡在 G1（没有已验证的 SKU/variant crosswalk），Amazon 商品字段只能到 G1。因此现有规范化表本身走不到 G3 之后。",
+  "with_live_public_collection": "Amazon PDP 提供 G1 身份，Reddit 归档提供 G5/G6 语料；本轮据此跑到 G6，G7 因缺少第二编码员被阻断。",
+  "hard_block": "G7 双盲 agreement 是人工门槛，不是工程门槛。"
+ }
+}

@@ -1,0 +1,169 @@
+{
+  "annotators": [
+    "sol",
+    "terra",
+    "luna",
+    "g55",
+    "mini"
+  ],
+  "excluded": [],
+  "warnings": [],
+  "n_items": 20,
+  "n_aspects": 34,
+  "n_cells": 680,
+  "fleiss_all": {
+    "n_subjects": 680,
+    "n_raters": 5,
+    "po": 0.9832352941176471,
+    "pe": 0.8981468858131487,
+    "kappa": 0.8354031095053435,
+    "prevalence": 0.05382352941176471,
+    "present_ratings": 183,
+    "total_ratings": 3400
+  },
+  "fleiss_by_source": {
+    "TikTok": {
+      "n_subjects": 408,
+      "n_raters": 5,
+      "po": 0.9794117647058824,
+      "pe": 0.8604171472510573,
+      "kappa": 0.8525016870722072,
+      "prevalence": 0.07549019607843137,
+      "present_ratings": 154,
+      "total_ratings": 2040
+    },
+    "Reddit": {
+      "n_subjects": 272,
+      "n_raters": 5,
+      "po": 0.9889705882352942,
+      "pe": 0.9582623269896193,
+      "kappa": 0.735744449338067,
+      "prevalence": 0.021323529411764706,
+      "present_ratings": 29,
+      "total_ratings": 1360
+    }
+  },
+  "pairwise_cohen_kappa": {
+    "sol|terra": 0.9455978239129567,
+    "sol|luna": 0.7659729532755688,
+    "sol|g55": 0.7772147475100472,
+    "sol|mini": 0.857112838831688,
+    "terra|luna": 0.7935055470078547,
+    "terra|g55": 0.8366241481740343,
+    "terra|mini": 0.8856902710653504,
+    "luna|g55": 0.7892313142047465,
+    "luna|mini": 0.8407833120476794,
+    "g55|mini": 0.8587257617728538
+  },
+  "pairwise_low": {
+    "low": 0.7659729532755688,
+    "low_text": "sol–luna",
+    "high": 0.9455978239129567,
+    "high_text": "sol–terra"
+  },
+  "pairwise_mean_per_annotator": {
+    "sol": 0.8364745908825651,
+    "terra": 0.865354447540049,
+    "luna": 0.7973732816339624,
+    "g55": 0.8154489929154204,
+    "mini": 0.8605780459293929
+  },
+  "polarity": {
+    "eligible_cells": 42,
+    "exact_agree": 42,
+    "family_agree": 42,
+    "exact_rate": 1.0,
+    "family_rate": 1.0,
+    "pair_total": 309,
+    "pair_exact_rate": 1.0,
+    "pair_family_rate": 1.0,
+    "tagger_dist": {
+      "0": 631,
+      "2": 7,
+      "3": 4,
+      "5": 26,
+      "4": 5,
+      "1": 7
+    },
+    "polarity_dist": {
+      "negative": 56,
+      "positive": 126,
+      "unknown": 1
+    },
+    "family_dist": {
+      "negative": 56,
+      "positive": 126,
+      "unknown": 1
+    }
+  },
+  "consensus": {
+    "strong": 31,
+    "weak": 4,
+    "disagreement": 14,
+    "zero_tagged_cells": 631,
+    "breakdown": {
+      "too_few_taggers": 14
+    },
+    "strong_min": 4,
+    "weak_min": 3
+  },
+  "is_product_experience": {
+    "unanimous": 16,
+    "splits": [
+      {
+        "item_id": "B01",
+        "source": "Reddit",
+        "flags": {
+          "sol": true,
+          "terra": true,
+          "luna": false,
+          "g55": false,
+          "mini": false
+        }
+      },
+      {
+        "item_id": "B06",
+        "source": "Reddit",
+        "flags": {
+          "sol": true,
+          "terra": true,
+          "luna": false,
+          "g55": false,
+          "mini": false
+        }
+      },
+      {
+        "item_id": "B13",
+        "source": "Reddit",
+        "flags": {
+          "sol": true,
+          "terra": true,
+          "luna": false,
+          "g55": false,
+          "mini": false
+        }
+      },
+      {
+        "item_id": "B16",
+        "source": "TikTok",
+        "flags": {
+          "sol": true,
+          "terra": true,
+          "luna": true,
+          "g55": false,
+          "mini": true
+        }
+      }
+    ],
+    "fleiss": {
+      "n_subjects": 20,
+      "n_raters": 5,
+      "po": 0.89,
+      "pe": 0.6800000000000002,
+      "kappa": 0.6562499999999999,
+      "prevalence": 0.8,
+      "present_ratings": 80,
+      "total_ratings": 100
+    }
+  }
+}

@@ -1,0 +1,834 @@
+{
+  "schema_version": "voc_video_features_distribution_v1",
+  "generated_at": "2026-10-30T17:14:18+00:00",
+  "population": {
+    "total": 48,
+    "high": 10,
+    "medium": 38,
+    "candidates_total": 77,
+    "population_total": 48,
+    "with_detail": 45,
+    "search_records": 141
+  },
+  "field_availability": {
+    "caption": 48,
+    "hashtags": 45,
+    "duration": 48,
+    "detail_payload": 45,
+    "product_anchor": 29,
+    "transcript_or_audio": 0
+  },
+  "features": {
+    "comparison": {
+      "true": 1,
+      "false": 0,
+      "unknown": 47,
+      "total": 48,
+      "true_pct_of_all": 2.083,
+      "false_pct_of_all": 0.0,
+      "unknown_pct_of_all": 97.917,
+      "true_pct_of_known": 100.0,
+      "unknown_reasons": {
+        "caption_has_no_comparison_cue": 47
+      },
+      "matched_cue_counts": {
+        "which_one": 1
+      },
+      "by_confidence": {
+        "high": {
+          "n": 10,
+          "true": 0,
+          "false": 0,
+          "unknown": 10
+        },
+        "medium": {
+          "n": 38,
+          "true": 1,
+          "false": 0,
+          "unknown": 37
+        }
+      },
+      "by_relation_type": {
+        "duplicate_listing_anchor": {
+          "n": 19,
+          "true": 0,
+          "false": 0,
+          "unknown": 19
+        },
+        "target_exact": {
+          "n": 10,
+          "true": 0,
+          "false": 0,
+          "unknown": 10
+        },
+        "text_brand_and_category": {
+          "n": 19,
+          "true": 1,
+          "false": 0,
+          "unknown": 18
+        }
+      },
+      "target_baseline_eligible": {
+        "n": 10,
+        "true": 0,
+        "true_pct": 0.0
+      }
+    },
+    "demo": {
+      "true": 1,
+      "false": 0,
+      "unknown": 47,
+      "total": 48,
+      "true_pct_of_all": 2.083,
+      "false_pct_of_all": 0.0,
+      "unknown_pct_of_all": 97.917,
+      "true_pct_of_known": 100.0,
+      "unknown_reasons": {
+        "caption_has_no_demo_cue": 47
+      },
+      "matched_cue_counts": {
+        "how_to": 1,
+        "in_this_video": 1,
+        "show_you": 1,
+        "we_show": 1
+      },
+      "by_confidence": {
+        "high": {
+          "n": 10,
+          "true": 0,
+          "false": 0,
+          "unknown": 10
+        },
+        "medium": {
+          "n": 38,
+          "true": 1,
+          "false": 0,
+          "unknown": 37
+        }
+      },
+      "by_relation_type": {
+        "duplicate_listing_anchor": {
+          "n": 19,
+          "true": 0,
+          "false": 0,
+          "unknown": 19
+        },
+        "target_exact": {
+          "n": 10,
+          "true": 0,
+          "false": 0,
+          "unknown": 10
+        },
+        "text_brand_and_category": {
+          "n": 19,
+          "true": 1,
+          "false": 0,
+          "unknown": 18
+        }
+      },
+      "target_baseline_eligible": {
+        "n": 10,
+        "true": 0,
+        "true_pct": 0.0
+      }
+    },
+    "before_after": {
+      "true": 0,
+      "false": 0,
+      "unknown": 48,
+      "total": 48,
+      "true_pct_of_all": 0.0,
+      "false_pct_of_all": 0.0,
+      "unknown_pct_of_all": 100.0,
+      "true_pct_of_known": null,
+      "unknown_reasons": {
+        "caption_has_no_before_after_cue": 48
+      },
+      "matched_cue_counts": {},
+      "by_confidence": {
+        "high": {
+          "n": 10,
+          "true": 0,
+          "false": 0,
+          "unknown": 10
+        },
+        "medium": {
+          "n": 38,
+          "true": 0,
+          "false": 0,
+          "unknown": 38
+        }
+      },
+      "by_relation_type": {
+        "duplicate_listing_anchor": {
+          "n": 19,
+          "true": 0,
+          "false": 0,
+          "unknown": 19
+        },
+        "target_exact": {
+          "n": 10,
+          "true": 0,
+          "false": 0,
+          "unknown": 10
+        },
+        "text_brand_and_category": {
+          "n": 19,
+          "true": 0,
+          "false": 0,
+          "unknown": 19
+        }
+      },
+      "target_baseline_eligible": {
+        "n": 10,
+        "true": 0,
+        "true_pct": 0.0
+      }
+    },
+    "unboxing": {
+      "true": 0,
+      "false": 0,
+      "unknown": 48,
+      "total": 48,
+      "true_pct_of_all": 0.0,
+      "false_pct_of_all": 0.0,
+      "unknown_pct_of_all": 100.0,
+      "true_pct_of_known": null,
+      "unknown_reasons": {
+        "caption_has_no_unboxing_cue": 48
+      },
+      "matched_cue_counts": {},
+      "by_confidence": {
+        "high": {
+          "n": 10,
+          "true": 0,
+          "false": 0,
+          "unknown": 10
+        },
+        "medium": {
+          "n": 38,
+          "true": 0,
+          "false": 0,
+          "unknown": 38
+        }
+      },
+      "by_relation_type": {
+        "duplicate_listing_anchor": {
+          "n": 19,
+          "true": 0,
+          "false": 0,
+          "unknown": 19
+        },
+        "target_exact": {
+          "n": 10,
+          "true": 0,
+          "false": 0,
+          "unknown": 10
+        },
+        "text_brand_and_category": {
+          "n": 19,
+          "true": 0,
+          "false": 0,
+          "unknown": 19
+        }
+      },
+      "target_baseline_eligible": {
+        "n": 10,
+        "true": 0,
+        "true_pct": 0.0
+      }
+    },
+    "problem_solution": {
+      "true": 15,
+      "false": 0,
+      "unknown": 33,
+      "total": 48,
+      "true_pct_of_all": 31.25,
+      "false_pct_of_all": 0.0,
+      "unknown_pct_of_all": 68.75,
+      "true_pct_of_known": 100.0,
+      "unknown_reasons": {
+        "caption_has_no_problem_or_solution_cue": 15,
+        "partial_cue_problem_only": 2,
+        "partial_cue_solution_only": 16
+      },
+      "matched_cue_counts": {
+        "problem:ache": 1,
+        "problem:dolor_es": 1,
+        "problem:hard_to_carry": 1,
+        "problem:heavy": 3,
+        "problem:killing_me": 1,
+        "problem:pain": 10,
+        "problem:pressure": 4,
+        "solution:ayuda_es": 1,
+        "solution:comfort": 9,
+        "solution:comodidad_es": 1,
+        "solution:game_changer": 2,
+        "solution:help": 10,
+        "solution:lifesaver": 1,
+        "solution:lift": 6,
+        "solution:relief": 6,
+        "solution:saved_my": 1,
+        "solution:soporte_es": 1,
+        "solution:sostener_es": 1,
+        "solution:support": 23
+      },
+      "by_confidence": {
+        "high": {
+          "n": 10,
+          "true": 2,
+          "false": 0,
+          "unknown": 8
+        },
+        "medium": {
+          "n": 38,
+          "true": 13,
+          "false": 0,
+          "unknown": 25
+        }
+      },
+      "by_relation_type": {
+        "duplicate_listing_anchor": {
+          "n": 19,
+          "true": 6,
+          "false": 0,
+          "unknown": 13
+        },
+        "target_exact": {
+          "n": 10,
+          "true": 2,
+          "false": 0,
+          "unknown": 8
+        },
+        "text_brand_and_category": {
+          "n": 19,
+          "true": 7,
+          "false": 0,
+          "unknown": 12
+        }
+      },
+      "target_baseline_eligible": {
+        "n": 10,
+        "true": 2,
+        "true_pct": 20.0
+      }
+    },
+    "visual_only": {
+      "true": 0,
+      "false": 0,
+      "unknown": 48,
+      "total": 48,
+      "true_pct_of_all": 0.0,
+      "false_pct_of_all": 0.0,
+      "unknown_pct_of_all": 100.0,
+      "true_pct_of_known": null,
+      "unknown_reasons": {
+        "no_audio_or_transcript_field": 48
+      },
+      "matched_cue_counts": {},
+      "by_confidence": {
+        "high": {
+          "n": 10,
+          "true": 0,
+          "false": 0,
+          "unknown": 10
+        },
+        "medium": {
+          "n": 38,
+          "true": 0,
+          "false": 0,
+          "unknown": 38
+        }
+      },
+      "by_relation_type": {
+        "duplicate_listing_anchor": {
+          "n": 19,
+          "true": 0,
+          "false": 0,
+          "unknown": 19
+        },
+        "target_exact": {
+          "n": 10,
+          "true": 0,
+          "false": 0,
+          "unknown": 10
+        },
+        "text_brand_and_category": {
+          "n": 19,
+          "true": 0,
+          "false": 0,
+          "unknown": 19
+        }
+      },
+      "target_baseline_eligible": {
+        "n": 10,
+        "true": 0,
+        "true_pct": 0.0
+      }
+    },
+    "has_link": {
+      "true": 35,
+      "false": 11,
+      "unknown": 2,
+      "total": 48,
+      "true_pct_of_all": 72.917,
+      "false_pct_of_all": 22.917,
+      "unknown_pct_of_all": 4.167,
+      "true_pct_of_known": 76.087,
+      "unknown_reasons": {
+        "no_detail_payload_and_no_anchor_or_link_cue": 2
+      },
+      "matched_cue_counts": {
+        "has_shop_product=True": 31,
+        "link_in_bio": 5,
+        "product_anchor:1729474995478630680": 10,
+        "product_anchor:1729495174330226663": 1,
+        "product_anchor:1729625924185592807": 17,
+        "product_anchor:1731287236556526567": 1,
+        "url": 1,
+        "www": 1
+      },
+      "by_confidence": {
+        "high": {
+          "n": 10,
+          "true": 10,
+          "false": 0,
+          "unknown": 0
+        },
+        "medium": {
+          "n": 38,
+          "true": 25,
+          "false": 11,
+          "unknown": 2
+        }
+      },
+      "by_relation_type": {
+        "duplicate_listing_anchor": {
+          "n": 19,
+          "true": 19,
+          "false": 0,
+          "unknown": 0
+        },
+        "target_exact": {
+          "n": 10,
+          "true": 10,
+          "false": 0,
+          "unknown": 0
+        },
+        "text_brand_and_category": {
+          "n": 19,
+          "true": 6,
+          "false": 11,
+          "unknown": 2
+        }
+      },
+      "target_baseline_eligible": {
+        "n": 10,
+        "true": 10,
+        "true_pct": 100.0
+      }
+    },
+    "ad_disclosure": {
+      "true": 33,
+      "false": 13,
+      "unknown": 2,
+      "total": 48,
+      "true_pct_of_all": 68.75,
+      "false_pct_of_all": 27.083,
+      "unknown_pct_of_all": 4.167,
+      "true_pct_of_known": 71.739,
+      "unknown_reasons": {
+        "no_detail_payload_and_no_disclosure_cue": 2
+      },
+      "matched_cue_counts": {
+        "#ad": 1,
+        "ad_prefix": 2,
+        "anchor_label:#sponsored": 29,
+        "gifted_by": 1
+      },
+      "by_confidence": {
+        "high": {
+          "n": 10,
+          "true": 10,
+          "false": 0,
+          "unknown": 0
+        },
+        "medium": {
+          "n": 38,
+          "true": 23,
+          "false": 13,
+          "unknown": 2
+        }
+      },
+      "by_relation_type": {
+        "duplicate_listing_anchor": {
+          "n": 19,
+          "true": 19,
+          "false": 0,
+          "unknown": 0
+        },
+        "target_exact": {
+          "n": 10,
+          "true": 10,
+          "false": 0,
+          "unknown": 0
+        },
+        "text_brand_and_category": {
+          "n": 19,
+          "true": 4,
+          "false": 13,
+          "unknown": 2
+        }
+      },
+      "target_baseline_eligible": {
+        "n": 10,
+        "true": 10,
+        "true_pct": 100.0
+      }
+    },
+    "opens_with_question": {
+      "true": 2,
+      "false": 45,
+      "unknown": 1,
+      "total": 48,
+      "true_pct_of_all": 4.167,
+      "false_pct_of_all": 93.75,
+      "unknown_pct_of_all": 2.083,
+      "true_pct_of_known": 4.255,
+      "unknown_reasons": {
+        "caption_empty": 1
+      },
+      "matched_cue_counts": {},
+      "by_confidence": {
+        "high": {
+          "n": 10,
+          "true": 0,
+          "false": 10,
+          "unknown": 0
+        },
+        "medium": {
+          "n": 38,
+          "true": 2,
+          "false": 35,
+          "unknown": 1
+        }
+      },
+      "by_relation_type": {
+        "duplicate_listing_anchor": {
+          "n": 19,
+          "true": 0,
+          "false": 18,
+          "unknown": 1
+        },
+        "target_exact": {
+          "n": 10,
+          "true": 0,
+          "false": 10,
+          "unknown": 0
+        },
+        "text_brand_and_category": {
+          "n": 19,
+          "true": 2,
+          "false": 17,
+          "unknown": 0
+        }
+      },
+      "target_baseline_eligible": {
+        "n": 10,
+        "true": 0,
+        "true_pct": 0.0
+      }
+    },
+    "has_number_claim": {
+      "true": 17,
+      "false": 30,
+      "unknown": 1,
+      "total": 48,
+      "true_pct_of_all": 35.417,
+      "false_pct_of_all": 62.5,
+      "unknown_pct_of_all": 2.083,
+      "true_pct_of_known": 36.17,
+      "unknown_reasons": {
+        "caption_empty": 1
+      },
+      "matched_cue_counts": {
+        "#27weekspregnant": 1,
+        "#33weekspregant": 1,
+        "#36weekspregnant": 1,
+        "#3rdtrimester": 1,
+        "10": 3,
+        "2": 1,
+        "20": 10,
+        "22": 1,
+        "23": 1,
+        "24": 1,
+        "28": 1,
+        "29": 1,
+        "2nd": 1,
+        "30": 2,
+        "31": 1,
+        "35": 1,
+        "36": 1,
+        "3rd": 1,
+        "40": 1,
+        "6": 1
+      },
+      "by_confidence": {
+        "high": {
+          "n": 10,
+          "true": 1,
+          "false": 9,
+          "unknown": 0
+        },
+        "medium": {
+          "n": 38,
+          "true": 16,
+          "false": 21,
+          "unknown": 1
+        }
+      },
+      "by_relation_type": {
+        "duplicate_listing_anchor": {
+          "n": 19,
+          "true": 6,
+          "false": 12,
+          "unknown": 1
+        },
+        "target_exact": {
+          "n": 10,
+          "true": 1,
+          "false": 9,
+          "unknown": 0
+        },
+        "text_brand_and_category": {
+          "n": 19,
+          "true": 10,
+          "false": 9,
+          "unknown": 0
+        }
+      },
+      "target_baseline_eligible": {
+        "n": 10,
+        "true": 1,
+        "true_pct": 10.0
+      }
+    }
+  },
+  "supplementary": {
+    "features": {
+      "has_coupon_or_discount": {
+        "true": 9,
+        "false": 38,
+        "unknown": 1,
+        "total": 48,
+        "true_pct_of_all": 18.75,
+        "unknown_pct_of_all": 2.083,
+        "matched_cue_counts": {
+          "code_token": 8,
+          "discount": 2,
+          "percent_off": 8,
+          "use_code": 7
+        }
+      },
+      "has_cta": {
+        "true": 10,
+        "false": 37,
+        "unknown": 1,
+        "total": 48,
+        "true_pct_of_all": 20.833,
+        "unknown_pct_of_all": 2.083,
+        "matched_cue_counts": {
+          "grab_yours": 1,
+          "link_in_bio": 5,
+          "use_code": 7
+        }
+      },
+      "mentions_brand": {
+        "true": 25,
+        "false": 23,
+        "unknown": 0,
+        "total": 48,
+        "true_pct_of_all": 52.083,
+        "unknown_pct_of_all": 0.0,
+        "matched_cue_counts": {
+          "@Momcozy": 22,
+          "@momcozy": 2,
+          "@momcozyofficial": 1
+        }
+      }
+    },
+    "caption_word_count": {
+      "min": 0,
+      "median": 25.5,
+      "max": 153
+    },
+    "hashtag_count_per_video": {
+      "min": 0,
+      "median": 5.0,
+      "max": 7
+    }
+  },
+  "top_unknown_features": [
+    {
+      "feature": "before_after",
+      "unknown": 48,
+      "unknown_pct_of_all": 100.0
+    },
+    {
+      "feature": "unboxing",
+      "unknown": 48,
+      "unknown_pct_of_all": 100.0
+    },
+    {
+      "feature": "visual_only",
+      "unknown": 48,
+      "unknown_pct_of_all": 100.0
+    }
+  ],
+  "duration_buckets": {
+    "<=15s": {
+      "n": 7,
+      "pct_of_all": 14.583
+    },
+    "16-30s": {
+      "n": 13,
+      "pct_of_all": 27.083
+    },
+    "31-60s": {
+      "n": 18,
+      "pct_of_all": 37.5
+    },
+    ">60s": {
+      "n": 10,
+      "pct_of_all": 20.833
+    },
+    "unknown": {
+      "n": 0,
+      "pct_of_all": 0.0
+    }
+  },
+  "top_hashtags": [
+    {
+      "hashtag": "momcozy",
+      "n": 20
+    },
+    {
+      "hashtag": "bellyband",
+      "n": 18
+    },
+    {
+      "hashtag": "momcozybellyband",
+      "n": 13
+    },
+    {
+      "hashtag": "pregnancy",
+      "n": 13
+    },
+    {
+      "hashtag": "pregnant",
+      "n": 12
+    },
+    {
+      "hashtag": "apronbelly",
+      "n": 5
+    },
+    {
+      "hashtag": "thirdtrimester",
+      "n": 5
+    },
+    {
+      "hashtag": "pregnancybellyband",
+      "n": 4
+    },
+    {
+      "hashtag": "momcozypregnancyessentials",
+      "n": 4
+    },
+    {
+      "hashtag": "twinpregnancy",
+      "n": 4
+    },
+    {
+      "hashtag": "pregnancyband",
+      "n": 4
+    },
+    {
+      "hashtag": "pregnancyjourney",
+      "n": 4
+    },
+    {
+      "hashtag": "foryoupage",
+      "n": 4
+    },
+    {
+      "hashtag": "tiktokshop",
+      "n": 3
+    },
+    {
+      "hashtag": "pregnancyessentials",
+      "n": 3
+    },
+    {
+      "hashtag": "pregnancytiktok",
+      "n": 3
+    },
+    {
+      "hashtag": "pregnancytips",
+      "n": 3
+    },
+    {
+      "hashtag": "pregnancysupport",
+      "n": 3
+    },
+    {
+      "hashtag": "pregnancybelly",
+      "n": 2
+    },
+    {
+      "hashtag": "backpain",
+      "n": 2
+    },
+    {
+      "hashtag": "embarazo",
+      "n": 2
+    },
+    {
+      "hashtag": "plussizepregnancy",
+      "n": 2
+    },
+    {
+      "hashtag": "backsupport",
+      "n": 2
+    },
+    {
+      "hashtag": "postpartum",
+      "n": 2
+    },
+    {
+      "hashtag": "postpartumrecovery",
+      "n": 2
+    }
+  ],
+  "notes": [
+    "Population is high/medium product-relation videos only; low and no_signal rows are excluded.",
+    "Caption silence is treated as unknown, not false, for visual/audio content forms.",
+    "visual_only is unknown for every video because no transcript or audio field exists.",
+    "has_number_claim counts standalone digits and ordinals in the caption, plus hashtags whose numeric prefix is followed by a unit (for example #36weekspregnant). Coupon codes such as MERCYCOZY20 and prose tokens such as 3D are excluded by the alphanumeric-boundary rule.",
+    "duration buckets use exact seconds: <=15, (15,30], (30,60], >60. Labels are shorthand.",
+    "Cue matching is surface-form. Negated cues (for example 'not comfortable') are not semantically inverted; those rows stay unknown unless another positive cue exists.",
+    "ad_disclosure covers text and platform labels only. A spoken disclosure is not observable. platform_is_ad is reported separately; 10 of the 13 ad_disclosure=false rows carry platform is_ad=true.",
+    "has_link covers platform product anchors, the has_shop_product flag, and caption link cues. Profile bio links are not checked.",
+    "These strict rules are not comparable to the loose substring format_tags in creator_video_derive.py. For example, that earlier rule tags any caption containing 'weeks' or 'bump' as before_after, which is why its format_before_after cohort is much larger than the strict before_after feature here."
+  ],
+  "search_dedup_conflicts": [],
+  "validation": {
+    "ok": true,
+    "errors": [],
+    "rows": 48
+  },
+  "outputs": {
+    "features": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/features/video-features.jsonl",
+    "rules": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/features/feature-rules.json",
+    "distribution": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/features/feature-distribution.json"
+  }
+}

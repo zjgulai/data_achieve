@@ -1,0 +1,86 @@
+{
+ "schema_version": "voc_source_rights_matrix_v1",
+ "sources": [
+  {
+   "source": "reddit_public_archive",
+   "access_route": "Arctic Shift public API",
+   "rights_state": "public_read",
+   "privacy_state": "public_usernames; no PII collected beyond author handle",
+   "commerciality": "mixed; commercial disclosure detected per record",
+   "content_role": "consumer unless brand/creator detected",
+   "allowed_use": [
+    "internal research",
+    "aggregate analysis",
+    "short excerpt with attribution"
+   ],
+   "forbidden_use": [
+    "full-text republication",
+    "user profiling",
+    "external publication of quotes without review"
+   ],
+   "metric_eligible": true
+  },
+  {
+   "source": "amazon_pdp",
+   "access_route": "public product detail page",
+   "rights_state": "public_read",
+   "privacy_state": "no personal data",
+   "commerciality": "brand-owned listing",
+   "content_role": "identity_evidence",
+   "allowed_use": [
+    "identity verification",
+    "variant inventory"
+   ],
+   "forbidden_use": [
+    "review republication",
+    "star distribution as sentiment metric"
+   ],
+   "metric_eligible": false
+  },
+  {
+   "source": "tiktok_shop_reviews",
+   "access_route": "TikHub GET /api/v1/tiktok/shop/web/fetch_product_reviews_v2",
+   "rights_state": "public_read",
+   "privacy_state": "reviewer names returned masked; no account ids or avatars stored",
+   "commerciality": "mixed; is_incentivized_review recorded per record",
+   "content_role": "verified buyer unless incentivized",
+   "allowed_use": [
+    "internal research",
+    "aggregate analysis",
+    "direction verification"
+   ],
+   "forbidden_use": [
+    "review republication",
+    "star distribution as sentiment metric",
+    "treating masked handles as verified unique people"
+   ],
+   "metric_eligible": true
+  },
+  {
+   "source": "tiktok_video_public",
+   "access_route": "TikHub GET /api/v1/tiktok/app/v3/fetch_video_search_result; GET /api/v1/tiktok/web/fetch_post_detail; GET /api/v1/tiktok/web/fetch_user_profile",
+   "rights_state": "public_read",
+   "privacy_state": "public creator handles and follower counts; no audience demographics stored",
+   "commerciality": "mixed; platform_is_ad and ad disclosure recorded per video",
+   "content_role": "creator_content",
+   "allowed_use": [
+    "internal research",
+    "aggregate analysis",
+    "format and creator selection"
+   ],
+   "forbidden_use": [
+    "video republication",
+    "creator profiling",
+    "causal performance claims",
+    "GMV or conversion estimates"
+   ],
+   "metric_eligible": true
+  }
+ ],
+ "blocked_sources": [
+  {
+   "source": "amazon_review_text",
+   "reason": "requires authenticated session; current route returns 302"
+  }
+ ]
+}

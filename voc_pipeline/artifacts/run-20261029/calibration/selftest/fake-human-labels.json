@@ -1,0 +1,255 @@
+{
+  "schema": "voc-human-labels-v1",
+  "sample_id": "voc-cal-20261030-ab58898b",
+  "exported_at": "2026-10-30T00:00:00+00:00",
+  "annotator": "FAKE-SELFTEST (not a real annotator)",
+  "note": "Self-test fixture. Do not use as real human annotations.",
+  "items": [
+    {
+      "item_id": "B01",
+      "is_product_experience": true,
+      "experience_reason": null,
+      "aspects": [
+        {
+          "code": "COM.GENERAL",
+          "polarity": "negative",
+          "evidence": "I couldn’t wear a belly band as I found it too painful"
+        }
+      ]
+    },
+    {
+      "item_id": "B02",
+      "is_product_experience": true,
+      "experience_reason": null,
+      "aspects": [
+        {
+          "code": "GEN.OVERALL_EVALUATION",
+          "polarity": "negative",
+          "evidence": "Item didn’t work well for me."
+        },
+        {
+          "code": "COM.PRESSURE_DIGGING",
+          "polarity": "negative",
+          "evidence": "Top band tended to dig in and be uncomfortable"
+        },
+        {
+          "code": "CX.RETURN_EXCHANGE",
+          "polarity": "positive",
+          "evidence": "returning wasn’t super easy and I had to talk with support"
+        }
+      ]
+    },
+    {
+      "item_id": "B03",
+      "is_product_experience": true,
+      "experience_reason": null,
+      "aspects": [
+        {
+          "code": "ADJ.STRAP_DESIGN",
+          "polarity": "negative",
+          "evidence": "Velcro wouldn’t stay latched."
+        }
+      ]
+    },
+    {
+      "item_id": "B04",
+      "is_product_experience": true,
+      "experience_reason": null,
+      "aspects": [
+        {
+          "code": "STB.STAY_IN_PLACE",
+          "polarity": "negative",
+          "evidence": "it comes loose completely. It doesn’t stay in place"
+        }
+      ]
+    },
+    {
+      "item_id": "B05",
+      "is_product_experience": true,
+      "experience_reason": null,
+      "aspects": [
+        {
+          "code": "SUP.PRESSURE_OFFLOAD",
+          "polarity": "positive",
+          "evidence": "the weight off my pelvis and lower back is incredible"
+        }
+      ]
+    },
+    {
+      "item_id": "B06",
+      "is_product_experience": true,
+      "experience_reason": null,
+      "aspects": [
+        {
+          "code": "SUP.GENERAL",
+          "polarity": "negative",
+          "evidence": "which helped support my muscles when turning"
+        }
+      ]
+    },
+    {
+      "item_id": "B07",
+      "is_product_experience": true,
+      "experience_reason": null,
+      "aspects": []
+    },
+    {
+      "item_id": "B08",
+      "is_product_experience": true,
+      "experience_reason": null,
+      "aspects": [
+        {
+          "code": "APP.UNDER_CLOTHING",
+          "polarity": "positive",
+          "evidence": "I could wear my belly band and no one could tell"
+        }
+      ]
+    },
+    {
+      "item_id": "B09",
+      "is_product_experience": true,
+      "experience_reason": null,
+      "aspects": [
+        {
+          "code": "SUP.PRESSURE_OFFLOAD",
+          "polarity": "positive",
+          "evidence": "it definitely helps relieve pressure"
+        },
+        {
+          "code": "GEN.OVERALL_EVALUATION",
+          "polarity": "positive",
+          "evidence": "I got a large & love it!"
+        }
+      ]
+    },
+    {
+      "item_id": "B10",
+      "is_product_experience": true,
+      "experience_reason": null,
+      "aspects": [
+        {
+          "code": "SUP.BACK",
+          "polarity": "negative",
+          "evidence": "Helps with backpain"
+        }
+      ]
+    },
+    {
+      "item_id": "B11",
+      "is_product_experience": true,
+      "experience_reason": null,
+      "aspects": []
+    },
+    {
+      "item_id": "B12",
+      "is_product_experience": true,
+      "experience_reason": null,
+      "aspects": [
+        {
+          "code": "GEN.OVERALL_EVALUATION",
+          "polarity": "positive",
+          "evidence": "Love this"
+        }
+      ]
+    },
+    {
+      "item_id": "B13",
+      "is_product_experience": true,
+      "experience_reason": null,
+      "aspects": [
+        {
+          "code": "COM.GENERAL",
+          "polarity": "negative",
+          "evidence": "it’s just not comfortable anymore"
+        }
+      ]
+    },
+    {
+      "item_id": "B14",
+      "is_product_experience": true,
+      "experience_reason": null,
+      "aspects": []
+    },
+    {
+      "item_id": "B15",
+      "is_product_experience": true,
+      "experience_reason": null,
+      "aspects": [
+        {
+          "code": "ACT.COMPATIBILITY",
+          "polarity": "positive",
+          "evidence": "awesome for working out"
+        }
+      ]
+    },
+    {
+      "item_id": "B16",
+      "is_product_experience": true,
+      "experience_reason": null,
+      "aspects": [
+        {
+          "code": "SUP.BELLY_LIFT",
+          "polarity": "negative",
+          "evidence": "a huge help in holding up her little bundle"
+        },
+        {
+          "code": "ADJ.STRAP_DESIGN",
+          "polarity": "positive",
+          "evidence": "the Velcro fasteners are strong"
+        },
+        {
+          "code": "ADJ.RANGE_TENSION",
+          "polarity": "positive",
+          "evidence": "easily adjustable"
+        }
+      ]
+    },
+    {
+      "item_id": "B17",
+      "is_product_experience": true,
+      "experience_reason": null,
+      "aspects": [
+        {
+          "code": "COM.GENERAL",
+          "polarity": "negative",
+          "evidence": "it felt so restrictive and uncomfortable"
+        }
+      ]
+    },
+    {
+      "item_id": "B18",
+      "is_product_experience": true,
+      "experience_reason": null,
+      "aspects": [
+        {
+          "code": "SUP.GENERAL",
+          "polarity": "positive",
+          "evidence": "it is no longer helping"
+        }
+      ]
+    },
+    {
+      "item_id": "B19",
+      "is_product_experience": true,
+      "experience_reason": null,
+      "aspects": []
+    },
+    {
+      "item_id": "B20",
+      "is_product_experience": true,
+      "experience_reason": null,
+      "aspects": [
+        {
+          "code": "COM.GENERAL",
+          "polarity": "positive",
+          "evidence": "Very comfortable"
+        },
+        {
+          "code": "SUP.BACK",
+          "polarity": "positive",
+          "evidence": "very supportive for your back"
+        }
+      ]
+    }
+  ]
+}

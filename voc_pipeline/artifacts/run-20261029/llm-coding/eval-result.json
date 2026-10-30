@@ -1,0 +1,1382 @@
+{
+  "generated_at": "2026-10-30T01:22:41.306470+00:00",
+  "gold_set": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/gold-set-50.jsonl",
+  "evaluated_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/llm-coding/coded/ALL.jsonl",
+  "rule": {
+    "matching": "per-record multiset intersection; each LLM aspect consumes at most one gold aspect",
+    "strict": "[code, polarity] exact",
+    "family": "[code, polarity family] with qualified_positive->positive, qualified_negative->negative",
+    "code_only": "[code]"
+  },
+  "reproduction_check": {
+    "passed": true,
+    "note": "old rule-coder table reproduced exactly from gold/coder-output-50.jsonl"
+  },
+  "old_rule_coder": {
+    "strict": {
+      "TikTok": {
+        "coder_aspects": 41,
+        "gold_aspects": 77,
+        "true_positives": 26,
+        "precision_pct": 63.4,
+        "recall_pct": 33.8
+      },
+      "Reddit": {
+        "coder_aspects": 0,
+        "gold_aspects": 8,
+        "true_positives": 0,
+        "precision_pct": null,
+        "recall_pct": 0.0
+      },
+      "ALL": {
+        "coder_aspects": 41,
+        "gold_aspects": 85,
+        "true_positives": 26,
+        "precision_pct": 63.4,
+        "recall_pct": 30.6
+      }
+    },
+    "family": {
+      "TikTok": {
+        "coder_aspects": 41,
+        "gold_aspects": 77,
+        "true_positives": 30,
+        "precision_pct": 73.2,
+        "recall_pct": 39.0
+      },
+      "Reddit": {
+        "coder_aspects": 0,
+        "gold_aspects": 8,
+        "true_positives": 0,
+        "precision_pct": null,
+        "recall_pct": 0.0
+      },
+      "ALL": {
+        "coder_aspects": 41,
+        "gold_aspects": 85,
+        "true_positives": 30,
+        "precision_pct": 73.2,
+        "recall_pct": 35.3
+      }
+    },
+    "code_only": {
+      "TikTok": {
+        "coder_aspects": 41,
+        "gold_aspects": 77,
+        "true_positives": 32,
+        "precision_pct": 78.0,
+        "recall_pct": 41.6
+      },
+      "Reddit": {
+        "coder_aspects": 0,
+        "gold_aspects": 8,
+        "true_positives": 0,
+        "precision_pct": null,
+        "recall_pct": 0.0
+      },
+      "ALL": {
+        "coder_aspects": 41,
+        "gold_aspects": 85,
+        "true_positives": 32,
+        "precision_pct": 78.0,
+        "recall_pct": 37.6
+      }
+    }
+  },
+  "new_llm_coder": {
+    "strict": {
+      "TikTok": {
+        "coder_aspects": 56,
+        "gold_aspects": 77,
+        "true_positives": 46,
+        "precision_pct": 82.1,
+        "recall_pct": 59.7
+      },
+      "Reddit": {
+        "coder_aspects": 8,
+        "gold_aspects": 8,
+        "true_positives": 5,
+        "precision_pct": 62.5,
+        "recall_pct": 62.5
+      },
+      "ALL": {
+        "coder_aspects": 64,
+        "gold_aspects": 85,
+        "true_positives": 51,
+        "precision_pct": 79.7,
+        "recall_pct": 60.0
+      }
+    },
+    "family": {
+      "TikTok": {
+        "coder_aspects": 56,
+        "gold_aspects": 77,
+        "true_positives": 49,
+        "precision_pct": 87.5,
+        "recall_pct": 63.6
+      },
+      "Reddit": {
+        "coder_aspects": 8,
+        "gold_aspects": 8,
+        "true_positives": 5,
+        "precision_pct": 62.5,
+        "recall_pct": 62.5
+      },
+      "ALL": {
+        "coder_aspects": 64,
+        "gold_aspects": 85,
+        "true_positives": 54,
+        "precision_pct": 84.4,
+        "recall_pct": 63.5
+      }
+    },
+    "code_only": {
+      "TikTok": {
+        "coder_aspects": 56,
+        "gold_aspects": 77,
+        "true_positives": 49,
+        "precision_pct": 87.5,
+        "recall_pct": 63.6
+      },
+      "Reddit": {
+        "coder_aspects": 8,
+        "gold_aspects": 8,
+        "true_positives": 5,
+        "precision_pct": 62.5,
+        "recall_pct": 62.5
+      },
+      "ALL": {
+        "coder_aspects": 64,
+        "gold_aspects": 85,
+        "true_positives": 54,
+        "precision_pct": 84.4,
+        "recall_pct": 63.5
+      }
+    }
+  },
+  "comparison": {
+    "strict": {
+      "TikTok": {
+        "old_precision_pct": 63.4,
+        "new_precision_pct": 82.1,
+        "delta_precision_pp": 18.7,
+        "old_recall_pct": 33.8,
+        "new_recall_pct": 59.7,
+        "delta_recall_pp": 25.9
+      },
+      "Reddit": {
+        "old_precision_pct": null,
+        "new_precision_pct": 62.5,
+        "delta_precision_pp": null,
+        "old_recall_pct": 0.0,
+        "new_recall_pct": 62.5,
+        "delta_recall_pp": 62.5
+      },
+      "ALL": {
+        "old_precision_pct": 63.4,
+        "new_precision_pct": 79.7,
+        "delta_precision_pp": 16.3,
+        "old_recall_pct": 30.6,
+        "new_recall_pct": 60.0,
+        "delta_recall_pp": 29.4
+      }
+    },
+    "family": {
+      "TikTok": {
+        "old_precision_pct": 73.2,
+        "new_precision_pct": 87.5,
+        "delta_precision_pp": 14.3,
+        "old_recall_pct": 39.0,
+        "new_recall_pct": 63.6,
+        "delta_recall_pp": 24.6
+      },
+      "Reddit": {
+        "old_precision_pct": null,
+        "new_precision_pct": 62.5,
+        "delta_precision_pp": null,
+        "old_recall_pct": 0.0,
+        "new_recall_pct": 62.5,
+        "delta_recall_pp": 62.5
+      },
+      "ALL": {
+        "old_precision_pct": 73.2,
+        "new_precision_pct": 84.4,
+        "delta_precision_pp": 11.2,
+        "old_recall_pct": 35.3,
+        "new_recall_pct": 63.5,
+        "delta_recall_pp": 28.2
+      }
+    },
+    "code_only": {
+      "TikTok": {
+        "old_precision_pct": 78.0,
+        "new_precision_pct": 87.5,
+        "delta_precision_pp": 9.5,
+        "old_recall_pct": 41.6,
+        "new_recall_pct": 63.6,
+        "delta_recall_pp": 22.0
+      },
+      "Reddit": {
+        "old_precision_pct": null,
+        "new_precision_pct": 62.5,
+        "delta_precision_pp": null,
+        "old_recall_pct": 0.0,
+        "new_recall_pct": 62.5,
+        "delta_recall_pp": 62.5
+      },
+      "ALL": {
+        "old_precision_pct": 78.0,
+        "new_precision_pct": 84.4,
+        "delta_precision_pp": 6.4,
+        "old_recall_pct": 37.6,
+        "new_recall_pct": 63.5,
+        "delta_recall_pp": 25.9
+      }
+    }
+  },
+  "verdict_thresholds_pct": {
+    "pass": 90,
+    "near_miss": "85-90",
+    "fail": "<85"
+  },
+  "strict_all_precision_pct": 79.7,
+  "false_positives": [
+    {
+      "canonical_id": "c-7667963659528931085",
+      "source": "TikTok",
+      "code": "SUP.GENERAL",
+      "polarity": "negative",
+      "confidence": "high",
+      "evidence_span": "did not find that it provided optimal relief",
+      "gold_aspects": [
+        {
+          "code": "SUP.PRESSURE_OFFLOAD",
+          "polarity": "qualified_negative",
+          "evidence": "did not find that it provided optimal relief"
+        },
+        {
+          "code": "COM.GENERAL",
+          "polarity": "qualified_negative",
+          "evidence": "experienced some stomach discomfort"
+        },
+        {
+          "code": "ADJ.RANGE_TENSION",
+          "polarity": "negative",
+          "evidence": "required frequent adjustments"
+        }
+      ],
+      "same_code_in_gold": [],
+      "pattern": "support_family_boundary",
+      "is_product_experience_gold": true,
+      "record_text": "Personally, I did not find that it provided optimal relief and experienced some stomach discomfort during the initial days. Additionally, using it required frequent adjustments."
+    },
+    {
+      "canonical_id": "c-7667963659528931085",
+      "source": "TikTok",
+      "code": "COM.GENERAL",
+      "polarity": "negative",
+      "confidence": "high",
+      "evidence_span": "experienced some stomach discomfort during the initial days",
+      "gold_aspects": [
+        {
+          "code": "SUP.PRESSURE_OFFLOAD",
+          "polarity": "qualified_negative",
+          "evidence": "did not find that it provided optimal relief"
+        },
+        {
+          "code": "COM.GENERAL",
+          "polarity": "qualified_negative",
+          "evidence": "experienced some stomach discomfort"
+        },
+        {
+          "code": "ADJ.RANGE_TENSION",
+          "polarity": "negative",
+          "evidence": "required frequent adjustments"
+        }
+      ],
+      "same_code_in_gold": [
+        {
+          "code": "COM.GENERAL",
+          "polarity": "qualified_negative"
+        }
+      ],
+      "pattern": "polarity_hedge",
+      "is_product_experience_gold": true,
+      "record_text": "Personally, I did not find that it provided optimal relief and experienced some stomach discomfort during the initial days. Additionally, using it required frequent adjustments."
+    },
+    {
+      "canonical_id": "c-7697340641772160781",
+      "source": "TikTok",
+      "code": "SUP.BACK",
+      "polarity": "positive",
+      "confidence": "medium",
+      "evidence_span": "You can feel the difference INSTANTLY for the mommies that are having back pains",
+      "gold_aspects": [
+        {
+          "code": "GEN.OVERALL_EVALUATION",
+          "polarity": "positive",
+          "evidence": "it really works"
+        }
+      ],
+      "same_code_in_gold": [],
+      "pattern": "generic_other_people",
+      "is_product_experience_gold": true,
+      "record_text": "I LITERALLY just tried it on just to see if it really works and IT DOESSSSSSS!!!! You can feel the difference INSTANTLY for the mommies that are having back pains and bellies are VERY noticeable."
+    },
+    {
+      "canonical_id": "c-7679159693625673485",
+      "source": "TikTok",
+      "code": "GEN.OVERALL_EVALUATION",
+      "polarity": "positive",
+      "confidence": "medium",
+      "evidence_span": "Would definitely order again",
+      "gold_aspects": [
+        {
+          "code": "FIT.SIZE_ACCURACY",
+          "polarity": "positive",
+          "evidence": "Runs true to size"
+        },
+        {
+          "code": "SUP.BACK",
+          "polarity": "positive",
+          "evidence": "really helps with back pain"
+        }
+      ],
+      "same_code_in_gold": [],
+      "pattern": "recommend_vs_overall",
+      "is_product_experience_gold": true,
+      "record_text": "Runs true to size and really helps with back pain! Would definitely order again"
+    },
+    {
+      "canonical_id": "c-7686709601646593805",
+      "source": "TikTok",
+      "code": "SUP.GENERAL",
+      "polarity": "qualified_negative",
+      "confidence": "medium",
+      "evidence_span": "There is some relief but the pregnancy ball was the best purchase",
+      "gold_aspects": [
+        {
+          "code": "SUP.PRESSURE_OFFLOAD",
+          "polarity": "qualified_positive",
+          "evidence": "There is some relief"
+        },
+        {
+          "code": "SUP.GENERAL",
+          "polarity": "negative",
+          "evidence": "more supportive than the belt"
+        }
+      ],
+      "same_code_in_gold": [
+        {
+          "code": "SUP.GENERAL",
+          "polarity": "negative"
+        }
+      ],
+      "pattern": "polarity_hedge",
+      "is_product_experience_gold": true,
+      "record_text": "There is some relief but the pregnancy ball was the best purchase compared to getting relief rather than the support belt. Also, I found KT tapping more supportive than the belt. This might change for third trimester though."
+    },
+    {
+      "canonical_id": "c-7658003601176119053",
+      "source": "TikTok",
+      "code": "SUP.BACK",
+      "polarity": "positive",
+      "confidence": "high",
+      "evidence_span": "Almost fully takes away the sciatica",
+      "gold_aspects": [
+        {
+          "code": "SUP.PRESSURE_OFFLOAD",
+          "polarity": "qualified_positive",
+          "evidence": "Almost fully takes away the sciatica"
+        },
+        {
+          "code": "GEN.OVERALL_EVALUATION",
+          "polarity": "positive",
+          "evidence": "Truly a lifesaver"
+        }
+      ],
+      "same_code_in_gold": [],
+      "pattern": "support_family_boundary",
+      "is_product_experience_gold": true,
+      "record_text": "Almost fully takes away the sciatica I’ve had for the last 20 weeks of pregnancy. Truly a lifesaver!"
+    },
+    {
+      "canonical_id": "c-7695606260216399630",
+      "source": "TikTok",
+      "code": "SUP.GENERAL",
+      "polarity": "positive",
+      "confidence": "medium",
+      "evidence_span": "it has helped tremendously",
+      "gold_aspects": [
+        {
+          "code": "GEN.OVERALL_EVALUATION",
+          "polarity": "positive",
+          "evidence": "My wife loves the belt"
+        }
+      ],
+      "same_code_in_gold": [],
+      "pattern": "vague_praise_overreach",
+      "is_product_experience_gold": true,
+      "record_text": "My wife loves the belt, she’s carrying twins and it has helped tremendously!"
+    },
+    {
+      "canonical_id": "c-7679740736191088397",
+      "source": "TikTok",
+      "code": "SUP.GENERAL",
+      "polarity": "negative",
+      "confidence": "high",
+      "evidence_span": "I wish it added just a little more support",
+      "gold_aspects": [
+        {
+          "code": "COM.GENERAL",
+          "polarity": "positive",
+          "evidence": "more comfortable than my other  bands"
+        },
+        {
+          "code": "ADJ.DONNING",
+          "polarity": "positive",
+          "evidence": "eat to assemble"
+        },
+        {
+          "code": "SUP.GENERAL",
+          "polarity": "qualified_negative",
+          "evidence": "wish it added just a little more support"
+        }
+      ],
+      "same_code_in_gold": [
+        {
+          "code": "SUP.GENERAL",
+          "polarity": "qualified_negative"
+        }
+      ],
+      "pattern": "polarity_hedge",
+      "is_product_experience_gold": true,
+      "record_text": "It is more comfortable than my other  bands eat to assemble but I wish it added just a little more support."
+    },
+    {
+      "canonical_id": "c-7700979310009550605",
+      "source": "TikTok",
+      "code": "MAT.FABRIC",
+      "polarity": "positive",
+      "confidence": "medium",
+      "evidence_span": "great quality",
+      "gold_aspects": [
+        {
+          "code": "FIT.SIZE_ACCURACY",
+          "polarity": "positive",
+          "evidence": "Fits good"
+        },
+        {
+          "code": "SUP.GENERAL",
+          "polarity": "positive",
+          "evidence": "great quality and support"
+        },
+        {
+          "code": "GEN.OVERALL_EVALUATION",
+          "polarity": "positive",
+          "evidence": "great quality"
+        }
+      ],
+      "same_code_in_gold": [],
+      "pattern": "vague_praise_overreach",
+      "is_product_experience_gold": true,
+      "record_text": "Fits good, great quality and support"
+    },
+    {
+      "canonical_id": "c-7665021905910384398",
+      "source": "TikTok",
+      "code": "FIT.COVERAGE",
+      "polarity": "positive",
+      "confidence": "medium",
+      "evidence_span": "to hide the extra skin from the last kids",
+      "gold_aspects": [
+        {
+          "code": "SUP.PRESSURE_OFFLOAD",
+          "polarity": "positive",
+          "evidence": "helps relieve the pain"
+        },
+        {
+          "code": "COM.GENERAL",
+          "polarity": "positive",
+          "evidence": "very comfortable"
+        },
+        {
+          "code": "GEN.OVERALL_EVALUATION",
+          "polarity": "positive",
+          "evidence": "I love it"
+        }
+      ],
+      "same_code_in_gold": [],
+      "pattern": "excluded_semantics",
+      "is_product_experience_gold": true,
+      "record_text": "It definitely helps relieve the pain. And to hide the extra skin from the last kids. I love it very comfortable"
+    },
+    {
+      "canonical_id": "c-1x65j91",
+      "source": "Reddit",
+      "code": "GEN.OVERALL_EVALUATION",
+      "polarity": "negative",
+      "confidence": "high",
+      "evidence_span": "I honestly hated my belly band",
+      "gold_aspects": [],
+      "same_code_in_gold": [],
+      "pattern": "other_product_scope",
+      "is_product_experience_gold": false,
+      "record_text": "Hi 🫶 I'm in my second pregnancy 24 weeks along. I have had some severe muscle pain around the belly button associated with moderate activity/lifting and a bad case of diastasis recti. My OB gave me a 20 lb lift restriction (unfortunately I am a nurse and have a 33 lb toddler so this is hard) and recommended a good belly band and KT tape.\n\nAre there any that are particularly good for diastasis recti during pregnancy? I honestly hated my belly band my first pregnancy because it felt so restrictive and uncomfortable. Thanks!! "
+    },
+    {
+      "canonical_id": "c-1x65j91",
+      "source": "Reddit",
+      "code": "COM.GENERAL",
+      "polarity": "negative",
+      "confidence": "high",
+      "evidence_span": "it felt so restrictive and uncomfortable",
+      "gold_aspects": [],
+      "same_code_in_gold": [],
+      "pattern": "other_product_scope",
+      "is_product_experience_gold": false,
+      "record_text": "Hi 🫶 I'm in my second pregnancy 24 weeks along. I have had some severe muscle pain around the belly button associated with moderate activity/lifting and a bad case of diastasis recti. My OB gave me a 20 lb lift restriction (unfortunately I am a nurse and have a 33 lb toddler so this is hard) and recommended a good belly band and KT tape.\n\nAre there any that are particularly good for diastasis recti during pregnancy? I honestly hated my belly band my first pregnancy because it felt so restrictive and uncomfortable. Thanks!! "
+    },
+    {
+      "canonical_id": "c-1w3knom",
+      "source": "Reddit",
+      "code": "ACT.COMPATIBILITY",
+      "polarity": "positive",
+      "confidence": "medium",
+      "evidence_span": "actually using a belly band are helping",
+      "gold_aspects": [
+        {
+          "code": "SUP.GENERAL",
+          "polarity": "positive",
+          "evidence": "actually using a belly band are helping"
+        }
+      ],
+      "same_code_in_gold": [],
+      "pattern": "support_family_boundary",
+      "is_product_experience_gold": true,
+      "record_text": "This is my third pregnancy. While I was lucky to be able to exercise (walking and weights mostly) through my first two, I had to give up running very early due to pelvic pain. \n\nNot sure what’s going on this time, but I’m currently 29 weeks pregnant and still running 3-4 miles 3 days a week (really … more of a light trot at this point ha). I’ve set the goal of doing as many 5Ks as I can for as long as I can, and not worrying about pace, which has helped stay within reasonable goals. I also think having a treadmill now (downhills outside are a little uncomfy) and actually using a belly band are"
+    }
+  ],
+  "false_positive_count": 13,
+  "false_positive_pattern_counts": {
+    "support_family_boundary": 3,
+    "polarity_hedge": 3,
+    "generic_other_people": 1,
+    "recommend_vs_overall": 1,
+    "vague_praise_overreach": 2,
+    "excluded_semantics": 1,
+    "other_product_scope": 2
+  },
+  "false_negatives": [
+    {
+      "canonical_id": "c-7667963659528931085",
+      "source": "TikTok",
+      "code": "SUP.PRESSURE_OFFLOAD",
+      "polarity": "qualified_negative",
+      "evidence": "did not find that it provided optimal relief",
+      "llm_aspects": [
+        {
+          "code": "SUP.GENERAL",
+          "polarity": "negative"
+        },
+        {
+          "code": "COM.GENERAL",
+          "polarity": "negative"
+        },
+        {
+          "code": "ADJ.RANGE_TENSION",
+          "polarity": "negative"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7667963659528931085",
+      "source": "TikTok",
+      "code": "COM.GENERAL",
+      "polarity": "qualified_negative",
+      "evidence": "experienced some stomach discomfort",
+      "llm_aspects": [
+        {
+          "code": "SUP.GENERAL",
+          "polarity": "negative"
+        },
+        {
+          "code": "COM.GENERAL",
+          "polarity": "negative"
+        },
+        {
+          "code": "ADJ.RANGE_TENSION",
+          "polarity": "negative"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7697340641772160781",
+      "source": "TikTok",
+      "code": "GEN.OVERALL_EVALUATION",
+      "polarity": "positive",
+      "evidence": "it really works",
+      "llm_aspects": [
+        {
+          "code": "SUP.BACK",
+          "polarity": "positive"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7686709601646593805",
+      "source": "TikTok",
+      "code": "SUP.PRESSURE_OFFLOAD",
+      "polarity": "qualified_positive",
+      "evidence": "There is some relief",
+      "llm_aspects": [
+        {
+          "code": "SUP.GENERAL",
+          "polarity": "qualified_negative"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7686709601646593805",
+      "source": "TikTok",
+      "code": "SUP.GENERAL",
+      "polarity": "negative",
+      "evidence": "more supportive than the belt",
+      "llm_aspects": [
+        {
+          "code": "SUP.GENERAL",
+          "polarity": "qualified_negative"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7658003601176119053",
+      "source": "TikTok",
+      "code": "SUP.PRESSURE_OFFLOAD",
+      "polarity": "qualified_positive",
+      "evidence": "Almost fully takes away the sciatica",
+      "llm_aspects": [
+        {
+          "code": "SUP.BACK",
+          "polarity": "positive"
+        },
+        {
+          "code": "GEN.OVERALL_EVALUATION",
+          "polarity": "positive"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7671622567216498445",
+      "source": "TikTok",
+      "code": "SUP.GENERAL",
+      "polarity": "positive",
+      "evidence": "lift and support the baby",
+      "llm_aspects": [
+        {
+          "code": "SUP.BACK",
+          "polarity": "positive"
+        },
+        {
+          "code": "SUP.BELLY_LIFT",
+          "polarity": "positive"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7671622567216498445",
+      "source": "TikTok",
+      "code": "GEN.OVERALL_EVALUATION",
+      "polarity": "positive",
+      "evidence": "it is nice to find something",
+      "llm_aspects": [
+        {
+          "code": "SUP.BACK",
+          "polarity": "positive"
+        },
+        {
+          "code": "SUP.BELLY_LIFT",
+          "polarity": "positive"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7672402718996334350",
+      "source": "TikTok",
+      "code": "COM.GENERAL",
+      "polarity": "positive",
+      "evidence": "if comfortable for daily wear",
+      "llm_aspects": [
+        {
+          "code": "GEN.OVERALL_EVALUATION",
+          "polarity": "positive"
+        },
+        {
+          "code": "SUP.GENERAL",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.WEAR_TOLERANCE",
+          "polarity": "positive"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7679740736191088397",
+      "source": "TikTok",
+      "code": "ADJ.DONNING",
+      "polarity": "positive",
+      "evidence": "eat to assemble",
+      "llm_aspects": [
+        {
+          "code": "COM.GENERAL",
+          "polarity": "positive"
+        },
+        {
+          "code": "SUP.GENERAL",
+          "polarity": "negative"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7679740736191088397",
+      "source": "TikTok",
+      "code": "SUP.GENERAL",
+      "polarity": "qualified_negative",
+      "evidence": "wish it added just a little more support",
+      "llm_aspects": [
+        {
+          "code": "COM.GENERAL",
+          "polarity": "positive"
+        },
+        {
+          "code": "SUP.GENERAL",
+          "polarity": "negative"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7659507976003651341",
+      "source": "TikTok",
+      "code": "SUP.GENERAL",
+      "polarity": "positive",
+      "evidence": "excellent support",
+      "llm_aspects": [
+        {
+          "code": "SUP.BACK",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.SOFTNESS",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.BREATHABILITY_HEAT",
+          "polarity": "positive"
+        },
+        {
+          "code": "STB.STAY_IN_PLACE",
+          "polarity": "positive"
+        },
+        {
+          "code": "GEN.OVERALL_EVALUATION",
+          "polarity": "positive"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7659507976003651341",
+      "source": "TikTok",
+      "code": "ADJ.RANGE_TENSION",
+      "polarity": "positive",
+      "evidence": "without feeling too tight",
+      "llm_aspects": [
+        {
+          "code": "SUP.BACK",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.SOFTNESS",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.BREATHABILITY_HEAT",
+          "polarity": "positive"
+        },
+        {
+          "code": "STB.STAY_IN_PLACE",
+          "polarity": "positive"
+        },
+        {
+          "code": "GEN.OVERALL_EVALUATION",
+          "polarity": "positive"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7659507976003651341",
+      "source": "TikTok",
+      "code": "COM.GENERAL",
+      "polarity": "positive",
+      "evidence": "without feeling too tight or uncomfortable",
+      "llm_aspects": [
+        {
+          "code": "SUP.BACK",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.SOFTNESS",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.BREATHABILITY_HEAT",
+          "polarity": "positive"
+        },
+        {
+          "code": "STB.STAY_IN_PLACE",
+          "polarity": "positive"
+        },
+        {
+          "code": "GEN.OVERALL_EVALUATION",
+          "polarity": "positive"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7659507976003651341",
+      "source": "TikTok",
+      "code": "MAT.ELASTICITY_RETENTION",
+      "polarity": "positive",
+      "evidence": "stretchy enough",
+      "llm_aspects": [
+        {
+          "code": "SUP.BACK",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.SOFTNESS",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.BREATHABILITY_HEAT",
+          "polarity": "positive"
+        },
+        {
+          "code": "STB.STAY_IN_PLACE",
+          "polarity": "positive"
+        },
+        {
+          "code": "GEN.OVERALL_EVALUATION",
+          "polarity": "positive"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7659507976003651341",
+      "source": "TikTok",
+      "code": "COM.WEAR_TOLERANCE",
+      "polarity": "positive",
+      "evidence": "wear for hours",
+      "llm_aspects": [
+        {
+          "code": "SUP.BACK",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.SOFTNESS",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.BREATHABILITY_HEAT",
+          "polarity": "positive"
+        },
+        {
+          "code": "STB.STAY_IN_PLACE",
+          "polarity": "positive"
+        },
+        {
+          "code": "GEN.OVERALL_EVALUATION",
+          "polarity": "positive"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7659507976003651341",
+      "source": "TikTok",
+      "code": "SUP.PRESSURE_OFFLOAD",
+      "polarity": "positive",
+      "evidence": "offers noticeable relief",
+      "llm_aspects": [
+        {
+          "code": "SUP.BACK",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.SOFTNESS",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.BREATHABILITY_HEAT",
+          "polarity": "positive"
+        },
+        {
+          "code": "STB.STAY_IN_PLACE",
+          "polarity": "positive"
+        },
+        {
+          "code": "GEN.OVERALL_EVALUATION",
+          "polarity": "positive"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7659507976003651341",
+      "source": "TikTok",
+      "code": "ACT.COMPATIBILITY",
+      "polarity": "positive",
+      "evidence": "walking, standing, or doing everyday activities",
+      "llm_aspects": [
+        {
+          "code": "SUP.BACK",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.SOFTNESS",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.BREATHABILITY_HEAT",
+          "polarity": "positive"
+        },
+        {
+          "code": "STB.STAY_IN_PLACE",
+          "polarity": "positive"
+        },
+        {
+          "code": "GEN.OVERALL_EVALUATION",
+          "polarity": "positive"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7659507976003651341",
+      "source": "TikTok",
+      "code": "FIT.GROWTH_RANGE",
+      "polarity": "positive",
+      "evidence": "as my belly grows",
+      "llm_aspects": [
+        {
+          "code": "SUP.BACK",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.SOFTNESS",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.BREATHABILITY_HEAT",
+          "polarity": "positive"
+        },
+        {
+          "code": "STB.STAY_IN_PLACE",
+          "polarity": "positive"
+        },
+        {
+          "code": "GEN.OVERALL_EVALUATION",
+          "polarity": "positive"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7659507976003651341",
+      "source": "TikTok",
+      "code": "FIT.SIZE_ACCURACY",
+      "polarity": "positive",
+      "evidence": "easy to adjust for a comfortable fit",
+      "llm_aspects": [
+        {
+          "code": "SUP.BACK",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.SOFTNESS",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.BREATHABILITY_HEAT",
+          "polarity": "positive"
+        },
+        {
+          "code": "STB.STAY_IN_PLACE",
+          "polarity": "positive"
+        },
+        {
+          "code": "GEN.OVERALL_EVALUATION",
+          "polarity": "positive"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7659258409535112974",
+      "source": "TikTok",
+      "code": "SUP.PRESSURE_OFFLOAD",
+      "polarity": "positive",
+      "evidence": "easing her pelvic pain",
+      "llm_aspects": [
+        {
+          "code": "SUP.BELLY_LIFT",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.SOFTNESS",
+          "polarity": "positive"
+        },
+        {
+          "code": "ADJ.STRAP_DESIGN",
+          "polarity": "positive"
+        },
+        {
+          "code": "ADJ.RANGE_TENSION",
+          "polarity": "positive"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7659258409535112974",
+      "source": "TikTok",
+      "code": "COM.SKIN_CHAFE",
+      "polarity": "positive",
+      "evidence": "not scratchy against the skin",
+      "llm_aspects": [
+        {
+          "code": "SUP.BELLY_LIFT",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.SOFTNESS",
+          "polarity": "positive"
+        },
+        {
+          "code": "ADJ.STRAP_DESIGN",
+          "polarity": "positive"
+        },
+        {
+          "code": "ADJ.RANGE_TENSION",
+          "polarity": "positive"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7700979310009550605",
+      "source": "TikTok",
+      "code": "GEN.OVERALL_EVALUATION",
+      "polarity": "positive",
+      "evidence": "great quality",
+      "llm_aspects": [
+        {
+          "code": "FIT.SIZE_ACCURACY",
+          "polarity": "positive"
+        },
+        {
+          "code": "MAT.FABRIC",
+          "polarity": "positive"
+        },
+        {
+          "code": "SUP.GENERAL",
+          "polarity": "positive"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7665021905910384398",
+      "source": "TikTok",
+      "code": "SUP.PRESSURE_OFFLOAD",
+      "polarity": "positive",
+      "evidence": "helps relieve the pain",
+      "llm_aspects": [
+        {
+          "code": "GEN.OVERALL_EVALUATION",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.GENERAL",
+          "polarity": "positive"
+        },
+        {
+          "code": "FIT.COVERAGE",
+          "polarity": "positive"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7690266633513518861",
+      "source": "TikTok",
+      "code": "SUP.PRESSURE_OFFLOAD",
+      "polarity": "positive",
+      "evidence": "helped so much with hip and lower back pain",
+      "llm_aspects": [
+        {
+          "code": "SUP.BACK",
+          "polarity": "positive"
+        },
+        {
+          "code": "ACT.COMPATIBILITY",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.PRESSURE_DIGGING",
+          "polarity": "positive"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7690266633513518861",
+      "source": "TikTok",
+      "code": "SUP.GENERAL",
+      "polarity": "positive",
+      "evidence": "extra support",
+      "llm_aspects": [
+        {
+          "code": "SUP.BACK",
+          "polarity": "positive"
+        },
+        {
+          "code": "ACT.COMPATIBILITY",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.PRESSURE_DIGGING",
+          "polarity": "positive"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7690266633513518861",
+      "source": "TikTok",
+      "code": "COM.GENERAL",
+      "polarity": "positive",
+      "evidence": "comfortable sitting",
+      "llm_aspects": [
+        {
+          "code": "SUP.BACK",
+          "polarity": "positive"
+        },
+        {
+          "code": "ACT.COMPATIBILITY",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.PRESSURE_DIGGING",
+          "polarity": "positive"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7690266633513518861",
+      "source": "TikTok",
+      "code": "ADJ.STRAP_DESIGN",
+      "polarity": "positive",
+      "evidence": "top bad as well for extra support",
+      "llm_aspects": [
+        {
+          "code": "SUP.BACK",
+          "polarity": "positive"
+        },
+        {
+          "code": "ACT.COMPATIBILITY",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.PRESSURE_DIGGING",
+          "polarity": "positive"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7690266633513518861",
+      "source": "TikTok",
+      "code": "STB.STAY_IN_PLACE",
+      "polarity": "positive",
+      "evidence": "Feels very secure",
+      "llm_aspects": [
+        {
+          "code": "SUP.BACK",
+          "polarity": "positive"
+        },
+        {
+          "code": "ACT.COMPATIBILITY",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.PRESSURE_DIGGING",
+          "polarity": "positive"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7681013357946865421",
+      "source": "TikTok",
+      "code": "GEN.OVERALL_EVALUATION",
+      "polarity": "positive",
+      "evidence": "My daughterloved",
+      "llm_aspects": [
+        {
+          "code": "COM.GENERAL",
+          "polarity": "positive"
+        },
+        {
+          "code": "SUP.GENERAL",
+          "polarity": "positive"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-7701363030302459661",
+      "source": "TikTok",
+      "code": "SUP.PRESSURE_OFFLOAD",
+      "polarity": "positive",
+      "evidence": "eases the pain in her lower abdomen",
+      "llm_aspects": [
+        {
+          "code": "GEN.OVERALL_EVALUATION",
+          "polarity": "positive"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-1upreg8",
+      "source": "Reddit",
+      "code": "STB.STAY_IN_PLACE",
+      "polarity": "positive",
+      "evidence": "the band stays put",
+      "llm_aspects": [
+        {
+          "code": "GEN.OVERALL_EVALUATION",
+          "polarity": "positive"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-1upreg8",
+      "source": "Reddit",
+      "code": "SUP.BELLY_LIFT",
+      "polarity": "qualified_negative",
+      "evidence": "still wanted more lift",
+      "llm_aspects": [
+        {
+          "code": "GEN.OVERALL_EVALUATION",
+          "polarity": "positive"
+        }
+      ]
+    },
+    {
+      "canonical_id": "c-1w3knom",
+      "source": "Reddit",
+      "code": "SUP.GENERAL",
+      "polarity": "positive",
+      "evidence": "actually using a belly band are helping",
+      "llm_aspects": [
+        {
+          "code": "ACT.COMPATIBILITY",
+          "polarity": "positive"
+        }
+      ]
+    }
+  ],
+  "false_negative_count": 34,
+  "precision_by_confidence_strict": {
+    "high": {
+      "true_positives": 40,
+      "false_positives": 6,
+      "aspects": 46,
+      "precision_pct": 87.0
+    },
+    "medium": {
+      "true_positives": 11,
+      "false_positives": 7,
+      "aspects": 18,
+      "precision_pct": 61.1
+    },
+    "low": {
+      "true_positives": 0,
+      "false_positives": 0,
+      "aspects": 0,
+      "precision_pct": null
+    }
+  },
+  "experience_flag_confusion": {
+    "gold_true_llm_true": 31,
+    "gold_true_llm_false": 0,
+    "gold_false_llm_true": 1,
+    "gold_false_llm_false": 18
+  },
+  "sensitivity_gold_over_six_aspects": {
+    "records": [
+      {
+        "canonical_id": "c-7659507976003651341",
+        "gold_aspects": 14
+      },
+      {
+        "canonical_id": "c-7690266633513518861",
+        "gold_aspects": 8
+      }
+    ],
+    "all": {
+      "TikTok": {
+        "coder_aspects": 56,
+        "gold_aspects": 77,
+        "true_positives": 46,
+        "precision_pct": 82.1,
+        "recall_pct": 59.7
+      },
+      "Reddit": {
+        "coder_aspects": 8,
+        "gold_aspects": 8,
+        "true_positives": 5,
+        "precision_pct": 62.5,
+        "recall_pct": 62.5
+      },
+      "ALL": {
+        "coder_aspects": 64,
+        "gold_aspects": 85,
+        "true_positives": 51,
+        "precision_pct": 79.7,
+        "recall_pct": 60.0
+      }
+    },
+    "exclude_over_cap_records": {
+      "TikTok": {
+        "coder_aspects": 48,
+        "gold_aspects": 55,
+        "true_positives": 38,
+        "precision_pct": 79.2,
+        "recall_pct": 69.1
+      },
+      "Reddit": {
+        "coder_aspects": 8,
+        "gold_aspects": 8,
+        "true_positives": 5,
+        "precision_pct": 62.5,
+        "recall_pct": 62.5
+      },
+      "ALL": {
+        "coder_aspects": 56,
+        "gold_aspects": 63,
+        "true_positives": 43,
+        "precision_pct": 76.8,
+        "recall_pct": 68.3
+      }
+    }
+  },
+  "gold_polarities_observed": {
+    "positive": 69,
+    "qualified_negative": 4,
+    "negative": 9,
+    "qualified_positive": 2,
+    "unknown": 1
+  },
+  "notes": [
+    "gold contains qualified_positive, which the coding contract forbids emitting; those gold aspects cannot be matched under strict when the LLM answers positive.",
+    "two gold records exceed the contract's 6-aspect cap (14 and 8 aspects); recall on them is structurally capped."
+  ]
+}

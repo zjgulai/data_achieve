@@ -1,0 +1,50 @@
+{
+ "schema": "voc-compat-experience-diff/1",
+ "contract_version": "E-merge/1",
+ "coder_id": "llm-v1",
+ "generated_at": "2026-10-31T03:55:21+08:00",
+ "records_total": 423,
+ "differences": 3,
+ "rows": [
+  {
+   "canonical_id": "c-1r44c1m",
+   "source": "reddit",
+   "frames": [
+    "natural"
+   ],
+   "product_match": "category_adjacent",
+   "old_experience": false,
+   "old_reason": "help_seeking",
+   "new_in_cohort": true,
+   "new_scope": "partial",
+   "change_reason": "admitted_on_topic_evaluation"
+  },
+  {
+   "canonical_id": "c-phyrbxj",
+   "source": "reddit",
+   "frames": [
+    "diagnostic",
+    "natural"
+   ],
+   "product_match": "category_adjacent",
+   "old_experience": false,
+   "old_reason": "other",
+   "new_in_cohort": true,
+   "new_scope": "partial",
+   "change_reason": "admitted_on_topic_evaluation"
+  },
+  {
+   "canonical_id": "c-pgsk2oe",
+   "source": "reddit",
+   "frames": [
+    "qualitative_seed"
+   ],
+   "product_match": "brand_other_product",
+   "old_experience": true,
+   "old_reason": "first_person_use",
+   "new_in_cohort": false,
+   "new_scope": "full",
+   "change_reason": "off_target_product_match"
+  }
+ ]
+}

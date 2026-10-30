@@ -1,0 +1,45 @@
+{
+ "tiktok_shop_verified": {
+  "frame": "tiktok_shop_verified",
+  "raw_object": {
+   "count": 180,
+   "note": "成功响应里的 provider rows"
+  },
+  "occurrence": {
+   "count": 180,
+   "deductions": {
+    "duplicate_external_id": 0
+   }
+  },
+  "canonical": {
+   "count": 175,
+   "deductions": {
+    "product_mismatch": 1,
+    "out_of_window": 4
+   }
+  },
+  "frame_membership": {
+   "count": 175,
+   "deductions": {},
+   "note": "单 frame 记录；跨 frame 重叠不计入本 frame"
+  },
+  "annotation": {
+   "count": 242,
+   "unit": "annotation hits（多标签）",
+   "record_deductions": {
+    "no_text_low_information": 93,
+    "language_uncodable": 1,
+    "no_decisive_aspect": 12
+   },
+   "records_with_decisive_aspect": 69
+  },
+  "metric_row": {
+   "count": 0,
+   "reason": "G7 BLOCKED：没有第二编码员与逐字段 agreement"
+  },
+  "balance": {
+   "occurrence_to_canonical": true,
+   "annotation_records": true
+  }
+ }
+}

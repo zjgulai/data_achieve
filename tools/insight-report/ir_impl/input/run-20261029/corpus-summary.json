@@ -1,0 +1,30 @@
+{
+ "raw_objects": 250,
+ "raw_responses": 10,
+ "occurrences_raw": 250,
+ "occurrences_deduplicated": 250,
+ "within_frame_overlap_dropped": 0,
+ "canonical_records": 248,
+ "frame_memberships": 257,
+ "frame_counts": {
+  "natural": 149,
+  "diagnostic": 8,
+  "qualitative_seed": 100
+ },
+ "deduction_reasons": {
+  "cross_frame_overlap": 0,
+  "cross_source_syndicated_duplicate": 1,
+  "crosspost_same_author": 1
+ },
+ "fuzzy_review_candidates": [],
+ "excluded": {
+  "irrelevant": 19,
+  "brand_other_product": 93,
+  "low_information": 3,
+  "claim_asset": 0
+ },
+ "reconciliation": {
+  "occurrences_to_canonical": 2,
+  "memberships_to_occurrences": 7
+ }
+}

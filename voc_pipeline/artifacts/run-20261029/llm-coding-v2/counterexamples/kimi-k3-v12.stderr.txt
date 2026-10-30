@@ -1,0 +1,2 @@
+[claude-code:unrecognized_model] {"model":"group/auto-gpt-5-6-sol:xhigh[1m]","query_source":"generate_session_title"}
+[claude-code:unrecognized_model] {"model":"group/auto-kimi-k3","query_source":"sdk"}

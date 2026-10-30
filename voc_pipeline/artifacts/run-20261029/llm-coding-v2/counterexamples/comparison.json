@@ -1,0 +1,2303 @@
+{
+  "hand_cases": 8,
+  "encoders": {
+    "gpt6-sol-lex": {
+      "model": "group/auto-gpt-6-sol",
+      "prompt_style": "lexicon-inclusive",
+      "file": "coded-gpt6-sol-lex.raw.txt",
+      "validation_errors": [],
+      "cases": [
+        {
+          "canonical_id": "c-ce0000001",
+          "case_no": 1,
+          "expected": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive",
+              "span": "the weight off my lower back is unreal"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000002",
+          "case_no": 2,
+          "expected": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive"
+            },
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive",
+              "span": "It lifts my bump nicely"
+            },
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive",
+              "span": "my lower back pain has eased by the end of the day"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000003",
+          "case_no": 3,
+          "expected": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive",
+              "span": "It really takes the pressure off my hips, especially by the end of the day"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000004",
+          "case_no": 4,
+          "expected": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive",
+              "span": "It gives my back solid support"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000005",
+          "case_no": 5,
+          "expected": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive",
+              "span": "It holds my belly up so it isn't hanging so low anymore"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000006",
+          "case_no": 6,
+          "expected": [
+            {
+              "code": "SUP.GENERAL",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.GENERAL",
+              "polarity": "positive",
+              "span": "It's really supportive and I feel much more secure with it on"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000007",
+          "case_no": 7,
+          "expected": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "qualified_positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "qualified_positive",
+              "span": "Almost fully takes away the sciatica I've had since my second trimester"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000008",
+          "case_no": 8,
+          "expected": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive"
+            },
+            {
+              "code": "STB.STAY_IN_PLACE",
+              "polarity": "negative"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive",
+              "span": "It supports my back well"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        }
+      ],
+      "same_span_conflict_cases": 0,
+      "matches_hand_cases": 8,
+      "extra_only_cases": 0
+    },
+    "kimi-k3-lex": {
+      "model": "group/auto-kimi-k3",
+      "prompt_style": "lexicon-inclusive",
+      "file": "coded-kimi-k3-lex.raw.txt",
+      "validation_errors": [],
+      "cases": [
+        {
+          "canonical_id": "c-ce0000001",
+          "case_no": 1,
+          "expected": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive",
+              "span": "the weight off my lower back is unreal"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000002",
+          "case_no": 2,
+          "expected": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive"
+            },
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive",
+              "span": "It lifts my bump nicely"
+            },
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive",
+              "span": "my lower back pain has eased"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000003",
+          "case_no": 3,
+          "expected": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive",
+              "span": "takes the pressure off my hips"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000004",
+          "case_no": 4,
+          "expected": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive",
+              "span": "It gives my back solid support"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000005",
+          "case_no": 5,
+          "expected": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive",
+              "span": "It holds my belly up"
+            },
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive",
+              "span": "that alone is a relief"
+            }
+          ],
+          "missing": [],
+          "extra": [
+            "SUP.PRESSURE_OFFLOAD"
+          ],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": false
+        },
+        {
+          "canonical_id": "c-ce0000006",
+          "case_no": 6,
+          "expected": [
+            {
+              "code": "SUP.GENERAL",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.GENERAL",
+              "polarity": "positive",
+              "span": "It's really supportive"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000007",
+          "case_no": 7,
+          "expected": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "qualified_positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "qualified_positive",
+              "span": "Almost fully takes away the sciatica"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000008",
+          "case_no": 8,
+          "expected": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive"
+            },
+            {
+              "code": "STB.STAY_IN_PLACE",
+              "polarity": "negative"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive",
+              "span": "It supports my back well"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        }
+      ],
+      "same_span_conflict_cases": 0,
+      "matches_hand_cases": 7,
+      "extra_only_cases": 1
+    },
+    "deepseek-flash-lex": {
+      "model": "group/auto-deepseek-flash",
+      "prompt_style": "lexicon-inclusive",
+      "file": "coded-deepseek-flash-lex.raw.txt",
+      "validation_errors": [],
+      "cases": [
+        {
+          "canonical_id": "c-ce0000001",
+          "case_no": 1,
+          "expected": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive",
+              "span": "the weight off my lower back is unreal"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000002",
+          "case_no": 2,
+          "expected": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive"
+            },
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive",
+              "span": "It lifts my bump nicely"
+            },
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive",
+              "span": "my lower back pain has eased by the end of the day"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000003",
+          "case_no": 3,
+          "expected": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive",
+              "span": "It really takes the pressure off my hips"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000004",
+          "case_no": 4,
+          "expected": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive",
+              "span": "It gives my back solid support"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000005",
+          "case_no": 5,
+          "expected": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive",
+              "span": "It holds my belly up so it isn't hanging so low anymore"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000006",
+          "case_no": 6,
+          "expected": [
+            {
+              "code": "SUP.GENERAL",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.GENERAL",
+              "polarity": "positive",
+              "span": "It's really supportive"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000007",
+          "case_no": 7,
+          "expected": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "qualified_positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "qualified_positive",
+              "span": "Almost fully takes away the sciatica I've had since my second trimester"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000008",
+          "case_no": 8,
+          "expected": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive"
+            },
+            {
+              "code": "STB.STAY_IN_PLACE",
+              "polarity": "negative"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive",
+              "span": "It supports my back well"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        }
+      ],
+      "same_span_conflict_cases": 0,
+      "matches_hand_cases": 8,
+      "extra_only_cases": 0
+    },
+    "gpt6-sol-compact": {
+      "model": "group/auto-gpt-6-sol",
+      "prompt_style": "compact",
+      "file": "coded-gpt6-sol.raw.txt",
+      "validation_errors": [],
+      "cases": [
+        {
+          "canonical_id": "c-ce0000001",
+          "case_no": 1,
+          "expected": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive",
+              "span": "the weight off my lower back is unreal"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000002",
+          "case_no": 2,
+          "expected": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive"
+            },
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive",
+              "span": "It lifts my bump nicely"
+            },
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive",
+              "span": "my lower back pain has eased by the end of the day"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000003",
+          "case_no": 3,
+          "expected": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive",
+              "span": "It really takes the pressure off my hips"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000004",
+          "case_no": 4,
+          "expected": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive",
+              "span": "It gives my back solid support"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000005",
+          "case_no": 5,
+          "expected": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive",
+              "span": "It holds my belly up so it isn't hanging so low anymore"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000006",
+          "case_no": 6,
+          "expected": [
+            {
+              "code": "SUP.GENERAL",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.GENERAL",
+              "polarity": "positive",
+              "span": "It's really supportive and I feel much more secure with it on."
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000007",
+          "case_no": 7,
+          "expected": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "qualified_positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "qualified_positive",
+              "span": "Almost fully takes away the sciatica I've had since my second trimester."
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000008",
+          "case_no": 8,
+          "expected": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive"
+            },
+            {
+              "code": "STB.STAY_IN_PLACE",
+              "polarity": "negative"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive",
+              "span": "It supports my back well"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        }
+      ],
+      "same_span_conflict_cases": 0,
+      "matches_hand_cases": 8,
+      "extra_only_cases": 0
+    },
+    "kimi-k3-compact": {
+      "model": "group/auto-kimi-k3",
+      "prompt_style": "compact",
+      "file": "coded-kimi-k3.raw.txt",
+      "validation_errors": [],
+      "cases": [
+        {
+          "canonical_id": "c-ce0000001",
+          "case_no": 1,
+          "expected": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive",
+              "span": "the weight off my lower back is unreal"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000002",
+          "case_no": 2,
+          "expected": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive"
+            },
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive",
+              "span": "lifts my bump nicely"
+            },
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive",
+              "span": "my lower back pain has eased by the end of the day"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000003",
+          "case_no": 3,
+          "expected": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive",
+              "span": "takes the pressure off my hips"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000004",
+          "case_no": 4,
+          "expected": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive",
+              "span": "gives my back solid support"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000005",
+          "case_no": 5,
+          "expected": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive",
+              "span": "holds my belly up so it isn't hanging so low anymore"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000006",
+          "case_no": 6,
+          "expected": [
+            {
+              "code": "SUP.GENERAL",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.GENERAL",
+              "polarity": "positive",
+              "span": "It's really supportive and I feel much more secure with it on"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000007",
+          "case_no": 7,
+          "expected": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "qualified_positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "qualified_positive",
+              "span": "Almost fully takes away the sciatica"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000008",
+          "case_no": 8,
+          "expected": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive"
+            },
+            {
+              "code": "STB.STAY_IN_PLACE",
+              "polarity": "negative"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive",
+              "span": "supports my back well"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        }
+      ],
+      "same_span_conflict_cases": 0,
+      "matches_hand_cases": 8,
+      "extra_only_cases": 0
+    },
+    "deepseek-flash-compact": {
+      "model": "group/auto-deepseek-flash",
+      "prompt_style": "compact",
+      "file": "coded-deepseek-flash.raw.txt",
+      "validation_errors": [],
+      "cases": [
+        {
+          "canonical_id": "c-ce0000001",
+          "case_no": 1,
+          "expected": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive",
+              "span": "the weight off my lower back is unreal"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000002",
+          "case_no": 2,
+          "expected": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive"
+            },
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive",
+              "span": "It lifts my bump nicely"
+            },
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive",
+              "span": "my lower back pain has eased by the end of the day"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000003",
+          "case_no": 3,
+          "expected": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive",
+              "span": "It really takes the pressure off my hips"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000004",
+          "case_no": 4,
+          "expected": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive",
+              "span": "It gives my back solid support"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000005",
+          "case_no": 5,
+          "expected": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive",
+              "span": "It holds my belly up so it isn't hanging so low anymore"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000006",
+          "case_no": 6,
+          "expected": [
+            {
+              "code": "SUP.GENERAL",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.GENERAL",
+              "polarity": "positive",
+              "span": "It's really supportive"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000007",
+          "case_no": 7,
+          "expected": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "qualified_positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "qualified_positive",
+              "span": "Almost fully takes away the sciatica I've had since my second trimester"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000008",
+          "case_no": 8,
+          "expected": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive"
+            },
+            {
+              "code": "STB.STAY_IN_PLACE",
+              "polarity": "negative"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive",
+              "span": "It supports my back well"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        }
+      ],
+      "same_span_conflict_cases": 0,
+      "matches_hand_cases": 8,
+      "extra_only_cases": 0
+    },
+    "gpt6-sol-v12": {
+      "model": "group/auto-gpt-6-sol",
+      "prompt_style": "v1.2-proposed lexicon-inclusive",
+      "file": "coded-gpt6-sol-v12.raw.txt",
+      "validation_errors": [],
+      "cases": [
+        {
+          "canonical_id": "c-ce0000001",
+          "case_no": 1,
+          "expected": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive",
+              "span": "the weight off my lower back is unreal"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000002",
+          "case_no": 2,
+          "expected": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive"
+            },
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive",
+              "span": "It lifts my bump nicely"
+            },
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive",
+              "span": "my lower back pain has eased by the end of the day"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000003",
+          "case_no": 3,
+          "expected": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive",
+              "span": "It really takes the pressure off my hips"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000004",
+          "case_no": 4,
+          "expected": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive",
+              "span": "It gives my back solid support"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000005",
+          "case_no": 5,
+          "expected": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive",
+              "span": "It holds my belly up so it isn't hanging so low anymore"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000006",
+          "case_no": 6,
+          "expected": [
+            {
+              "code": "SUP.GENERAL",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.GENERAL",
+              "polarity": "positive",
+              "span": "It's really supportive"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000007",
+          "case_no": 7,
+          "expected": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "qualified_positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "qualified_positive",
+              "span": "Almost fully takes away the sciatica"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000008",
+          "case_no": 8,
+          "expected": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive"
+            },
+            {
+              "code": "STB.STAY_IN_PLACE",
+              "polarity": "negative"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive",
+              "span": "It supports my back well"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        }
+      ],
+      "same_span_conflict_cases": 0,
+      "matches_hand_cases": 8,
+      "extra_only_cases": 0
+    },
+    "kimi-k3-v12": {
+      "model": "group/auto-kimi-k3",
+      "prompt_style": "v1.2-proposed lexicon-inclusive",
+      "file": "coded-kimi-k3-v12.raw.txt",
+      "validation_errors": [],
+      "cases": [
+        {
+          "canonical_id": "c-ce0000001",
+          "case_no": 1,
+          "expected": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive",
+              "span": "the weight off my lower back is unreal"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000002",
+          "case_no": 2,
+          "expected": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive"
+            },
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive",
+              "span": "It lifts my bump nicely"
+            },
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive",
+              "span": "my lower back pain has eased"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000003",
+          "case_no": 3,
+          "expected": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive",
+              "span": "takes the pressure off my hips"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000004",
+          "case_no": 4,
+          "expected": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive",
+              "span": "It gives my back solid support"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000005",
+          "case_no": 5,
+          "expected": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive",
+              "span": "It holds my belly up"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000006",
+          "case_no": 6,
+          "expected": [
+            {
+              "code": "SUP.GENERAL",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.GENERAL",
+              "polarity": "positive",
+              "span": "It's really supportive"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000007",
+          "case_no": 7,
+          "expected": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "qualified_positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "qualified_positive",
+              "span": "Almost fully takes away the sciatica"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000008",
+          "case_no": 8,
+          "expected": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive"
+            },
+            {
+              "code": "STB.STAY_IN_PLACE",
+              "polarity": "negative"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive",
+              "span": "It supports my back well"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        }
+      ],
+      "same_span_conflict_cases": 0,
+      "matches_hand_cases": 8,
+      "extra_only_cases": 0
+    },
+    "deepseek-flash-v12": {
+      "model": "group/auto-deepseek-flash",
+      "prompt_style": "v1.2-proposed lexicon-inclusive",
+      "file": "coded-deepseek-flash-v12.raw.txt",
+      "validation_errors": [],
+      "cases": [
+        {
+          "canonical_id": "c-ce0000001",
+          "case_no": 1,
+          "expected": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive",
+              "span": "the weight off my lower back is unreal"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000002",
+          "case_no": 2,
+          "expected": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive"
+            },
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive",
+              "span": "It lifts my bump nicely"
+            },
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive",
+              "span": "my lower back pain has eased"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000003",
+          "case_no": 3,
+          "expected": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "positive",
+              "span": "takes the pressure off my hips"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000004",
+          "case_no": 4,
+          "expected": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive",
+              "span": "It gives my back solid support"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000005",
+          "case_no": 5,
+          "expected": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BELLY_LIFT",
+              "polarity": "positive",
+              "span": "It holds my belly up"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000006",
+          "case_no": 6,
+          "expected": [
+            {
+              "code": "SUP.GENERAL",
+              "polarity": "positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.GENERAL",
+              "polarity": "positive",
+              "span": "It's really supportive"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000007",
+          "case_no": 7,
+          "expected": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "qualified_positive"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.PRESSURE_OFFLOAD",
+              "polarity": "qualified_positive",
+              "span": "Almost fully takes away the sciatica"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        },
+        {
+          "canonical_id": "c-ce0000008",
+          "case_no": 8,
+          "expected": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive"
+            },
+            {
+              "code": "STB.STAY_IN_PLACE",
+              "polarity": "negative"
+            }
+          ],
+          "actual_sup": [
+            {
+              "code": "SUP.BACK",
+              "polarity": "positive",
+              "span": "It supports my back well"
+            }
+          ],
+          "missing": [],
+          "extra": [],
+          "polarity_mismatch": [],
+          "same_span_or_overlap_conflicts": [],
+          "matches_hand": true
+        }
+      ],
+      "same_span_conflict_cases": 0,
+      "matches_hand_cases": 8,
+      "extra_only_cases": 0
+    }
+  },
+  "formal": {
+    "c-ce0000001": {
+      "expected_spans": [
+        {
+          "span": "the weight off my lower back",
+          "expected": "SUP.PRESSURE_OFFLOAD",
+          "raw_codes": [
+            "SUP.BACK",
+            "SUP.PRESSURE_OFFLOAD"
+          ],
+          "resolved": "SUP.PRESSURE_OFFLOAD",
+          "step": 2,
+          "correct": true,
+          "raw_overlap": true
+        }
+      ],
+      "whole_text": {
+        "raw_codes": [
+          "SUP.BACK",
+          "SUP.PRESSURE_OFFLOAD"
+        ],
+        "resolved": "SUP.PRESSURE_OFFLOAD",
+        "step": 2
+      }
+    },
+    "c-ce0000002": {
+      "expected_spans": [
+        {
+          "span": "lifts my bump nicely",
+          "expected": "SUP.BELLY_LIFT",
+          "raw_codes": [
+            "SUP.BELLY_LIFT"
+          ],
+          "resolved": "SUP.BELLY_LIFT",
+          "step": 1,
+          "correct": true,
+          "raw_overlap": false
+        },
+        {
+          "span": "my lower back pain has eased",
+          "expected": "SUP.BACK",
+          "raw_codes": [
+            "SUP.BACK",
+            "SUP.PRESSURE_OFFLOAD"
+          ],
+          "resolved": "SUP.BACK",
+          "step": 3,
+          "correct": true,
+          "raw_overlap": true
+        }
+      ],
+      "whole_text": {
+        "raw_codes": [
+          "SUP.BACK",
+          "SUP.BELLY_LIFT",
+          "SUP.PRESSURE_OFFLOAD"
+        ],
+        "resolved": "SUP.BELLY_LIFT",
+        "step": 1
+      }
+    },
+    "c-ce0000003": {
+      "expected_spans": [
+        {
+          "span": "takes the pressure off my hips",
+          "expected": "SUP.PRESSURE_OFFLOAD",
+          "raw_codes": [
+            "SUP.PRESSURE_OFFLOAD"
+          ],
+          "resolved": "SUP.PRESSURE_OFFLOAD",
+          "step": 2,
+          "correct": true,
+          "raw_overlap": false
+        }
+      ],
+      "whole_text": {
+        "raw_codes": [
+          "SUP.PRESSURE_OFFLOAD"
+        ],
+        "resolved": "SUP.PRESSURE_OFFLOAD",
+        "step": 2
+      }
+    },
+    "c-ce0000004": {
+      "expected_spans": [
+        {
+          "span": "gives my back solid support",
+          "expected": "SUP.BACK",
+          "raw_codes": [
+            "SUP.BACK",
+            "SUP.GENERAL"
+          ],
+          "resolved": "SUP.BACK",
+          "step": 3,
+          "correct": true,
+          "raw_overlap": true
+        }
+      ],
+      "whole_text": {
+        "raw_codes": [
+          "SUP.BACK",
+          "SUP.GENERAL"
+        ],
+        "resolved": "SUP.BACK",
+        "step": 3
+      }
+    },
+    "c-ce0000005": {
+      "expected_spans": [
+        {
+          "span": "holds my belly up",
+          "expected": "SUP.BELLY_LIFT",
+          "raw_codes": [],
+          "resolved": null,
+          "step": null,
+          "correct": false,
+          "raw_overlap": false
+        }
+      ],
+      "whole_text": {
+        "raw_codes": [
+          "SUP.PRESSURE_OFFLOAD"
+        ],
+        "resolved": "SUP.PRESSURE_OFFLOAD",
+        "step": 4
+      }
+    },
+    "c-ce0000006": {
+      "expected_spans": [
+        {
+          "span": "really supportive",
+          "expected": "SUP.GENERAL",
+          "raw_codes": [
+            "SUP.GENERAL"
+          ],
+          "resolved": "SUP.GENERAL",
+          "step": 5,
+          "correct": true,
+          "raw_overlap": false
+        }
+      ],
+      "whole_text": {
+        "raw_codes": [
+          "SUP.GENERAL"
+        ],
+        "resolved": "SUP.GENERAL",
+        "step": 5
+      }
+    },
+    "c-ce0000007": {
+      "expected_spans": [
+        {
+          "span": "Almost fully takes away the sciatica",
+          "expected": "SUP.PRESSURE_OFFLOAD",
+          "raw_codes": [
+            "SUP.PRESSURE_OFFLOAD"
+          ],
+          "resolved": "SUP.PRESSURE_OFFLOAD",
+          "step": 4,
+          "correct": true,
+          "raw_overlap": false
+        }
+      ],
+      "whole_text": {
+        "raw_codes": [
+          "SUP.PRESSURE_OFFLOAD"
+        ],
+        "resolved": "SUP.PRESSURE_OFFLOAD",
+        "step": 4
+      }
+    },
+    "c-ce0000008": {
+      "expected_spans": [
+        {
+          "span": "supports my back well",
+          "expected": "SUP.BACK",
+          "raw_codes": [
+            "SUP.BACK",
+            "SUP.GENERAL"
+          ],
+          "resolved": "SUP.BACK",
+          "step": 3,
+          "correct": true,
+          "raw_overlap": true
+        }
+      ],
+      "whole_text": {
+        "raw_codes": [
+          "SUP.BACK",
+          "SUP.GENERAL"
+        ],
+        "resolved": "SUP.BACK",
+        "step": 3
+      }
+    }
+  },
+  "formal_v12": {
+    "c-ce0000001": {
+      "expected_spans": [
+        {
+          "span": "the weight off my lower back",
+          "expected": "SUP.PRESSURE_OFFLOAD",
+          "raw_codes": [
+            "SUP.BACK",
+            "SUP.PRESSURE_OFFLOAD"
+          ],
+          "resolved": "SUP.PRESSURE_OFFLOAD",
+          "step": 2,
+          "correct": true,
+          "raw_overlap": true
+        }
+      ],
+      "whole_text": {
+        "raw_codes": [
+          "SUP.BACK",
+          "SUP.PRESSURE_OFFLOAD"
+        ],
+        "resolved": "SUP.PRESSURE_OFFLOAD",
+        "step": 2
+      }
+    },
+    "c-ce0000002": {
+      "expected_spans": [
+        {
+          "span": "lifts my bump nicely",
+          "expected": "SUP.BELLY_LIFT",
+          "raw_codes": [
+            "SUP.BELLY_LIFT"
+          ],
+          "resolved": "SUP.BELLY_LIFT",
+          "step": 1,
+          "correct": true,
+          "raw_overlap": false
+        },
+        {
+          "span": "my lower back pain has eased",
+          "expected": "SUP.BACK",
+          "raw_codes": [
+            "SUP.BACK",
+            "SUP.PRESSURE_OFFLOAD"
+          ],
+          "resolved": "SUP.BACK",
+          "step": 3,
+          "correct": true,
+          "raw_overlap": true
+        }
+      ],
+      "whole_text": {
+        "raw_codes": [
+          "SUP.BACK",
+          "SUP.BELLY_LIFT",
+          "SUP.PRESSURE_OFFLOAD"
+        ],
+        "resolved": "SUP.BELLY_LIFT",
+        "step": 1
+      }
+    },
+    "c-ce0000003": {
+      "expected_spans": [
+        {
+          "span": "takes the pressure off my hips",
+          "expected": "SUP.PRESSURE_OFFLOAD",
+          "raw_codes": [
+            "SUP.PRESSURE_OFFLOAD"
+          ],
+          "resolved": "SUP.PRESSURE_OFFLOAD",
+          "step": 2,
+          "correct": true,
+          "raw_overlap": false
+        }
+      ],
+      "whole_text": {
+        "raw_codes": [
+          "SUP.PRESSURE_OFFLOAD"
+        ],
+        "resolved": "SUP.PRESSURE_OFFLOAD",
+        "step": 2
+      }
+    },
+    "c-ce0000004": {
+      "expected_spans": [
+        {
+          "span": "gives my back solid support",
+          "expected": "SUP.BACK",
+          "raw_codes": [
+            "SUP.BACK",
+            "SUP.GENERAL"
+          ],
+          "resolved": "SUP.BACK",
+          "step": 3,
+          "correct": true,
+          "raw_overlap": true
+        }
+      ],
+      "whole_text": {
+        "raw_codes": [
+          "SUP.BACK",
+          "SUP.GENERAL"
+        ],
+        "resolved": "SUP.BACK",
+        "step": 3
+      }
+    },
+    "c-ce0000005": {
+      "expected_spans": [
+        {
+          "span": "holds my belly up",
+          "expected": "SUP.BELLY_LIFT",
+          "raw_codes": [
+            "SUP.BELLY_LIFT"
+          ],
+          "resolved": "SUP.BELLY_LIFT",
+          "step": 1,
+          "correct": true,
+          "raw_overlap": false
+        }
+      ],
+      "whole_text": {
+        "raw_codes": [
+          "SUP.BELLY_LIFT"
+        ],
+        "resolved": "SUP.BELLY_LIFT",
+        "step": 1
+      }
+    },
+    "c-ce0000006": {
+      "expected_spans": [
+        {
+          "span": "really supportive",
+          "expected": "SUP.GENERAL",
+          "raw_codes": [
+            "SUP.GENERAL"
+          ],
+          "resolved": "SUP.GENERAL",
+          "step": 5,
+          "correct": true,
+          "raw_overlap": false
+        }
+      ],
+      "whole_text": {
+        "raw_codes": [
+          "SUP.GENERAL"
+        ],
+        "resolved": "SUP.GENERAL",
+        "step": 5
+      }
+    },
+    "c-ce0000007": {
+      "expected_spans": [
+        {
+          "span": "Almost fully takes away the sciatica",
+          "expected": "SUP.PRESSURE_OFFLOAD",
+          "raw_codes": [
+            "SUP.PRESSURE_OFFLOAD"
+          ],
+          "resolved": "SUP.PRESSURE_OFFLOAD",
+          "step": 4,
+          "correct": true,
+          "raw_overlap": false
+        }
+      ],
+      "whole_text": {
+        "raw_codes": [
+          "SUP.PRESSURE_OFFLOAD"
+        ],
+        "resolved": "SUP.PRESSURE_OFFLOAD",
+        "step": 4
+      }
+    },
+    "c-ce0000008": {
+      "expected_spans": [
+        {
+          "span": "supports my back well",
+          "expected": "SUP.BACK",
+          "raw_codes": [
+            "SUP.BACK",
+            "SUP.GENERAL"
+          ],
+          "resolved": "SUP.BACK",
+          "step": 3,
+          "correct": true,
+          "raw_overlap": true
+        }
+      ],
+      "whole_text": {
+        "raw_codes": [
+          "SUP.BACK",
+          "SUP.GENERAL"
+        ],
+        "resolved": "SUP.BACK",
+        "step": 3
+      }
+    }
+  },
+  "summary": {
+    "official_runs": [
+      "gpt6-sol-lex",
+      "kimi-k3-lex",
+      "deepseek-flash-lex"
+    ],
+    "sensitivity_runs": [
+      "gpt6-sol-compact",
+      "kimi-k3-compact",
+      "deepseek-flash-compact"
+    ],
+    "per_run": {
+      "gpt6-sol-lex": {
+        "same_span_conflict_cases": 0,
+        "matches_hand_cases": 8,
+        "extra_only_cases": 0,
+        "validation_errors": 0
+      },
+      "kimi-k3-lex": {
+        "same_span_conflict_cases": 0,
+        "matches_hand_cases": 7,
+        "extra_only_cases": 1,
+        "validation_errors": 0
+      },
+      "deepseek-flash-lex": {
+        "same_span_conflict_cases": 0,
+        "matches_hand_cases": 8,
+        "extra_only_cases": 0,
+        "validation_errors": 0
+      },
+      "gpt6-sol-compact": {
+        "same_span_conflict_cases": 0,
+        "matches_hand_cases": 8,
+        "extra_only_cases": 0,
+        "validation_errors": 0
+      },
+      "kimi-k3-compact": {
+        "same_span_conflict_cases": 0,
+        "matches_hand_cases": 8,
+        "extra_only_cases": 0,
+        "validation_errors": 0
+      },
+      "deepseek-flash-compact": {
+        "same_span_conflict_cases": 0,
+        "matches_hand_cases": 8,
+        "extra_only_cases": 0,
+        "validation_errors": 0
+      },
+      "gpt6-sol-v12": {
+        "same_span_conflict_cases": 0,
+        "matches_hand_cases": 8,
+        "extra_only_cases": 0,
+        "validation_errors": 0
+      },
+      "kimi-k3-v12": {
+        "same_span_conflict_cases": 0,
+        "matches_hand_cases": 8,
+        "extra_only_cases": 0,
+        "validation_errors": 0
+      },
+      "deepseek-flash-v12": {
+        "same_span_conflict_cases": 0,
+        "matches_hand_cases": 8,
+        "extra_only_cases": 0,
+        "validation_errors": 0
+      }
+    },
+    "official_same_span_conflict_total": 0,
+    "official_full_match_runs": {
+      "gpt6-sol-lex": 8,
+      "kimi-k3-lex": 7,
+      "deepseek-flash-lex": 8
+    },
+    "compact_full_match_runs": {
+      "gpt6-sol-compact": 8,
+      "kimi-k3-compact": 8,
+      "deepseek-flash-compact": 8
+    },
+    "v12_runs": [
+      "gpt6-sol-v12",
+      "kimi-k3-v12",
+      "deepseek-flash-v12"
+    ],
+    "v12_full_match_runs": {
+      "gpt6-sol-v12": 8,
+      "kimi-k3-v12": 8,
+      "deepseek-flash-v12": 8
+    },
+    "formal_expected_span_total": 9,
+    "formal_expected_span_correct": 8,
+    "formal_expected_span_raw_overlap": 4,
+    "formal_whole_text_primary_correct": 7,
+    "formal_v12_expected_span_total": 9,
+    "formal_v12_expected_span_correct": 9,
+    "formal_v12_expected_span_raw_overlap": 4,
+    "formal_v12_whole_text_primary_correct": 8
+  }
+}

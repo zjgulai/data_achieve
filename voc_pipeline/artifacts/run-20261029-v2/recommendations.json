@@ -1,0 +1,29 @@
+[
+ {
+  "recommendation_id": "R01",
+  "title": "Support ladder",
+  "premise": "C04 当前为 Confirmed：自然样本的本人使用体验里 pooled 3 条四类摩擦记录（full 1 / partial 2）。",
+  "next_step": "同一版型做三档支撑强度的小样本 wear test。",
+  "kpi": "主观支撑评分、活动受限记录。",
+  "guardrail": "出现压迫/疼痛自述即停；医学问题转 review。",
+  "status": "Proposed · not approved"
+ },
+ {
+  "recommendation_id": "R02",
+  "title": "Fit chooser",
+  "premise": "C05 当前为 Confirmed：full 层未找到舒适正向与支撑负向同时出现的记录；partial 层有 1 条观察，但不作为分布。",
+  "next_step": "用孕周、腹型、躯干长度做分流页，测选码错误与退货。",
+  "kpi": "选码错误率、退货原因完整率。",
+  "guardrail": "不得用未验证的身形推断替代用户自选。",
+  "status": "Proposed · not approved"
+ },
+ {
+  "recommendation_id": "R03",
+  "title": "Wearing guidance",
+  "premise": "本轮没有同 frame 的 wearing guidance 证据；C06 的跨 frame 比较已删除。",
+  "next_step": "在 PDP 写清适用活动、姿势与时长，测理解度。",
+  "kpi": "理解度、客服重复问题数。",
+  "guardrail": "不写绝对化承诺。",
+  "status": "Proposed · not approved"
+ }
+]

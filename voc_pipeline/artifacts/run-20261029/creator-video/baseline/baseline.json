@@ -1,0 +1,1992 @@
+{
+  "schema_version": "voc_creator_video_baseline_v2",
+  "generated_at": "2026-10-30T18:37:28+00:00",
+  "generator": {
+    "script": "/Users/lute/Project/data_scrapy/tools/creator_video_baseline.py",
+    "paid_api_calls": 0,
+    "usd": 0.0,
+    "balance_probe": "none"
+  },
+  "budget": {
+    "hard_cap_usd": 15.0,
+    "spent_this_round_usd": 0.0,
+    "api_calls_this_round": 0,
+    "balance_probe": "none",
+    "last_known_balance_usd": 37.316,
+    "last_known_balance_source": "artifacts/run-20261029/creator-video/collect-summary.json cost.balance_after_usd",
+    "note": "This round only reads local artifacts. No paid endpoint was called and no balance probe was made."
+  },
+  "scope": {
+    "question": "按内容形态分层的互动基线：哪类内容形态跑赢互动基线",
+    "baseline_population": "target_exact only",
+    "product": {
+      "product_id": "1729474995478630680",
+      "product_name": "Momcozy Pregnancy Belly Band YB001, CozySupport Ergonest Maternity Belly Band",
+      "market": "TikTok Shop US"
+    },
+    "predefined_dimensions": [
+      "duration_bucket",
+      "comparison",
+      "demo",
+      "has_link",
+      "ad_disclosure",
+      "platform_is_ad"
+    ],
+    "category_reference_note": "Medium category-reference rows are a separate population. They never enter the baseline or any conclusion.",
+    "out_of_scope": [
+      "Product/Price/Place analysis",
+      "creator tier and audience baselines",
+      "transcript, audio and visual features",
+      "other caption-derived features not listed above"
+    ]
+  },
+  "inputs": {
+    "target_baseline": {
+      "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/relations/video-product-target-baseline.jsonl",
+      "rows": 10,
+      "sha256_before": "a89ee777291c9b6babae088e30afb1a8c1c155041b82474907eef9d0c9baf9de"
+    },
+    "features": {
+      "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/features/video-features.jsonl",
+      "rows": 48,
+      "sha256_before": "c96986355fa276a09eeed11bd887ae795a39ad3c3461d3f478903e8cbcf4d060"
+    },
+    "video_product_candidates": {
+      "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/relations/video-product-candidates.jsonl",
+      "rows": 77,
+      "sha256_before": "8c5da94832f64cb0ff44bfd3ae7aca0045e272a97773d93a62ddc39cbe1b1bd9"
+    },
+    "video_product": {
+      "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/relations/video-product.jsonl",
+      "rows": 141,
+      "sha256_before": "9f549357152b2c5576ebd812e2a679106a9d070f1340c1fce4e03caf7099a132"
+    },
+    "coverage": {
+      "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/relations/coverage.json",
+      "sha256_before": "5aa476089af0a0e80152c19ae32550439a0bd7f14cef6a4b71af80a33fc7e2eb"
+    },
+    "canonical_records": {
+      "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/canonical-records.jsonl",
+      "sha256_before": "88ee4402c4055bf113984dd849c2af3ae35c6c3f4b13be2532286f289582cfae"
+    },
+    "gold_set": {
+      "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/gold-set-50.jsonl",
+      "sha256_before": "e1dcc693d7c832dc10f878129efc45b1018ecfb278a1e9674508a64267e5e65e"
+    }
+  },
+  "coverage_cross_check": {
+    "target_product_id": "1729474995478630680",
+    "exact_product_id_high": 10,
+    "category_reference_n": 31,
+    "performance_eligible_n": 10
+  },
+  "population": {
+    "definition": "video_product relation rows with relation_type=target_exact; the anchor product_id equals the target product_id. One row per video. Medium rows are excluded.",
+    "n": 10,
+    "confidence_counts": {
+      "high": 10
+    },
+    "relation_type_counts": {
+      "target_exact": 10
+    },
+    "includes_medium": false,
+    "exact_product_id": "1729474995478630680",
+    "excluded": {
+      "category_reference_rows": 31,
+      "low_confidence_relation_rows": 36,
+      "no_signal_rows": 64,
+      "note": "Category reference is reported separately. Low-confidence and no_signal rows are excluded from every statistic."
+    },
+    "denominator_note": "Category reference rows are a different population and are not mixed into this denominator. Comment-level canonical records are also a different population."
+  },
+  "question_post": {
+    "video_id": "7696910923616881951",
+    "in_exact_population": false,
+    "in_high_performers": false,
+    "excluded_from_performance_statistics": true,
+    "content_tag": "consideration",
+    "target_baseline_cohort": "category_reference",
+    "relation_type": "text_brand_and_category",
+    "confidence": "medium",
+    "play_count": 551,
+    "like_count": 34,
+    "comment_count": 18,
+    "share_count": 0,
+    "collect_count": 0,
+    "interaction_rate": 0.094374,
+    "low_denominator_flag": true,
+    "content_tag_evidence": {
+      "c1_no_product_evidence": true,
+      "anchor_product_ids": [],
+      "has_link": false,
+      "platform_is_ad": false,
+      "matched_intent_phrases": [
+        "i want to order",
+        "what do yal think"
+      ],
+      "matched_usage_phrases": [],
+      "evidence_snippet": "mom cozy belly bands. what do yal think? i want to order one and try it out. i'm in so much pain because of how rapidly my belly is growing. probably gonna be a big b"
+    },
+    "reason": "C1 no product evidence, C2 purchase intent, C3 no personal usage evidence. Category reference only."
+  },
+  "unclassified": {
+    "low_confidence_relation_rows": {
+      "n": 36,
+      "relation_type_counts": {
+        "text_category_only": 14,
+        "hashtag_category_only": 7,
+        "non_target_subline": 7,
+        "other_brand_category_anchor": 6,
+        "sibling_product_anchor": 2
+      },
+      "file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/relations/video-product.jsonl",
+      "video_ids": [
+        "7143973893160652037",
+        "7204872217107107118",
+        "7394196332711267614",
+        "7568595611428146440",
+        "7639786035802557726",
+        "7667595600036138270",
+        "7674046874952846600",
+        "7675284750004702494",
+        "7676496608145575201",
+        "7677042996759629086",
+        "7680670179256306958",
+        "7680675248605383950",
+        "7680688584868908318",
+        "7681708845235801375",
+        "7683821850656443650",
+        "7684038794001026317",
+        "7685948392060636446",
+        "7686102931321670942",
+        "7688702206551346462",
+        "7691778768104361247",
+        "7691811649577127199",
+        "7693759027842419981",
+        "7694773837929434398",
+        "7695813917414624543",
+        "7696496073346436384",
+        "7698010021719723294",
+        "7698092217407147294",
+        "7698608753171500302",
+        "7700685464054795550",
+        "7700715490582285576",
+        "7700973235193597214",
+        "7701007581443050785",
+        "7701247037487975693",
+        "7701822117272096013",
+        "7701850777001692430",
+        "7701928353099566349"
+      ],
+      "note": "Low-confidence relations. Kept out of every baseline and lift calculation."
+    },
+    "no_signal_rows": {
+      "n": 64,
+      "file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/relations/video-product.jsonl",
+      "video_ids": [
+        "7603370117522574605",
+        "7670316017804938526",
+        "7670574126444088607",
+        "7672211039185882399",
+        "7675917737234795789",
+        "7679698280246299917",
+        "7680642572045274399",
+        "7681487086838385933",
+        "7682859015998655766",
+        "7683970824155565342",
+        "7684838309083843854",
+        "7685149389999901982",
+        "7685208737690242335",
+        "7685931150015024415",
+        "7688831611575536910",
+        "7689499800877780238",
+        "7689517902726221086",
+        "7691374512046148896",
+        "7691491549787524383",
+        "7692521155210546465",
+        "7693510832151399693",
+        "7693852967660735757",
+        "7694846194199170334",
+        "7695185884991261966",
+        "7695716610702576910",
+        "7697267103715413262",
+        "7697673478664686879",
+        "7698558833651731725",
+        "7698603490926513422",
+        "7698717690193661197",
+        "7699200430534069524",
+        "7699298958480297246",
+        "7699858183430376735",
+        "7699892325945756959",
+        "7700012905894300941",
+        "7700226264371760391",
+        "7700282556918385933",
+        "7700691788352261408",
+        "7701415640623549728",
+        "7702069117850832161",
+        "7702094871615606030",
+        "7702101858973666578",
+        "7702138538959146270",
+        "7702139171904703777",
+        "7702140234267495713",
+        "7702143911187189024",
+        "7702151706028657952",
+        "7702159932761705761",
+        "7702161101009538337",
+        "7702161188414557472",
+        "7702161886040689953",
+        "7702170376649837857",
+        "7702187047297240323",
+        "7702187742544940301",
+        "7702205316858924321",
+        "7702207421812362529",
+        "7702236165130177805",
+        "7702275603076025631",
+        "7702275749734124820",
+        "7702312202828664077",
+        "7702333240635411725",
+        "7702368185323883808",
+        "7702370356887063841",
+        "7702385756194589974"
+      ],
+      "note": "No product signal. Kept out of every baseline and lift calculation; these rows are not evidence of promoting the target product."
+    },
+    "feature_unknown_rows": {
+      "duration_bucket": [],
+      "comparison": [
+        "7596080221900639543",
+        "7613588163990129950",
+        "7624603263974788382",
+        "7630157203525225742",
+        "7669995620307881230",
+        "7691166964626066701",
+        "7692109722316475661",
+        "7695942452426968333",
+        "7700940453163699486",
+        "7702214491013942559"
+      ],
+      "demo": [
+        "7596080221900639543",
+        "7613588163990129950",
+        "7624603263974788382",
+        "7630157203525225742",
+        "7669995620307881230",
+        "7691166964626066701",
+        "7692109722316475661",
+        "7695942452426968333",
+        "7700940453163699486",
+        "7702214491013942559"
+      ],
+      "has_link": [],
+      "ad_disclosure": [],
+      "platform_is_ad": []
+    },
+    "note": "unknown feature values are unclassified, not false. They are excluded from layer comparisons."
+  },
+  "metric_definitions": {
+    "play_count": {
+      "label_zh": "播放",
+      "field_paths": [
+        "fetch_post_detail.data.itemInfo.itemStruct.stats.playCount",
+        "fetch_video_search_result.data.search_item_list[].aweme_info.statistics.play_count"
+      ]
+    },
+    "like_count": {
+      "label_zh": "点赞",
+      "field_paths": [
+        "fetch_post_detail.data.itemInfo.itemStruct.stats.diggCount",
+        "fetch_video_search_result.data.search_item_list[].aweme_info.statistics.digg_count"
+      ]
+    },
+    "comment_count": {
+      "label_zh": "评论",
+      "field_paths": [
+        "fetch_post_detail.data.itemInfo.itemStruct.stats.commentCount",
+        "fetch_video_search_result.data.search_item_list[].aweme_info.statistics.comment_count"
+      ]
+    },
+    "share_count": {
+      "label_zh": "分享",
+      "field_paths": [
+        "fetch_post_detail.data.itemInfo.itemStruct.stats.shareCount",
+        "fetch_video_search_result.data.search_item_list[].aweme_info.statistics.share_count"
+      ]
+    },
+    "collect_count": {
+      "label_zh": "收藏",
+      "field_paths": [
+        "fetch_post_detail.data.itemInfo.itemStruct.stats.collectCount",
+        "fetch_video_search_result.data.search_item_list[].aweme_info.statistics.collect_count"
+      ]
+    },
+    "interaction_rate": {
+      "label_zh": "互动率",
+      "formula": "(like_count + comment_count + share_count + collect_count) / play_count",
+      "note": "Upstream definition, reproduced without modification."
+    },
+    "snapshot_policy": "Use preferred_snapshot per row: fetch_post_detail when a detail payload exists, otherwise fetch_video_search_result. All values are single snapshots captured on 2026-10-30, not lifetime totals. is_estimated is null in every payload; it is not treated as a measured value."
+  },
+  "aggregation": {
+    "why_median": "Play and engagement counts are heavy-tailed. The mean is pulled up by a small number of high-reach videos, so the median and quartiles describe the typical video. The overall mean/median ratio is reported for each metric.",
+    "quartile_method": "Python statistics.quantiles(method='exclusive'), equivalent to PERCENTILE.EXC. The F decision IQRs use this method.",
+    "minimum_layer_n": 8,
+    "insufficient_rule": "Layers with n<8 report counts only. No median, lift, CI or conclusion is reported for them.",
+    "unknown_rule": "unknown feature values are unclassified, not false. They are excluded from layer comparisons and from lift calculations.",
+    "overlap_note": "A video appears in one layer per dimension. Tables for different dimensions overlap and must not be summed.",
+    "traceability": "Every layer count is computed from the 10 rows in video_level. Each video_level row carries the raw metric values and engagement_source: endpoint, raw file, captured_at, request_id and field_paths. No layer median is computed because no layer reaches n>=8.",
+    "no_stratified_baseline": "No predefined dimension has a layer with n>=8. This round produces no stratified baseline."
+  },
+  "overall": {
+    "n": 10,
+    "metrics": {
+      "play_count": {
+        "n": 10,
+        "q1": 25300.25,
+        "median": 172650.0,
+        "q3": 389675.0,
+        "mean": 305492.6,
+        "min": 1025,
+        "max": 1500000,
+        "mean_over_median": 1.769
+      },
+      "like_count": {
+        "n": 10,
+        "q1": 532.5,
+        "median": 1452.0,
+        "q3": 2163.25,
+        "mean": 2314.9,
+        "min": 16,
+        "max": 12400,
+        "mean_over_median": 1.594
+      },
+      "comment_count": {
+        "n": 10,
+        "q1": 3.75,
+        "median": 22.0,
+        "q3": 53.0,
+        "mean": 48.1,
+        "min": 2,
+        "max": 243,
+        "mean_over_median": 2.186
+      },
+      "share_count": {
+        "n": 10,
+        "q1": 47.5,
+        "median": 134.0,
+        "q3": 305.5,
+        "mean": 316.3,
+        "min": 0,
+        "max": 1833,
+        "mean_over_median": 2.36
+      },
+      "collect_count": {
+        "n": 10,
+        "q1": 47.25,
+        "median": 272.5,
+        "q3": 369.0,
+        "mean": 439.6,
+        "min": 1,
+        "max": 2467,
+        "mean_over_median": 1.613
+      },
+      "interaction_rate": {
+        "n": 10,
+        "q1": 0.0063,
+        "median": 0.011932,
+        "q3": 0.026333,
+        "mean": 0.017333,
+        "min": 0.004617,
+        "max": 0.048,
+        "mean_over_median": 1.453
+      }
+    },
+    "duration_seconds": {
+      "n": 10,
+      "q1": 24.75,
+      "median": 32.0,
+      "q3": 40.75,
+      "mean": 34.2,
+      "min": 11.0,
+      "max": 68.0,
+      "mean_over_median": 1.069
+    }
+  },
+  "layers": {
+    "duration_bucket": {
+      "dimension": "duration_bucket",
+      "label_zh": "时长档",
+      "dimension_status": "insufficient_sample",
+      "usable_layers": [],
+      "groups": {
+        "<=15s": {
+          "n": 1,
+          "complement_n": 9,
+          "status": "insufficient_sample",
+          "n_ge_8": false,
+          "complement_ge_8": true,
+          "usable_layer": false,
+          "metrics": null,
+          "lift_vs_complement": null,
+          "note": "n=1 < 8; counts only. No median, lift, CI or conclusion is reported for this layer."
+        },
+        "16-30s": {
+          "n": 4,
+          "complement_n": 6,
+          "status": "insufficient_sample",
+          "n_ge_8": false,
+          "complement_ge_8": false,
+          "usable_layer": false,
+          "metrics": null,
+          "lift_vs_complement": null,
+          "note": "n=4 < 8; counts only. No median, lift, CI or conclusion is reported for this layer."
+        },
+        "31-60s": {
+          "n": 4,
+          "complement_n": 6,
+          "status": "insufficient_sample",
+          "n_ge_8": false,
+          "complement_ge_8": false,
+          "usable_layer": false,
+          "metrics": null,
+          "lift_vs_complement": null,
+          "note": "n=4 < 8; counts only. No median, lift, CI or conclusion is reported for this layer."
+        },
+        ">60s": {
+          "n": 1,
+          "complement_n": 9,
+          "status": "insufficient_sample",
+          "n_ge_8": false,
+          "complement_ge_8": true,
+          "usable_layer": false,
+          "metrics": null,
+          "lift_vs_complement": null,
+          "note": "n=1 < 8; counts only. No median, lift, CI or conclusion is reported for this layer."
+        }
+      }
+    },
+    "comparison": {
+      "dimension": "comparison",
+      "label_zh": "是否对比测评",
+      "dimension_status": "insufficient_sample",
+      "usable_layers": [],
+      "groups": {
+        "true": {
+          "n": 0,
+          "complement_n": 0,
+          "status": "insufficient_sample",
+          "n_ge_8": false,
+          "complement_ge_8": false,
+          "usable_layer": false,
+          "metrics": null,
+          "lift_vs_complement": null,
+          "note": "n=0 < 8; counts only. No median, lift, CI or conclusion is reported for this layer."
+        },
+        "false": {
+          "n": 0,
+          "complement_n": 0,
+          "status": "insufficient_sample",
+          "n_ge_8": false,
+          "complement_ge_8": false,
+          "usable_layer": false,
+          "metrics": null,
+          "lift_vs_complement": null,
+          "note": "n=0 < 8; counts only. No median, lift, CI or conclusion is reported for this layer."
+        },
+        "unknown": {
+          "n": 10,
+          "complement_n": null,
+          "status": "unclassified",
+          "n_ge_8": true,
+          "complement_ge_8": false,
+          "usable_layer": false,
+          "metrics": null,
+          "lift_vs_complement": null,
+          "note": "feature value is unknown; not a layer. Excluded from every layer comparison and from the baseline."
+        }
+      }
+    },
+    "demo": {
+      "dimension": "demo",
+      "label_zh": "是否演示",
+      "dimension_status": "insufficient_sample",
+      "usable_layers": [],
+      "groups": {
+        "true": {
+          "n": 0,
+          "complement_n": 0,
+          "status": "insufficient_sample",
+          "n_ge_8": false,
+          "complement_ge_8": false,
+          "usable_layer": false,
+          "metrics": null,
+          "lift_vs_complement": null,
+          "note": "n=0 < 8; counts only. No median, lift, CI or conclusion is reported for this layer."
+        },
+        "false": {
+          "n": 0,
+          "complement_n": 0,
+          "status": "insufficient_sample",
+          "n_ge_8": false,
+          "complement_ge_8": false,
+          "usable_layer": false,
+          "metrics": null,
+          "lift_vs_complement": null,
+          "note": "n=0 < 8; counts only. No median, lift, CI or conclusion is reported for this layer."
+        },
+        "unknown": {
+          "n": 10,
+          "complement_n": null,
+          "status": "unclassified",
+          "n_ge_8": true,
+          "complement_ge_8": false,
+          "usable_layer": false,
+          "metrics": null,
+          "lift_vs_complement": null,
+          "note": "feature value is unknown; not a layer. Excluded from every layer comparison and from the baseline."
+        }
+      }
+    },
+    "has_link": {
+      "dimension": "has_link",
+      "label_zh": "是否有购买链接",
+      "dimension_status": "insufficient_sample",
+      "usable_layers": [],
+      "groups": {
+        "true": {
+          "n": 10,
+          "complement_n": 0,
+          "status": "insufficient_sample",
+          "n_ge_8": true,
+          "complement_ge_8": false,
+          "usable_layer": false,
+          "metrics": null,
+          "lift_vs_complement": null,
+          "note": "n=10 >= 8, but complement n=0 < 8. The dimension is single-valued or nearly single-valued, so no comparison is possible."
+        },
+        "false": {
+          "n": 0,
+          "complement_n": 10,
+          "status": "insufficient_sample",
+          "n_ge_8": false,
+          "complement_ge_8": true,
+          "usable_layer": false,
+          "metrics": null,
+          "lift_vs_complement": null,
+          "note": "n=0 < 8; counts only. No median, lift, CI or conclusion is reported for this layer."
+        },
+        "unknown": {
+          "n": 0,
+          "complement_n": null,
+          "status": "unclassified",
+          "n_ge_8": false,
+          "complement_ge_8": false,
+          "usable_layer": false,
+          "metrics": null,
+          "lift_vs_complement": null,
+          "note": "feature value is unknown; not a layer. Excluded from every layer comparison and from the baseline."
+        }
+      }
+    },
+    "ad_disclosure": {
+      "dimension": "ad_disclosure",
+      "label_zh": "是否有广告披露",
+      "dimension_status": "insufficient_sample",
+      "usable_layers": [],
+      "groups": {
+        "true": {
+          "n": 10,
+          "complement_n": 0,
+          "status": "insufficient_sample",
+          "n_ge_8": true,
+          "complement_ge_8": false,
+          "usable_layer": false,
+          "metrics": null,
+          "lift_vs_complement": null,
+          "note": "n=10 >= 8, but complement n=0 < 8. The dimension is single-valued or nearly single-valued, so no comparison is possible."
+        },
+        "false": {
+          "n": 0,
+          "complement_n": 10,
+          "status": "insufficient_sample",
+          "n_ge_8": false,
+          "complement_ge_8": true,
+          "usable_layer": false,
+          "metrics": null,
+          "lift_vs_complement": null,
+          "note": "n=0 < 8; counts only. No median, lift, CI or conclusion is reported for this layer."
+        },
+        "unknown": {
+          "n": 0,
+          "complement_n": null,
+          "status": "unclassified",
+          "n_ge_8": false,
+          "complement_ge_8": false,
+          "usable_layer": false,
+          "metrics": null,
+          "lift_vs_complement": null,
+          "note": "feature value is unknown; not a layer. Excluded from every layer comparison and from the baseline."
+        }
+      }
+    },
+    "platform_is_ad": {
+      "dimension": "platform_is_ad",
+      "label_zh": "平台广告标记",
+      "dimension_status": "insufficient_sample",
+      "usable_layers": [],
+      "groups": {
+        "true": {
+          "n": 9,
+          "complement_n": 1,
+          "status": "insufficient_sample",
+          "n_ge_8": true,
+          "complement_ge_8": false,
+          "usable_layer": false,
+          "metrics": null,
+          "lift_vs_complement": null,
+          "note": "n=9 >= 8, but complement n=1 < 8. The dimension is single-valued or nearly single-valued, so no comparison is possible."
+        },
+        "false": {
+          "n": 1,
+          "complement_n": 9,
+          "status": "insufficient_sample",
+          "n_ge_8": false,
+          "complement_ge_8": true,
+          "usable_layer": false,
+          "metrics": null,
+          "lift_vs_complement": null,
+          "note": "n=1 < 8; counts only. No median, lift, CI or conclusion is reported for this layer."
+        },
+        "unknown": {
+          "n": 0,
+          "complement_n": null,
+          "status": "unclassified",
+          "n_ge_8": false,
+          "complement_ge_8": false,
+          "usable_layer": false,
+          "metrics": null,
+          "lift_vs_complement": null,
+          "note": "feature value is unknown; not a layer. Excluded from every layer comparison and from the baseline."
+        }
+      }
+    }
+  },
+  "bootstrap": {
+    "performed": false,
+    "tests": [],
+    "eligible_layers": [],
+    "reason": "No exact layer has both n>=8 and complement n>=8. By rule, n<8 layers receive counts only and no CI. Bootstrap is restricted to the exact population; there is no exact stratified comparison to test."
+  },
+  "high_performers": {
+    "definition": "interaction_rate >= 2.0 * median interaction_rate of the 10 exact videos. No duration bucket reaches n>=8, so no duration-bucket peer median is used.",
+    "metric": "interaction_rate",
+    "threshold_multiple": 2.0,
+    "peer_group": "all 10 exact videos",
+    "peer_group_n": 10,
+    "overall_median_interaction_rate": 0.011932,
+    "threshold_interaction_rate": 0.023864,
+    "eligible_videos": 10,
+    "eligible_duration_buckets": {},
+    "count": 2,
+    "none": false,
+    "statement": "2 条 exact 视频的互动率达到 10 条 exact 中位数的 2 倍。",
+    "videos": [
+      {
+        "video_id": "7695942452426968333",
+        "interaction_rate": 0.048,
+        "multiple_vs_exact_median": 4.023,
+        "multiple_vs_duration_bucket_median": null,
+        "duration_bucket_peer_available": false,
+        "play_count": 31500,
+        "play_multiple_vs_exact_median": 0.182,
+        "duration_seconds": 28.0,
+        "duration_bucket": "16-30s",
+        "duration_bucket_n": 4,
+        "relation_confidence": "high",
+        "relation_type": "target_exact",
+        "has_link": "true",
+        "ad_disclosure": "true",
+        "platform_is_ad": "true",
+        "low_denominator_flag": false,
+        "engagement_source": {
+          "preferred_snapshot": "fetch_post_detail",
+          "source_endpoint": "/api/v1/tiktok/web/fetch_post_detail",
+          "source_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/fetch-post-detail-7695942452426968333.json",
+          "captured_at": "2026-10-30T16:38:50+00:00",
+          "request_id": "f508757d-1775-4379-800b-14d3646b06ab",
+          "field_paths": {
+            "desc": "data.itemInfo.itemStruct.desc",
+            "hashtags": "data.itemInfo.itemStruct.textExtra[].hashtagName",
+            "anchors": "data.itemInfo.itemStruct.anchors[].extra",
+            "statistics": "data.itemInfo.itemStruct.stats.{playCount,diggCount,commentCount,shareCount,collectCount}"
+          }
+        }
+      },
+      {
+        "video_id": "7691166964626066701",
+        "interaction_rate": 0.043868,
+        "multiple_vs_exact_median": 3.677,
+        "multiple_vs_duration_bucket_median": null,
+        "duration_bucket_peer_available": false,
+        "play_count": 38000,
+        "play_multiple_vs_exact_median": 0.22,
+        "duration_seconds": 68.0,
+        "duration_bucket": ">60s",
+        "duration_bucket_n": 1,
+        "relation_confidence": "high",
+        "relation_type": "target_exact",
+        "has_link": "true",
+        "ad_disclosure": "true",
+        "platform_is_ad": "true",
+        "low_denominator_flag": false,
+        "engagement_source": {
+          "preferred_snapshot": "fetch_post_detail",
+          "source_endpoint": "/api/v1/tiktok/web/fetch_post_detail",
+          "source_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/fetch-post-detail-7691166964626066701.json",
+          "captured_at": "2026-10-30T16:38:50+00:00",
+          "request_id": "d82ac6d8-a054-4cc6-b3d0-6a26f6eca790",
+          "field_paths": {
+            "desc": "data.itemInfo.itemStruct.desc",
+            "hashtags": "data.itemInfo.itemStruct.textExtra[].hashtagName",
+            "anchors": "data.itemInfo.itemStruct.anchors[].extra",
+            "statistics": "data.itemInfo.itemStruct.stats.{playCount,diggCount,commentCount,shareCount,collectCount}"
+          }
+        }
+      }
+    ],
+    "common_features": {
+      "n": 2,
+      "note": "Only counts are available. n<8, so this is not a comparison and not a conclusion.",
+      "items": []
+    },
+    "low_denominator_sensitivity": {
+      "play_count_floor": 5000,
+      "count": 2,
+      "videos": [
+        {
+          "video_id": "7695942452426968333",
+          "interaction_rate": 0.048,
+          "multiple_vs_exact_median": 4.023,
+          "multiple_vs_duration_bucket_median": null,
+          "duration_bucket_peer_available": false,
+          "play_count": 31500,
+          "play_multiple_vs_exact_median": 0.182,
+          "duration_seconds": 28.0,
+          "duration_bucket": "16-30s",
+          "duration_bucket_n": 4,
+          "relation_confidence": "high",
+          "relation_type": "target_exact",
+          "has_link": "true",
+          "ad_disclosure": "true",
+          "platform_is_ad": "true",
+          "low_denominator_flag": false,
+          "engagement_source": {
+            "preferred_snapshot": "fetch_post_detail",
+            "source_endpoint": "/api/v1/tiktok/web/fetch_post_detail",
+            "source_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/fetch-post-detail-7695942452426968333.json",
+            "captured_at": "2026-10-30T16:38:50+00:00",
+            "request_id": "f508757d-1775-4379-800b-14d3646b06ab",
+            "field_paths": {
+              "desc": "data.itemInfo.itemStruct.desc",
+              "hashtags": "data.itemInfo.itemStruct.textExtra[].hashtagName",
+              "anchors": "data.itemInfo.itemStruct.anchors[].extra",
+              "statistics": "data.itemInfo.itemStruct.stats.{playCount,diggCount,commentCount,shareCount,collectCount}"
+            }
+          }
+        },
+        {
+          "video_id": "7691166964626066701",
+          "interaction_rate": 0.043868,
+          "multiple_vs_exact_median": 3.677,
+          "multiple_vs_duration_bucket_median": null,
+          "duration_bucket_peer_available": false,
+          "play_count": 38000,
+          "play_multiple_vs_exact_median": 0.22,
+          "duration_seconds": 68.0,
+          "duration_bucket": ">60s",
+          "duration_bucket_n": 1,
+          "relation_confidence": "high",
+          "relation_type": "target_exact",
+          "has_link": "true",
+          "ad_disclosure": "true",
+          "platform_is_ad": "true",
+          "low_denominator_flag": false,
+          "engagement_source": {
+            "preferred_snapshot": "fetch_post_detail",
+            "source_endpoint": "/api/v1/tiktok/web/fetch_post_detail",
+            "source_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/fetch-post-detail-7691166964626066701.json",
+            "captured_at": "2026-10-30T16:38:50+00:00",
+            "request_id": "d82ac6d8-a054-4cc6-b3d0-6a26f6eca790",
+            "field_paths": {
+              "desc": "data.itemInfo.itemStruct.desc",
+              "hashtags": "data.itemInfo.itemStruct.textExtra[].hashtagName",
+              "anchors": "data.itemInfo.itemStruct.anchors[].extra",
+              "statistics": "data.itemInfo.itemStruct.stats.{playCount,diggCount,commentCount,shareCount,collectCount}"
+            }
+          }
+        }
+      ],
+      "note": "Descriptive only. The high-performer set is below the 8-video layer floor."
+    }
+  },
+  "strongest_single_feature": {
+    "within_predefined_dimensions": true,
+    "status": "insufficient_sample",
+    "verdict": "not_supported",
+    "top_layer": null,
+    "all_ranked_layers": [],
+    "reason": "No layer in the 10-row exact population reaches n>=8. No rank, multiple, p-value or CI is computed.",
+    "conclusion": "本轮不做分层比较。C16 的否定结论依据是 10 条 exact 无法检验，不能写成已证明没有形态跑赢。"
+  },
+  "sufficiency_assessment": {
+    "exact_population_n": 10,
+    "layered_baseline_computed": false,
+    "dimensions_with_any_group_n_ge_8": [
+      "ad_disclosure",
+      "has_link",
+      "platform_is_ad"
+    ],
+    "dimensions_with_usable_layer": [],
+    "groups_with_n_ge_8_raw": [
+      "has_link:true",
+      "ad_disclosure:true",
+      "platform_is_ad:true"
+    ],
+    "usable_layers": [],
+    "bootstrap_performed": false,
+    "single_feature_ranking_computed": false,
+    "causal_claims_supported": 0,
+    "c16_status": "retained_as_negative_but_evidence_changed",
+    "c16_basis": "10 条 exact 无法做分层检验。结论只能写成样本不足以检验，不能写成已证明没有内容形态跑赢。",
+    "statement": "本轮只给 10 条 exact 的整体分布和逐条明细。没有任何一层同时满足层 n>=8 和对照 n>=8，所以只给计数，不给中位数、CI 或结论。"
+  },
+  "category_reference": {
+    "cohort": "category_reference",
+    "baseline_eligible": false,
+    "label": "not baseline eligible",
+    "definition": "Medium-confidence rows: other-listing anchors or text brand+category matches. They are category context only.",
+    "n": 31,
+    "confidence_counts": {
+      "medium": 31
+    },
+    "relation_type_counts": {
+      "duplicate_listing_anchor": 19,
+      "text_brand_and_category": 12
+    },
+    "content_tag_counts": {
+      "unknown": 29,
+      "material_candidate": 1,
+      "consideration": 1
+    },
+    "median_population": {
+      "n": 30,
+      "excluded_content_tag_consideration_n": 1,
+      "note": "The consideration row is excluded from these medians. It has performance_eligible=false and is excluded from all performance statistics.",
+      "metrics": {
+        "play_count": {
+          "n": 30,
+          "median": 16350.0
+        },
+        "like_count": {
+          "n": 30,
+          "median": 161.5
+        },
+        "comment_count": {
+          "n": 30,
+          "median": 6.0
+        },
+        "share_count": {
+          "n": 30,
+          "median": 6.5
+        },
+        "collect_count": {
+          "n": 30,
+          "median": 19.0
+        },
+        "interaction_rate": {
+          "n": 30,
+          "median": 0.0160995
+        }
+      },
+      "duration_seconds": {
+        "n": 30,
+        "median": 33.5
+      }
+    },
+    "consideration_rows": [
+      {
+        "video_id": "7696910923616881951",
+        "relation_type": "text_brand_and_category",
+        "confidence": "medium",
+        "content_tag": "consideration",
+        "play_count": 551,
+        "like_count": 34,
+        "comment_count": 18,
+        "share_count": 0,
+        "collect_count": 0,
+        "interaction_rate": 0.094374,
+        "low_denominator_flag": true,
+        "content_tag_evidence": {
+          "c1_no_product_evidence": true,
+          "anchor_product_ids": [],
+          "has_link": false,
+          "platform_is_ad": false,
+          "matched_intent_phrases": [
+            "i want to order",
+            "what do yal think"
+          ],
+          "matched_usage_phrases": [],
+          "evidence_snippet": "mom cozy belly bands. what do yal think? i want to order one and try it out. i'm in so much pain because of how rapidly my belly is growing. probably gonna be a big b"
+        },
+        "excluded_from_performance_statistics": true
+      }
+    ],
+    "rows": [
+      {
+        "video_id": "7668478229723876639",
+        "relation_type": "duplicate_listing_anchor",
+        "confidence": "medium",
+        "content_tag": "unknown",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 24.0,
+        "duration_bucket": "16-30s",
+        "has_link": "true",
+        "platform_is_ad": "true",
+        "play_count": 9355,
+        "like_count": 87,
+        "comment_count": 2,
+        "share_count": 3,
+        "collect_count": 9,
+        "interaction_rate": 0.010796,
+        "low_denominator_flag": false
+      },
+      {
+        "video_id": "7669625812915637518",
+        "relation_type": "duplicate_listing_anchor",
+        "confidence": "medium",
+        "content_tag": "unknown",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 38.0,
+        "duration_bucket": "31-60s",
+        "has_link": "true",
+        "platform_is_ad": "true",
+        "play_count": 66400,
+        "like_count": 541,
+        "comment_count": 7,
+        "share_count": 66,
+        "collect_count": 135,
+        "interaction_rate": 0.01128,
+        "low_denominator_flag": false
+      },
+      {
+        "video_id": "7671359868288224542",
+        "relation_type": "duplicate_listing_anchor",
+        "confidence": "medium",
+        "content_tag": "unknown",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 44.0,
+        "duration_bucket": "31-60s",
+        "has_link": "true",
+        "platform_is_ad": "true",
+        "play_count": 434500,
+        "like_count": 4803,
+        "comment_count": 34,
+        "share_count": 971,
+        "collect_count": 2118,
+        "interaction_rate": 0.018242,
+        "low_denominator_flag": false
+      },
+      {
+        "video_id": "7672976883423694094",
+        "relation_type": "text_brand_and_category",
+        "confidence": "medium",
+        "content_tag": "unknown",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 29.0,
+        "duration_bucket": "16-30s",
+        "has_link": "false",
+        "platform_is_ad": "true",
+        "play_count": 20100,
+        "like_count": 27,
+        "comment_count": 0,
+        "share_count": 1,
+        "collect_count": 14,
+        "interaction_rate": 0.00209,
+        "low_denominator_flag": false
+      },
+      {
+        "video_id": "7674319473058319630",
+        "relation_type": "duplicate_listing_anchor",
+        "confidence": "medium",
+        "content_tag": "unknown",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 23.0,
+        "duration_bucket": "16-30s",
+        "has_link": "true",
+        "platform_is_ad": "true",
+        "play_count": 721900,
+        "like_count": 20900,
+        "comment_count": 1039,
+        "share_count": 2133,
+        "collect_count": 1852,
+        "interaction_rate": 0.035911,
+        "low_denominator_flag": false
+      },
+      {
+        "video_id": "7675548952493608223",
+        "relation_type": "text_brand_and_category",
+        "confidence": "medium",
+        "content_tag": "material_candidate",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 50.0,
+        "duration_bucket": "31-60s",
+        "has_link": "false",
+        "platform_is_ad": "true",
+        "play_count": 4473,
+        "like_count": 59,
+        "comment_count": 1,
+        "share_count": 7,
+        "collect_count": 23,
+        "interaction_rate": 0.020121,
+        "low_denominator_flag": true
+      },
+      {
+        "video_id": "7684301394249125142",
+        "relation_type": "text_brand_and_category",
+        "confidence": "medium",
+        "content_tag": "unknown",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 33.0,
+        "duration_bucket": "31-60s",
+        "has_link": "false",
+        "platform_is_ad": "true",
+        "play_count": 100900,
+        "like_count": 4569,
+        "comment_count": 34,
+        "share_count": 775,
+        "collect_count": 1193,
+        "interaction_rate": 0.065124,
+        "low_denominator_flag": false
+      },
+      {
+        "video_id": "7684658138544360717",
+        "relation_type": "duplicate_listing_anchor",
+        "confidence": "medium",
+        "content_tag": "unknown",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 7.0,
+        "duration_bucket": "<=15s",
+        "has_link": "true",
+        "platform_is_ad": "true",
+        "play_count": 5232,
+        "like_count": 93,
+        "comment_count": 8,
+        "share_count": 6,
+        "collect_count": 5,
+        "interaction_rate": 0.021407,
+        "low_denominator_flag": false
+      },
+      {
+        "video_id": "7685943843212119310",
+        "relation_type": "duplicate_listing_anchor",
+        "confidence": "medium",
+        "content_tag": "unknown",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 26.0,
+        "duration_bucket": "16-30s",
+        "has_link": "true",
+        "platform_is_ad": "true",
+        "play_count": 21500,
+        "like_count": 173,
+        "comment_count": 4,
+        "share_count": 18,
+        "collect_count": 55,
+        "interaction_rate": 0.011628,
+        "low_denominator_flag": false
+      },
+      {
+        "video_id": "7686325704627113230",
+        "relation_type": "text_brand_and_category",
+        "confidence": "medium",
+        "content_tag": "unknown",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 70.704,
+        "duration_bucket": ">60s",
+        "has_link": "false",
+        "platform_is_ad": "false",
+        "play_count": 119,
+        "like_count": 2,
+        "comment_count": 1,
+        "share_count": 0,
+        "collect_count": 0,
+        "interaction_rate": 0.02521,
+        "low_denominator_flag": true
+      },
+      {
+        "video_id": "7691050701748849951",
+        "relation_type": "duplicate_listing_anchor",
+        "confidence": "medium",
+        "content_tag": "unknown",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 34.0,
+        "duration_bucket": "31-60s",
+        "has_link": "true",
+        "platform_is_ad": "false",
+        "play_count": 20100,
+        "like_count": 150,
+        "comment_count": 10,
+        "share_count": 14,
+        "collect_count": 15,
+        "interaction_rate": 0.009403,
+        "low_denominator_flag": false
+      },
+      {
+        "video_id": "7691062101107903752",
+        "relation_type": "text_brand_and_category",
+        "confidence": "medium",
+        "content_tag": "unknown",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 127.0,
+        "duration_bucket": ">60s",
+        "has_link": "false",
+        "platform_is_ad": "true",
+        "play_count": 1200000,
+        "like_count": 62800,
+        "comment_count": 208,
+        "share_count": 805,
+        "collect_count": 2243,
+        "interaction_rate": 0.055047,
+        "low_denominator_flag": false
+      },
+      {
+        "video_id": "7691304096891981086",
+        "relation_type": "duplicate_listing_anchor",
+        "confidence": "medium",
+        "content_tag": "unknown",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 38.0,
+        "duration_bucket": "31-60s",
+        "has_link": "true",
+        "platform_is_ad": "true",
+        "play_count": 4835,
+        "like_count": 22,
+        "comment_count": 4,
+        "share_count": 2,
+        "collect_count": 5,
+        "interaction_rate": 0.006825,
+        "low_denominator_flag": true
+      },
+      {
+        "video_id": "7691658825396538654",
+        "relation_type": "duplicate_listing_anchor",
+        "confidence": "medium",
+        "content_tag": "unknown",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 40.0,
+        "duration_bucket": "31-60s",
+        "has_link": "true",
+        "platform_is_ad": "true",
+        "play_count": 44900,
+        "like_count": 2250,
+        "comment_count": 23,
+        "share_count": 112,
+        "collect_count": 367,
+        "interaction_rate": 0.061292,
+        "low_denominator_flag": false
+      },
+      {
+        "video_id": "7691695183859141918",
+        "relation_type": "text_brand_and_category",
+        "confidence": "medium",
+        "content_tag": "unknown",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 39.0,
+        "duration_bucket": "31-60s",
+        "has_link": "true",
+        "platform_is_ad": "true",
+        "play_count": 83100,
+        "like_count": 2339,
+        "comment_count": 14,
+        "share_count": 20,
+        "collect_count": 173,
+        "interaction_rate": 0.030638,
+        "low_denominator_flag": false
+      },
+      {
+        "video_id": "7693583719092735246",
+        "relation_type": "text_brand_and_category",
+        "confidence": "medium",
+        "content_tag": "unknown",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 97.0,
+        "duration_bucket": ">60s",
+        "has_link": "false",
+        "platform_is_ad": "true",
+        "play_count": 165700,
+        "like_count": 250,
+        "comment_count": 6,
+        "share_count": 5,
+        "collect_count": 24,
+        "interaction_rate": 0.00172,
+        "low_denominator_flag": false
+      },
+      {
+        "video_id": "7693675370016492830",
+        "relation_type": "duplicate_listing_anchor",
+        "confidence": "medium",
+        "content_tag": "unknown",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 16.0,
+        "duration_bucket": "16-30s",
+        "has_link": "true",
+        "platform_is_ad": "true",
+        "play_count": 370500,
+        "like_count": 8978,
+        "comment_count": 60,
+        "share_count": 466,
+        "collect_count": 1614,
+        "interaction_rate": 0.030008,
+        "low_denominator_flag": false
+      },
+      {
+        "video_id": "7693972608215158047",
+        "relation_type": "duplicate_listing_anchor",
+        "confidence": "medium",
+        "content_tag": "unknown",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 16.0,
+        "duration_bucket": "16-30s",
+        "has_link": "true",
+        "platform_is_ad": "true",
+        "play_count": 59700,
+        "like_count": 486,
+        "comment_count": 13,
+        "share_count": 24,
+        "collect_count": 86,
+        "interaction_rate": 0.010201,
+        "low_denominator_flag": false
+      },
+      {
+        "video_id": "7694643857740303630",
+        "relation_type": "duplicate_listing_anchor",
+        "confidence": "medium",
+        "content_tag": "unknown",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 120.0,
+        "duration_bucket": ">60s",
+        "has_link": "true",
+        "platform_is_ad": "true",
+        "play_count": 12600,
+        "like_count": 600,
+        "comment_count": 5,
+        "share_count": 16,
+        "collect_count": 26,
+        "interaction_rate": 0.051349,
+        "low_denominator_flag": false
+      },
+      {
+        "video_id": "7694699462731631903",
+        "relation_type": "duplicate_listing_anchor",
+        "confidence": "medium",
+        "content_tag": "unknown",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 16.0,
+        "duration_bucket": "16-30s",
+        "has_link": "true",
+        "platform_is_ad": "true",
+        "play_count": 276300,
+        "like_count": 2214,
+        "comment_count": 20,
+        "share_count": 173,
+        "collect_count": 520,
+        "interaction_rate": 0.010594,
+        "low_denominator_flag": false
+      },
+      {
+        "video_id": "7696910923616881951",
+        "relation_type": "text_brand_and_category",
+        "confidence": "medium",
+        "content_tag": "consideration",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 90.734,
+        "duration_bucket": ">60s",
+        "has_link": "false",
+        "platform_is_ad": "false",
+        "play_count": 551,
+        "like_count": 34,
+        "comment_count": 18,
+        "share_count": 0,
+        "collect_count": 0,
+        "interaction_rate": 0.094374,
+        "low_denominator_flag": true
+      },
+      {
+        "video_id": "7696968669661777183",
+        "relation_type": "duplicate_listing_anchor",
+        "confidence": "medium",
+        "content_tag": "unknown",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 43.0,
+        "duration_bucket": "31-60s",
+        "has_link": "true",
+        "platform_is_ad": "false",
+        "play_count": 6689,
+        "like_count": 39,
+        "comment_count": 6,
+        "share_count": 3,
+        "collect_count": 7,
+        "interaction_rate": 0.008222,
+        "low_denominator_flag": false
+      },
+      {
+        "video_id": "7698063531396173069",
+        "relation_type": "text_brand_and_category",
+        "confidence": "medium",
+        "content_tag": "unknown",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 41.0,
+        "duration_bucket": "31-60s",
+        "has_link": "false",
+        "platform_is_ad": "false",
+        "play_count": 1846,
+        "like_count": 108,
+        "comment_count": 7,
+        "share_count": 2,
+        "collect_count": 15,
+        "interaction_rate": 0.071506,
+        "low_denominator_flag": true
+      },
+      {
+        "video_id": "7698748272197913887",
+        "relation_type": "duplicate_listing_anchor",
+        "confidence": "medium",
+        "content_tag": "unknown",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 13.0,
+        "duration_bucket": "<=15s",
+        "has_link": "true",
+        "platform_is_ad": "true",
+        "play_count": 76800,
+        "like_count": 1052,
+        "comment_count": 4,
+        "share_count": 49,
+        "collect_count": 185,
+        "interaction_rate": 0.016797,
+        "low_denominator_flag": false
+      },
+      {
+        "video_id": "7698782499207384351",
+        "relation_type": "duplicate_listing_anchor",
+        "confidence": "medium",
+        "content_tag": "unknown",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 21.0,
+        "duration_bucket": "16-30s",
+        "has_link": "true",
+        "platform_is_ad": "true",
+        "play_count": 2162,
+        "like_count": 9,
+        "comment_count": 0,
+        "share_count": 0,
+        "collect_count": 2,
+        "interaction_rate": 0.005088,
+        "low_denominator_flag": true
+      },
+      {
+        "video_id": "7700021947098254606",
+        "relation_type": "duplicate_listing_anchor",
+        "confidence": "medium",
+        "content_tag": "unknown",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 63.0,
+        "duration_bucket": ">60s",
+        "has_link": "true",
+        "platform_is_ad": "true",
+        "play_count": 3762,
+        "like_count": 24,
+        "comment_count": 0,
+        "share_count": 0,
+        "collect_count": 9,
+        "interaction_rate": 0.008772,
+        "low_denominator_flag": true
+      },
+      {
+        "video_id": "7700164372294880534",
+        "relation_type": "text_brand_and_category",
+        "confidence": "medium",
+        "content_tag": "unknown",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 10.0,
+        "duration_bucket": "<=15s",
+        "has_link": "false",
+        "platform_is_ad": "false",
+        "play_count": 422,
+        "like_count": 3,
+        "comment_count": 0,
+        "share_count": 0,
+        "collect_count": 0,
+        "interaction_rate": 0.007109,
+        "low_denominator_flag": true
+      },
+      {
+        "video_id": "7701509792644304159",
+        "relation_type": "duplicate_listing_anchor",
+        "confidence": "medium",
+        "content_tag": "unknown",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 15.0,
+        "duration_bucket": "<=15s",
+        "has_link": "true",
+        "platform_is_ad": "false",
+        "play_count": 1753,
+        "like_count": 24,
+        "comment_count": 3,
+        "share_count": 0,
+        "collect_count": 0,
+        "interaction_rate": 0.015402,
+        "low_denominator_flag": true
+      },
+      {
+        "video_id": "7701635248181808406",
+        "relation_type": "text_brand_and_category",
+        "confidence": "medium",
+        "content_tag": "unknown",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 57.0,
+        "duration_bucket": "31-60s",
+        "has_link": "false",
+        "platform_is_ad": "true",
+        "play_count": 4998,
+        "like_count": 197,
+        "comment_count": 7,
+        "share_count": 4,
+        "collect_count": 7,
+        "interaction_rate": 0.043017,
+        "low_denominator_flag": true
+      },
+      {
+        "video_id": "7702173958778506526",
+        "relation_type": "duplicate_listing_anchor",
+        "confidence": "medium",
+        "content_tag": "unknown",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 9.0,
+        "duration_bucket": "<=15s",
+        "has_link": "true",
+        "platform_is_ad": "true",
+        "play_count": 8162,
+        "like_count": 58,
+        "comment_count": 2,
+        "share_count": 2,
+        "collect_count": 3,
+        "interaction_rate": 0.007964,
+        "low_denominator_flag": false
+      },
+      {
+        "video_id": "7702281113376509214",
+        "relation_type": "text_brand_and_category",
+        "confidence": "medium",
+        "content_tag": "unknown",
+        "baseline_eligible": false,
+        "performance_eligible": false,
+        "duration_seconds": 13.0,
+        "duration_bucket": "<=15s",
+        "has_link": "false",
+        "platform_is_ad": "false",
+        "play_count": 331,
+        "like_count": 20,
+        "comment_count": 0,
+        "share_count": 0,
+        "collect_count": 1,
+        "interaction_rate": 0.063444,
+        "low_denominator_flag": true
+      }
+    ],
+    "note": "Category reference only. Not baseline eligible. Do not merge with the exact baseline. Do not compare medians and do not claim that one content form wins."
+  },
+  "evidence_gaps": [
+    "10 条 exact 中没有任何一层同时满足层 n>=8 和对照 n>=8。时长档为 <=15s 1 条、16-30s 4 条、31-60s 4 条、>60s 1 条；has_link 和 ad_disclosure 只有一个取值；platform_is_ad 的 false 只有 1 条。分层基线不成立。",
+    "comparison 与 demo 在 10 条 exact 中全部 unknown。没有字幕、音轨或视频帧，无法判断画面是否对比或演示。",
+    "31 条 medium 只作品类参照。19 条 duplicate_listing_anchor 锚到同品牌 YB001 系列的其他 listing；product_id 不同，标题相似但不相同。12 条 text_brand_and_category 没有商品锚点。",
+    "关键词搜索样本不是概率样本。141 条视频中只有 10 条锚点确证目标商品，不能代表品类普查。",
+    "所有指标是 2026-10-30 的单次快照。播放和互动会继续增长，快照之间不可直接比较寿命周期表现。",
+    "第三方视频的 GMV、成交、转化、受众画像和字幕不可得；本轮不涉及达人受众或达人层级基线。",
+    "is_estimated 字段在所有返回中不存在；产物记 null，未当作实测值。"
+  ],
+  "caveats": [
+    "中位数和四分位数描述典型视频。均值受长尾影响，表中同时给出 mean/median 比值。",
+    "本轮不做分层基线。任何按内容形态的比较都没有样本支撑。",
+    "高表现视频只做计数和倍数描述，不做因果解释。10 条 exact 里只有少量高表现，不能代表总体。",
+    "category_reference 是品类参照，不是基线。不要把它与 exact 基线合并、比较或用于「哪类跑赢」的结论。",
+    "分层表之间会重叠；同一视频出现在多个维度中，不能相加。",
+    "本轮未写数据库，未修改 canonical-records.jsonl，未修改 gold-set-50.jsonl。"
+  ],
+  "validation": {
+    "population_n": 10,
+    "population_n_equals_10": true,
+    "population_all_target_exact": true,
+    "population_confidence_counts": {
+      "high": 10
+    },
+    "population_relation_type_counts": {
+      "target_exact": 10
+    },
+    "unique_video_ids": 10,
+    "layer_totals": {
+      "duration_bucket": 10,
+      "comparison": 10,
+      "demo": 10,
+      "has_link": 10,
+      "ad_disclosure": 10,
+      "platform_is_ad": 10
+    },
+    "layer_totals_all_10": true,
+    "layer_groups_with_n_ge_8": [
+      "has_link:true",
+      "ad_disclosure:true",
+      "platform_is_ad:true"
+    ],
+    "layer_groups_usable": [],
+    "layer_metrics_present": [],
+    "bootstrap_tests": 0,
+    "high_performer_count": 2,
+    "high_performers_subset_of_exact": true,
+    "question_post_in_exact": false,
+    "question_post_in_high_performers": false,
+    "question_post_excluded_from_performance_statistics": true,
+    "category_reference_n": 31,
+    "category_reference_overlap_exact": 0,
+    "category_reference_all_medium": true,
+    "category_reference_baseline_eligible": false,
+    "category_reference_median_n": 30,
+    "inputs_sha256": {
+      "target_baseline": {
+        "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/relations/video-product-target-baseline.jsonl",
+        "rows": 10,
+        "sha256_before": "a89ee777291c9b6babae088e30afb1a8c1c155041b82474907eef9d0c9baf9de"
+      },
+      "features": {
+        "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/features/video-features.jsonl",
+        "rows": 48,
+        "sha256_before": "c96986355fa276a09eeed11bd887ae795a39ad3c3461d3f478903e8cbcf4d060"
+      },
+      "video_product_candidates": {
+        "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/relations/video-product-candidates.jsonl",
+        "rows": 77,
+        "sha256_before": "8c5da94832f64cb0ff44bfd3ae7aca0045e272a97773d93a62ddc39cbe1b1bd9"
+      },
+      "video_product": {
+        "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/relations/video-product.jsonl",
+        "rows": 141,
+        "sha256_before": "9f549357152b2c5576ebd812e2a679106a9d070f1340c1fce4e03caf7099a132"
+      },
+      "coverage": {
+        "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/relations/coverage.json",
+        "sha256_before": "5aa476089af0a0e80152c19ae32550439a0bd7f14cef6a4b71af80a33fc7e2eb"
+      },
+      "canonical_records": {
+        "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/canonical-records.jsonl",
+        "sha256_before": "88ee4402c4055bf113984dd849c2af3ae35c6c3f4b13be2532286f289582cfae"
+      },
+      "gold_set": {
+        "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/gold-set-50.jsonl",
+        "sha256_before": "e1dcc693d7c832dc10f878129efc45b1018ecfb278a1e9674508a64267e5e65e"
+      }
+    },
+    "canonical_sha256_unchanged": true,
+    "gold_set_sha256_unchanged": true,
+    "db_writes": 0,
+    "paid_api_calls": 0
+  },
+  "video_level": [
+    {
+      "video_id": "7596080221900639543",
+      "relation_confidence": "high",
+      "relation_type": "target_exact",
+      "target_product_id": "1729474995478630680",
+      "target_baseline_eligible": true,
+      "performance_eligible": true,
+      "content_tag": "unknown",
+      "duration_seconds": 11.0,
+      "duration_bucket": "<=15s",
+      "has_link": "true",
+      "ad_disclosure": "true",
+      "platform_is_ad": "true",
+      "comparison": "unknown",
+      "demo": "unknown",
+      "play_count": 317200,
+      "like_count": 1930,
+      "comment_count": 9,
+      "share_count": 65,
+      "collect_count": 513,
+      "interaction_rate": 0.007935,
+      "low_denominator_flag": false,
+      "engagement_source": {
+        "preferred_snapshot": "fetch_post_detail",
+        "source_endpoint": "/api/v1/tiktok/web/fetch_post_detail",
+        "source_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/fetch-post-detail-7596080221900639543.json",
+        "captured_at": "2026-10-30T16:38:50+00:00",
+        "request_id": "4757f161-2dc5-41c5-bca2-a47c9fee0f21",
+        "field_paths": {
+          "desc": "data.itemInfo.itemStruct.desc",
+          "hashtags": "data.itemInfo.itemStruct.textExtra[].hashtagName",
+          "anchors": "data.itemInfo.itemStruct.anchors[].extra",
+          "statistics": "data.itemInfo.itemStruct.stats.{playCount,diggCount,commentCount,shareCount,collectCount}"
+        }
+      }
+    },
+    {
+      "video_id": "7613588163990129950",
+      "relation_confidence": "high",
+      "relation_type": "target_exact",
+      "target_product_id": "1729474995478630680",
+      "target_baseline_eligible": true,
+      "performance_eligible": true,
+      "content_tag": "unknown",
+      "duration_seconds": 34.0,
+      "duration_bucket": "31-60s",
+      "has_link": "true",
+      "ad_disclosure": "true",
+      "platform_is_ad": "true",
+      "comparison": "unknown",
+      "demo": "unknown",
+      "play_count": 1500000,
+      "like_count": 12400,
+      "comment_count": 116,
+      "share_count": 1833,
+      "collect_count": 2467,
+      "interaction_rate": 0.011211,
+      "low_denominator_flag": false,
+      "engagement_source": {
+        "preferred_snapshot": "fetch_post_detail",
+        "source_endpoint": "/api/v1/tiktok/web/fetch_post_detail",
+        "source_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/fetch-post-detail-7613588163990129950.json",
+        "captured_at": "2026-10-30T16:38:50+00:00",
+        "request_id": "9f907eb5-bd97-496e-bf0e-c42042bdccc1",
+        "field_paths": {
+          "desc": "data.itemInfo.itemStruct.desc",
+          "hashtags": "data.itemInfo.itemStruct.textExtra[].hashtagName",
+          "anchors": "data.itemInfo.itemStruct.anchors[].extra",
+          "statistics": "data.itemInfo.itemStruct.stats.{playCount,diggCount,commentCount,shareCount,collectCount}"
+        }
+      }
+    },
+    {
+      "video_id": "7624603263974788382",
+      "relation_confidence": "high",
+      "relation_type": "target_exact",
+      "target_product_id": "1729474995478630680",
+      "target_baseline_eligible": true,
+      "performance_eligible": true,
+      "content_tag": "unknown",
+      "duration_seconds": 39.0,
+      "duration_bucket": "31-60s",
+      "has_link": "true",
+      "ad_disclosure": "true",
+      "platform_is_ad": "true",
+      "comparison": "unknown",
+      "demo": "unknown",
+      "play_count": 208100,
+      "like_count": 2209,
+      "comment_count": 28,
+      "share_count": 113,
+      "collect_count": 283,
+      "interaction_rate": 0.012653,
+      "low_denominator_flag": false,
+      "engagement_source": {
+        "preferred_snapshot": "fetch_post_detail",
+        "source_endpoint": "/api/v1/tiktok/web/fetch_post_detail",
+        "source_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/fetch-post-detail-7624603263974788382.json",
+        "captured_at": "2026-10-30T16:38:50+00:00",
+        "request_id": "1d3739d4-0b0d-4a2d-abb8-3f4dc4d5605f",
+        "field_paths": {
+          "desc": "data.itemInfo.itemStruct.desc",
+          "hashtags": "data.itemInfo.itemStruct.textExtra[].hashtagName",
+          "anchors": "data.itemInfo.itemStruct.anchors[].extra",
+          "statistics": "data.itemInfo.itemStruct.stats.{playCount,diggCount,commentCount,shareCount,collectCount}"
+        }
+      }
+    },
+    {
+      "video_id": "7630157203525225742",
+      "relation_confidence": "high",
+      "relation_type": "target_exact",
+      "target_product_id": "1729474995478630680",
+      "target_baseline_eligible": true,
+      "performance_eligible": true,
+      "content_tag": "unknown",
+      "duration_seconds": 30.0,
+      "duration_bucket": "16-30s",
+      "has_link": "true",
+      "ad_disclosure": "true",
+      "platform_is_ad": "true",
+      "comparison": "unknown",
+      "demo": "unknown",
+      "play_count": 607100,
+      "like_count": 2148,
+      "comment_count": 243,
+      "share_count": 245,
+      "collect_count": 167,
+      "interaction_rate": 0.004617,
+      "low_denominator_flag": false,
+      "engagement_source": {
+        "preferred_snapshot": "fetch_post_detail",
+        "source_endpoint": "/api/v1/tiktok/web/fetch_post_detail",
+        "source_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/fetch-post-detail-7630157203525225742.json",
+        "captured_at": "2026-10-30T16:38:50+00:00",
+        "request_id": "dd98ee5e-9024-4101-ab06-43ed7d87723c",
+        "field_paths": {
+          "desc": "data.itemInfo.itemStruct.desc",
+          "hashtags": "data.itemInfo.itemStruct.textExtra[].hashtagName",
+          "anchors": "data.itemInfo.itemStruct.anchors[].extra",
+          "statistics": "data.itemInfo.itemStruct.stats.{playCount,diggCount,commentCount,shareCount,collectCount}"
+        }
+      }
+    },
+    {
+      "video_id": "7669995620307881230",
+      "relation_confidence": "high",
+      "relation_type": "target_exact",
+      "target_product_id": "1729474995478630680",
+      "target_baseline_eligible": true,
+      "performance_eligible": true,
+      "content_tag": "unknown",
+      "duration_seconds": 39.0,
+      "duration_bucket": "31-60s",
+      "has_link": "true",
+      "ad_disclosure": "true",
+      "platform_is_ad": "true",
+      "comparison": "unknown",
+      "demo": "unknown",
+      "play_count": 143300,
+      "like_count": 1382,
+      "comment_count": 32,
+      "share_count": 155,
+      "collect_count": 262,
+      "interaction_rate": 0.012777,
+      "low_denominator_flag": false,
+      "engagement_source": {
+        "preferred_snapshot": "fetch_post_detail",
+        "source_endpoint": "/api/v1/tiktok/web/fetch_post_detail",
+        "source_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/fetch-post-detail-7669995620307881230.json",
+        "captured_at": "2026-10-30T16:38:50+00:00",
+        "request_id": "d6438b9f-1a9f-4e44-ab9c-00c85e754dff",
+        "field_paths": {
+          "desc": "data.itemInfo.itemStruct.desc",
+          "hashtags": "data.itemInfo.itemStruct.textExtra[].hashtagName",
+          "anchors": "data.itemInfo.itemStruct.anchors[].extra",
+          "statistics": "data.itemInfo.itemStruct.stats.{playCount,diggCount,commentCount,shareCount,collectCount}"
+        }
+      }
+    },
+    {
+      "video_id": "7691166964626066701",
+      "relation_confidence": "high",
+      "relation_type": "target_exact",
+      "target_product_id": "1729474995478630680",
+      "target_baseline_eligible": true,
+      "performance_eligible": true,
+      "content_tag": "unknown",
+      "duration_seconds": 68.0,
+      "duration_bucket": ">60s",
+      "has_link": "true",
+      "ad_disclosure": "true",
+      "platform_is_ad": "true",
+      "comparison": "unknown",
+      "demo": "unknown",
+      "play_count": 38000,
+      "like_count": 1522,
+      "comment_count": 21,
+      "share_count": 63,
+      "collect_count": 61,
+      "interaction_rate": 0.043868,
+      "low_denominator_flag": false,
+      "engagement_source": {
+        "preferred_snapshot": "fetch_post_detail",
+        "source_endpoint": "/api/v1/tiktok/web/fetch_post_detail",
+        "source_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/fetch-post-detail-7691166964626066701.json",
+        "captured_at": "2026-10-30T16:38:50+00:00",
+        "request_id": "d82ac6d8-a054-4cc6-b3d0-6a26f6eca790",
+        "field_paths": {
+          "desc": "data.itemInfo.itemStruct.desc",
+          "hashtags": "data.itemInfo.itemStruct.textExtra[].hashtagName",
+          "anchors": "data.itemInfo.itemStruct.anchors[].extra",
+          "statistics": "data.itemInfo.itemStruct.stats.{playCount,diggCount,commentCount,shareCount,collectCount}"
+        }
+      }
+    },
+    {
+      "video_id": "7692109722316475661",
+      "relation_confidence": "high",
+      "relation_type": "target_exact",
+      "target_product_id": "1729474995478630680",
+      "target_baseline_eligible": true,
+      "performance_eligible": true,
+      "content_tag": "unknown",
+      "duration_seconds": 46.0,
+      "duration_bucket": "31-60s",
+      "has_link": "true",
+      "ad_disclosure": "true",
+      "platform_is_ad": "true",
+      "comparison": "unknown",
+      "demo": "unknown",
+      "play_count": 202000,
+      "like_count": 816,
+      "comment_count": 23,
+      "share_count": 201,
+      "collect_count": 315,
+      "interaction_rate": 0.006708,
+      "low_denominator_flag": false,
+      "engagement_source": {
+        "preferred_snapshot": "fetch_post_detail",
+        "source_endpoint": "/api/v1/tiktok/web/fetch_post_detail",
+        "source_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/fetch-post-detail-7692109722316475661.json",
+        "captured_at": "2026-10-30T16:38:50+00:00",
+        "request_id": "63ccc9a8-f784-462b-9ece-52ea9e409852",
+        "field_paths": {
+          "desc": "data.itemInfo.itemStruct.desc",
+          "hashtags": "data.itemInfo.itemStruct.textExtra[].hashtagName",
+          "anchors": "data.itemInfo.itemStruct.anchors[].extra",
+          "statistics": "data.itemInfo.itemStruct.stats.{playCount,diggCount,commentCount,shareCount,collectCount}"
+        }
+      }
+    },
+    {
+      "video_id": "7695942452426968333",
+      "relation_confidence": "high",
+      "relation_type": "target_exact",
+      "target_product_id": "1729474995478630680",
+      "target_baseline_eligible": true,
+      "performance_eligible": true,
+      "content_tag": "unknown",
+      "duration_seconds": 28.0,
+      "duration_bucket": "16-30s",
+      "has_link": "true",
+      "ad_disclosure": "true",
+      "platform_is_ad": "true",
+      "comparison": "unknown",
+      "demo": "unknown",
+      "play_count": 31500,
+      "like_count": 702,
+      "comment_count": 2,
+      "share_count": 487,
+      "collect_count": 321,
+      "interaction_rate": 0.048,
+      "low_denominator_flag": false,
+      "engagement_source": {
+        "preferred_snapshot": "fetch_post_detail",
+        "source_endpoint": "/api/v1/tiktok/web/fetch_post_detail",
+        "source_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/fetch-post-detail-7695942452426968333.json",
+        "captured_at": "2026-10-30T16:38:50+00:00",
+        "request_id": "f508757d-1775-4379-800b-14d3646b06ab",
+        "field_paths": {
+          "desc": "data.itemInfo.itemStruct.desc",
+          "hashtags": "data.itemInfo.itemStruct.textExtra[].hashtagName",
+          "anchors": "data.itemInfo.itemStruct.anchors[].extra",
+          "statistics": "data.itemInfo.itemStruct.stats.{playCount,diggCount,commentCount,shareCount,collectCount}"
+        }
+      }
+    },
+    {
+      "video_id": "7700940453163699486",
+      "relation_confidence": "high",
+      "relation_type": "target_exact",
+      "target_product_id": "1729474995478630680",
+      "target_baseline_eligible": true,
+      "performance_eligible": true,
+      "content_tag": "unknown",
+      "duration_seconds": 21.0,
+      "duration_bucket": "16-30s",
+      "has_link": "true",
+      "ad_disclosure": "true",
+      "platform_is_ad": "true",
+      "comparison": "unknown",
+      "demo": "unknown",
+      "play_count": 6701,
+      "like_count": 24,
+      "comment_count": 4,
+      "share_count": 0,
+      "collect_count": 6,
+      "interaction_rate": 0.005074,
+      "low_denominator_flag": false,
+      "engagement_source": {
+        "preferred_snapshot": "fetch_post_detail",
+        "source_endpoint": "/api/v1/tiktok/web/fetch_post_detail",
+        "source_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/fetch-post-detail-7700940453163699486.json",
+        "captured_at": "2026-10-30T16:38:50+00:00",
+        "request_id": "95550226-747f-4d4d-bd7c-e0a30c4e6d06",
+        "field_paths": {
+          "desc": "data.itemInfo.itemStruct.desc",
+          "hashtags": "data.itemInfo.itemStruct.textExtra[].hashtagName",
+          "anchors": "data.itemInfo.itemStruct.anchors[].extra",
+          "statistics": "data.itemInfo.itemStruct.stats.{playCount,diggCount,commentCount,shareCount,collectCount}"
+        }
+      }
+    },
+    {
+      "video_id": "7702214491013942559",
+      "relation_confidence": "high",
+      "relation_type": "target_exact",
+      "target_product_id": "1729474995478630680",
+      "target_baseline_eligible": true,
+      "performance_eligible": true,
+      "content_tag": "unknown",
+      "duration_seconds": 26.0,
+      "duration_bucket": "16-30s",
+      "has_link": "true",
+      "ad_disclosure": "true",
+      "platform_is_ad": "false",
+      "comparison": "unknown",
+      "demo": "unknown",
+      "play_count": 1025,
+      "like_count": 16,
+      "comment_count": 3,
+      "share_count": 1,
+      "collect_count": 1,
+      "interaction_rate": 0.020488,
+      "low_denominator_flag": true,
+      "engagement_source": {
+        "preferred_snapshot": "fetch_post_detail",
+        "source_endpoint": "/api/v1/tiktok/web/fetch_post_detail",
+        "source_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/fetch-post-detail-7702214491013942559.json",
+        "captured_at": "2026-10-30T16:38:50+00:00",
+        "request_id": "fc2365a3-93b5-49e5-8147-10c24c75a443",
+        "field_paths": {
+          "desc": "data.itemInfo.itemStruct.desc",
+          "hashtags": "data.itemInfo.itemStruct.textExtra[].hashtagName",
+          "anchors": "data.itemInfo.itemStruct.anchors[].extra",
+          "statistics": "data.itemInfo.itemStruct.stats.{playCount,diggCount,commentCount,shareCount,collectCount}"
+        }
+      }
+    }
+  ]
+}

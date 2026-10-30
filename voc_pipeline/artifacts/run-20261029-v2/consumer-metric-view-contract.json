@@ -1,0 +1,27 @@
+{
+ "schema_version": "voc_consumer_metric_view_contract_v1",
+ "taxonomy_id": "VOC-BAND-v1.1",
+ "eligible_predicate": [
+  "duplicate_representative == true",
+  "data_layer == consumer_observation_fact",
+  "product_match in {exact_current_family, category_adjacent}",
+  "content_role == consumer_experience",
+  "commerciality == no_signal_observed",
+  "metric_eligibility in {natural_sample_candidate, diagnostic_sample_only, qualitative_seed_only, tiktok_verified_candidate}",
+  "organic_confidence in {high, medium}",
+  "for tiktok_shop_verified: verified_purchase == true AND identity_noise == none"
+ ],
+ "experience_cohort": {
+  "predicate": "product_match in {exact_current_family, category_adjacent} AND experience_scope in {full, partial} AND text non-empty",
+  "contract_version": "E-merge/1",
+  "note": "Consumers must not filter on experience_scope alone; off-target evaluations exist and never enter a product claim."
+ },
+ "frame_denominators": {
+  "natural": "eligible natural consumer records",
+  "diagnostic": "never used as prevalence denominator",
+  "qualitative_seed": "never used as consumer denominator",
+  "tiktok_shop_verified": "eligible verified-purchase canonical reviews in the 2026-07-01..2026-10-29 window; one direction per record; never compared with natural or diagnostic percentages"
+ },
+ "qa_state": "blocked_g7_not_executed",
+ "metric_rows_authorized": 0
+}

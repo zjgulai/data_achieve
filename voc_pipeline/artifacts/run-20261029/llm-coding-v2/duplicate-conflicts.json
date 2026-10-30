@@ -1,0 +1,2000 @@
+[
+ {
+  "canonical_id": "c-19rgm8iapnjhc",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 43
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 1
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 43
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-19rjo0npo4yjp",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 44
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 2
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 44
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-19rnf7umnzg9x",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 45
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 3
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 45
+  },
+  "conflict_fields": [
+   "aspects",
+   "experience_reason",
+   "experience_scope",
+   "is_product_experience",
+   "notes",
+   "outcome"
+  ],
+  "coding_conflict_fields": [
+   "aspects",
+   "experience_reason",
+   "experience_scope",
+   "is_product_experience",
+   "outcome"
+  ]
+ },
+ {
+  "canonical_id": "c-19rqosa6piby9",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 46
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 4
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 46
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-1lijqy4",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 47
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 5
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 47
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-1nphgbt",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 48
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 6
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 48
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-1oht78y",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 49
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 7
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 49
+  },
+  "conflict_fields": [
+   "aspects",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "aspects"
+  ]
+ },
+ {
+  "canonical_id": "c-1ow447s",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 50
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 8
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 50
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-1pfyruu",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 51
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 9
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 51
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-1purbx5",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 52
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 10
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 52
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-1qarw67",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 53
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 11
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 53
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-1s1yjs2",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 54
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 12
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 54
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-1sg6gqr",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 55
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 13
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 55
+  },
+  "conflict_fields": [
+   "aspects",
+   "journey",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "aspects",
+   "journey"
+  ]
+ },
+ {
+  "canonical_id": "c-1svoq9k",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 56
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 14
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 56
+  },
+  "conflict_fields": [
+   "journey",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "journey"
+  ]
+ },
+ {
+  "canonical_id": "c-1ti8znp",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 57
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 15
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 57
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-1tskim1",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 58
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 16
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 58
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-1txcmzz",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 59
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 17
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 59
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-1uaf2x9",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 60
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 18
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 60
+  },
+  "conflict_fields": [
+   "journey",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "journey"
+  ]
+ },
+ {
+  "canonical_id": "c-1uuim67",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 61
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 19
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 61
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-1vac6v8",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 62
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 20
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 62
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-1vpdbxw",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 63
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 21
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 63
+  },
+  "conflict_fields": [
+   "journey",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "journey"
+  ]
+ },
+ {
+  "canonical_id": "c-1vzh8cy",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 64
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 22
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 64
+  },
+  "conflict_fields": [
+   "journey",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "journey"
+  ]
+ },
+ {
+  "canonical_id": "c-1wd2rfo",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 65
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 23
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 65
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-1x2pwx9",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 66
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 24
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 66
+  },
+  "conflict_fields": [
+   "journey",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "journey"
+  ]
+ },
+ {
+  "canonical_id": "c-1xb64sq",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 67
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 25
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 67
+  },
+  "conflict_fields": [
+   "journey",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "journey"
+  ]
+ },
+ {
+  "canonical_id": "c-1xhod4n",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 68
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 26
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 68
+  },
+  "conflict_fields": [
+   "aspects",
+   "experience_reason",
+   "experience_scope",
+   "is_product_experience",
+   "notes",
+   "outcome"
+  ],
+  "coding_conflict_fields": [
+   "aspects",
+   "experience_reason",
+   "experience_scope",
+   "is_product_experience",
+   "outcome"
+  ]
+ },
+ {
+  "canonical_id": "c-7658445761408780046",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 69
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 27
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 69
+  },
+  "conflict_fields": [
+   "aspects"
+  ],
+  "coding_conflict_fields": [
+   "aspects"
+  ]
+ },
+ {
+  "canonical_id": "c-7660305549976045325",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 70
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 28
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 70
+  },
+  "conflict_fields": [
+   "aspects",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "aspects"
+  ]
+ },
+ {
+  "canonical_id": "c-7665021905910384398",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 71
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 29
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 71
+  },
+  "conflict_fields": [
+   "aspects",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "aspects"
+  ]
+ },
+ {
+  "canonical_id": "c-7670289594361071374",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 72
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 30
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 72
+  },
+  "conflict_fields": [
+   "aspects",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "aspects"
+  ]
+ },
+ {
+  "canonical_id": "c-7674039645484320526",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 73
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 31
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 73
+  },
+  "conflict_fields": [
+   "aspects",
+   "journey",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "aspects",
+   "journey"
+  ]
+ },
+ {
+  "canonical_id": "c-7680768165969676046",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 74
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 32
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 74
+  },
+  "conflict_fields": [
+   "aspects",
+   "journey",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "aspects",
+   "journey"
+  ]
+ },
+ {
+  "canonical_id": "c-7688192349947610893",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 75
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 33
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 75
+  },
+  "conflict_fields": [
+   "aspects",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "aspects"
+  ]
+ },
+ {
+  "canonical_id": "c-7692120308744128270",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 76
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 34
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 76
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-7696935989738456846",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 77
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 35
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 77
+  },
+  "conflict_fields": [
+   "journey",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "journey"
+  ]
+ },
+ {
+  "canonical_id": "c-7700787693628868365",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 78
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 36
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 78
+  },
+  "conflict_fields": [
+   "journey",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "journey"
+  ]
+ },
+ {
+  "canonical_id": "c-pdedro1",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 79
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 37
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 79
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-pdyeiod",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 80
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 38
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 80
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-pf83bo1",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 81
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 39
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 81
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-pf9naw8",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 82
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 40
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 82
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-pgqfcdj",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 83
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 41
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 83
+  },
+  "conflict_fields": [
+   "experience_reason",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "experience_reason"
+  ]
+ },
+ {
+  "canonical_id": "c-phzswus",
+  "batch": "batch-02",
+  "copies": [
+   {
+    "file": "part-01.jsonl",
+    "line": 84
+   },
+   {
+    "file": "part-02.jsonl",
+    "line": 42
+   }
+  ],
+  "kept_from": {
+   "file": "part-01.jsonl",
+   "line": 84
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-19rhj02pvd9q8",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 43
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 1
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 43
+  },
+  "conflict_fields": [
+   "journey",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "journey"
+  ]
+ },
+ {
+  "canonical_id": "c-19rkynhhprt2c",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 44
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 2
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 44
+  },
+  "conflict_fields": [
+   "aspects",
+   "notes",
+   "outcome"
+  ],
+  "coding_conflict_fields": [
+   "aspects",
+   "outcome"
+  ]
+ },
+ {
+  "canonical_id": "c-19rnpvbhuza1v",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 45
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 3
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 45
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-19rt15mqlhu00",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 46
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 4
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 46
+  },
+  "conflict_fields": [
+   "aspects",
+   "contexts",
+   "journey",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "aspects",
+   "contexts",
+   "journey"
+  ]
+ },
+ {
+  "canonical_id": "c-1m19v6b",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 47
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 5
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 47
+  },
+  "conflict_fields": [
+   "journey",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "journey"
+  ]
+ },
+ {
+  "canonical_id": "c-1nt06x5",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 48
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 6
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 48
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-1olk9j6",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 49
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 7
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 49
+  },
+  "conflict_fields": [
+   "experience_reason",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "experience_reason"
+  ]
+ },
+ {
+  "canonical_id": "c-1oyj0g6",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 50
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 8
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 50
+  },
+  "conflict_fields": [
+   "aspects",
+   "journey",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "aspects",
+   "journey"
+  ]
+ },
+ {
+  "canonical_id": "c-1pijloi",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 51
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 9
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 51
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-1pwnioo",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 52
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 10
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 52
+  },
+  "conflict_fields": [
+   "aspects",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "aspects"
+  ]
+ },
+ {
+  "canonical_id": "c-1qnhsit",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 53
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 11
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 53
+  },
+  "conflict_fields": [
+   "notes",
+   "outcome"
+  ],
+  "coding_conflict_fields": [
+   "outcome"
+  ]
+ },
+ {
+  "canonical_id": "c-1s21pgr",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 54
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 12
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 54
+  },
+  "conflict_fields": [
+   "aspects",
+   "experience_reason",
+   "experience_scope",
+   "is_product_experience",
+   "notes",
+   "outcome"
+  ],
+  "coding_conflict_fields": [
+   "aspects",
+   "experience_reason",
+   "experience_scope",
+   "is_product_experience",
+   "outcome"
+  ]
+ },
+ {
+  "canonical_id": "c-1sn9hb1",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 55
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 13
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 55
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-1t282oo",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 56
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 14
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 56
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-1tkhcj3",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 57
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 15
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 57
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-1ttvd7z",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 58
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 16
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 58
+  },
+  "conflict_fields": [
+   "medical_self_report",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "medical_self_report"
+  ]
+ },
+ {
+  "canonical_id": "c-1tyudcq",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 59
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 17
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 59
+  },
+  "conflict_fields": [
+   "journey",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "journey"
+  ]
+ },
+ {
+  "canonical_id": "c-1ufpfv5",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 60
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 18
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 60
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-1v22kyn",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 61
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 19
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 61
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-1vj2khm",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 62
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 20
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 62
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-1vu5zbn",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 63
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 21
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 63
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-1w11tpt",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 64
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 22
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 64
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-1wfiw4m",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 65
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 23
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 65
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-1x4bfdu",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 66
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 24
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 66
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-1xebuwz",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 67
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 25
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 67
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-7657363085285771021",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 68
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 26
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 68
+  },
+  "conflict_fields": [
+   "aspects",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "aspects"
+  ]
+ },
+ {
+  "canonical_id": "c-7659197863628408589",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 69
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 27
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 69
+  },
+  "conflict_fields": [],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-7660839835632076557",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 70
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 28
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 70
+  },
+  "conflict_fields": [
+   "aspects",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "aspects"
+  ]
+ },
+ {
+  "canonical_id": "c-7665422680019765005",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 71
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 29
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 71
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-7670994697697445646",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 72
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 30
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 72
+  },
+  "conflict_fields": [
+   "journey",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "journey"
+  ]
+ },
+ {
+  "canonical_id": "c-7674647274773759757",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 73
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 31
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 73
+  },
+  "conflict_fields": [
+   "aspects",
+   "experience_source",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "aspects",
+   "experience_source"
+  ]
+ },
+ {
+  "canonical_id": "c-7683191322515474190",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 74
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 32
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 74
+  },
+  "conflict_fields": [
+   "aspects",
+   "journey",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "aspects",
+   "journey"
+  ]
+ },
+ {
+  "canonical_id": "c-7689475452017936141",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 75
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 33
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 75
+  },
+  "conflict_fields": [
+   "journey",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "journey"
+  ]
+ },
+ {
+  "canonical_id": "c-7693578725222057741",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 76
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 34
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 76
+  },
+  "conflict_fields": [],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-7697369318054151949",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 77
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 35
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 77
+  },
+  "conflict_fields": [
+   "aspects",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "aspects"
+  ]
+ },
+ {
+  "canonical_id": "c-7701363030302459661",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 78
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 36
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 78
+  },
+  "conflict_fields": [
+   "aspects",
+   "journey",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "aspects",
+   "journey"
+  ]
+ },
+ {
+  "canonical_id": "c-pdfi6vr",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 79
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 37
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 79
+  },
+  "conflict_fields": [
+   "journey",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "journey"
+  ]
+ },
+ {
+  "canonical_id": "c-pei4aj9",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 80
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 38
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 80
+  },
+  "conflict_fields": [
+   "notes"
+  ],
+  "coding_conflict_fields": []
+ },
+ {
+  "canonical_id": "c-pf8frl5",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 81
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 39
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 81
+  },
+  "conflict_fields": [
+   "journey",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "journey"
+  ]
+ },
+ {
+  "canonical_id": "c-pf9w8pu",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 82
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 40
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 82
+  },
+  "conflict_fields": [
+   "journey",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "journey"
+  ]
+ },
+ {
+  "canonical_id": "c-pgsk2oe",
+  "batch": "batch-04",
+  "copies": [
+   {
+    "file": "part-02.jsonl",
+    "line": 83
+   },
+   {
+    "file": "part-04.jsonl",
+    "line": 41
+   }
+  ],
+  "kept_from": {
+   "file": "part-02.jsonl",
+   "line": 83
+  },
+  "conflict_fields": [
+   "aspects",
+   "contexts",
+   "journey",
+   "notes"
+  ],
+  "coding_conflict_fields": [
+   "aspects",
+   "contexts",
+   "journey"
+  ]
+ }
+]

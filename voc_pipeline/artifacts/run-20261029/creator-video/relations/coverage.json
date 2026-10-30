@@ -1,0 +1,222 @@
+{
+  "schema_version": "voc_creator_video_relations_v2",
+  "generated_at": "2026-10-30T18:23:43+00:00",
+  "run_dir": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029",
+  "relations_dir": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/relations",
+  "inputs": {
+    "video_snapshots": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/video-snapshots.json",
+    "video_details": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/video-details.json",
+    "video_products": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/video-products.json",
+    "creators": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/creators.json",
+    "canonical_records": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/canonical-records.jsonl",
+    "raw_reviews_glob": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/raw/tikhub/*.json",
+    "raw_search_glob": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/video-search-*.json"
+  },
+  "video_inventory": {
+    "unique_videos": 141,
+    "videos_with_search_snapshot": 141,
+    "videos_with_detail_snapshot": 59,
+    "videos_without_detail_snapshot": 82,
+    "unique_authors_in_search_sample": 124,
+    "creators_from_details": 52,
+    "creators_with_profile": 52,
+    "creators_profile_exact": 49,
+    "creators_profile_partial": 3,
+    "creators_without_profile_but_search_author": 72
+  },
+  "video_creator": {
+    "relation_rows": 141,
+    "videos_linked": 141,
+    "coverage_rate": 1.0,
+    "unique_creators_linked": 124,
+    "confidence_distribution": {
+      "high": 138,
+      "medium": 3
+    },
+    "match_method_distribution": {
+      "fetch_post_detail.author.id + fetch_post_detail.authorStats": 3,
+      "fetch_post_detail.author.id + fetch_user_profile.user.id": 56,
+      "fetch_video_search_result.author.uid + fetch_user_profile.user.id": 1,
+      "fetch_video_search_result.aweme_info.author.uid": 81
+    },
+    "identity_source_distribution": {
+      "fetch_post_detail.author": 59,
+      "fetch_video_search_result.aweme_info.author": 82
+    },
+    "follower_count_source_distribution": {
+      "fetch_post_detail.data.itemInfo.itemStruct.authorStats.followerCount": 3,
+      "fetch_user_profile.data.userInfo.stats.followerCount": 57,
+      "fetch_video_search_result.aweme_info.author.follower_count": 81
+    },
+    "profile_verified_rows": 57,
+    "profile_verified_rate": 0.4043,
+    "note": "59 rows use fetch_post_detail author identity; 82 rows use the fetch_video_search_result aweme author object because no detail snapshot exists. Both carry uid/sec_uid/unique_id. Only 52 unique creators have a fetched profile; the other 72 have search-payload identity only."
+  },
+  "video_product_target": {
+    "target_product_id": "1729474995478630680",
+    "target_product_name": "Momcozy Pregnancy Belly Band YB001, CozySupport Ergonest Maternity Belly Band",
+    "relation_rows": 141,
+    "candidate_relation_rows": 77,
+    "no_relation_rows": 64,
+    "confidence_distribution": {
+      "high": 10,
+      "low": 36,
+      "medium": 31,
+      "none": 64
+    },
+    "status_distribution": {
+      "confirmed": 10,
+      "not_related": 64,
+      "probable": 31,
+      "unconfirmed": 36
+    },
+    "relation_type_distribution": {
+      "duplicate_listing_anchor": 19,
+      "hashtag_category_only": 7,
+      "no_signal": 64,
+      "non_target_subline": 7,
+      "other_brand_category_anchor": 6,
+      "sibling_product_anchor": 2,
+      "target_exact": 10,
+      "text_brand_and_category": 12,
+      "text_category_only": 14
+    },
+    "match_method_distribution": {
+      "anchor_duplicate_listing_product_id": 19,
+      "anchor_other_product_category": 8,
+      "anchor_product_id_exact": 10,
+      "desc_brand_and_category": 12,
+      "desc_category_only": 14,
+      "desc_non_target_subline": 7,
+      "hashtag_category_only": 7,
+      "none": 64
+    },
+    "content_tag_distribution": {
+      "consideration": 1,
+      "material_candidate": 7,
+      "unknown": 133
+    },
+    "performance_eligible_n": 10,
+    "target_coverage": {
+      "exact_product_id_high": 10,
+      "exact_product_id_rate": 0.0709,
+      "plus_text_evidence_medium": 22,
+      "plus_text_evidence_rate": 0.156,
+      "plus_duplicate_listing_medium": 41,
+      "plus_duplicate_listing_rate": 0.2908,
+      "category_reference_n": 31,
+      "category_reference_rate": 0.2199,
+      "non_target_subline_n": 7,
+      "consideration_n": 1,
+      "category_anchor_verified": 37,
+      "category_anchor_verified_rate": 0.2624,
+      "category_anchor_verified_with_detail": 36
+    },
+    "baseline_eligibility": {
+      "baseline_eligible_n": 10,
+      "performance_eligible_n": 10,
+      "target_exact_baseline_n": 10,
+      "target_text_evidence_review_n": 12,
+      "target_review_candidate_n": 22,
+      "target_relaxed_if_accepted_n": 10,
+      "duplicate_listing_review_n": 19,
+      "category_reference_n": 31,
+      "consideration_n": 1,
+      "non_target_subline_n": 7,
+      "category_anchor_verified_n": 37,
+      "category_anchor_verified_with_detail_n": 36,
+      "unconfirmed_low_n": 36,
+      "not_related_n": 64,
+      "policy": "Only exact target anchors (high confidence, anchor product_id == target) are baseline and performance eligible. All medium rows are category reference: they may be counted, described, and listed, but they never enter the target baseline, never enter performance statistics, and never support a 'which content form wins' conclusion. Consideration-tagged rows are excluded from all performance statistics. Non-target subline text rows are demoted to low. Low confidence is unconfirmed and excluded from all baseline statistics."
+    },
+    "notes": [
+      "All 141 videos are judged; 64 have no target/category signal and are kept as confidence=none negative rows for audit.",
+      "19 medium rows are duplicate-listing anchors; their medium basis is the anchor product title (same Momcozy YB001 series, similar but not identical title, different product_id), not the video caption.",
+      "11 medium text rows remain category reference. One additional text row is tagged consideration and also excluded from performance statistics.",
+      "7 text rows naming another product line (Go As You Grow, postpartum belly band, nursing-bra mix, Momcozy UK) are demoted to low and tagged non_target_subline.",
+      "Only the 10 high-confidence exact-ID rows are baseline and performance eligible; medium rows are category reference only.",
+      "Low confidence rows are additionally written to video-product-unconfirmed.jsonl.",
+      "High confidence rows are additionally written to video-product-target-baseline.jsonl."
+    ]
+  },
+  "comment_video": {
+    "relation_rows": 0,
+    "coverage_rate": 0.0,
+    "canonical_tiktok_shop_rows": 175,
+    "canonical_rows_with_video_key": 0,
+    "raw_review_rows": 180,
+    "raw_rows_with_video_key": 0,
+    "reviewer_id_present": 167,
+    "reviewer_id_is_not_creator_id": true,
+    "review_id_video_id_collisions": 0,
+    "judgment": "comment -> video relation does not exist in the current corpus; 0% of product reviews can be tied to a video_id",
+    "reason": "The 175 canonical tiktok_shop records are product reviews fetched from /api/v1/tiktok/shop/web/fetch_product_reviews_v2. Their external_id is the review_id (it matches raw review_id 175/175), not a video/aweme id. Neither the canonical source_meta nor the 180 raw review rows expose video_id/aweme_id/item_id. The reviewer_id in the raw payload is the review author's user id, not a video author id. Therefore a comment->video relation cannot be built from this corpus. This is a product-review layer, not a video-comment layer.",
+    "explanation_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/relations/comment-video-gap.json"
+  },
+  "product_review_context": {
+    "product_id": "1729474995478630680",
+    "total_reviews_in_raw_snapshot": 1137,
+    "overall_rating_in_raw_snapshot": 4.2,
+    "note": "The task brief said 1133 reviews; the collected raw snapshot says 1137. This report uses the raw snapshot value and does not overwrite the task brief."
+  },
+  "baseline_reproduction": {
+    "source": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/baseline.json",
+    "product_exact": {
+      "n": 10,
+      "median_interaction_rate": 0.011932,
+      "existing_baseline_n": 10,
+      "existing_baseline_median_interaction_rate": 0.011932,
+      "matches_existing_baseline": true
+    },
+    "category_anchor_verified_with_detail": {
+      "n": 36,
+      "median_interaction_rate": 0.011454,
+      "existing_baseline_n": 36,
+      "existing_baseline_median_interaction_rate": 0.011454,
+      "matches_existing_baseline": true
+    },
+    "creator_table": {
+      "videos_covered_by_existing_baseline": 36,
+      "follower_count_or_tier_mismatches": 0,
+      "mismatch_video_ids": [],
+      "matches_existing_baseline": true
+    },
+    "note": "Cross-check only: the relation table reproduces the existing baseline.json cohorts from the same detail snapshots. It does not recompute or replace baseline.json."
+  },
+  "caveats": [
+    "Keyword search is a non-probability sample; the 141 videos are 12 queries x one page, not a census of the category.",
+    "Medium text evidence means brand + belly-band category, not target product specificity. It is category reference only. Text rows that name another product line (Go As You Grow, postpartum band, nursing-bra mix, Momcozy UK) are demoted to low.",
+    "Duplicate-listing anchors point to other listings in the same Momcozy YB001 series with different product_ids and similar but not identical titles; they are not merged and are kept in the category-reference bucket.",
+    "Search statistics and detail statistics were captured at different times; the detail snapshot is preferred when present.",
+    "Interaction rate uses the provider's play/like/comment/share/collect fields; it is not view-through, completion, GMV, or conversion.",
+    "The product-review layer and the video layer have different populations; the 175 product reviews cannot be joined to video_id."
+  ],
+  "what_is_missing_to_close_the_loop": [
+    "A product->video enumeration endpoint that works without the logged-in creator cookie, or TIKHUB_TIKTOK_CREATOR_COOKIE so get_product_related_videos / get_video_associated_product_list can run.",
+    "A review->video key. The current TikTok Shop product-review endpoint does not return video_id/aweme_id/item_id; reviewer_id is not a video or creator id.",
+    "Working search pagination. cursor=20 returned the same page, so the 141 videos are 12 keyword queries x 1 page, not a census.",
+    "Detail snapshots for all sample videos. 59/141 have fetch_post_detail; 82 rely on search-level stats and anchors.",
+    "Profiles for the 72 search-only creators. 52/124 creators have a fetched profile; follower_count for the rest is the search author field.",
+    "A product-id merge map for the duplicate Momcozy YB001 / CozySupport Ergonest listings. 19 videos anchor to a duplicate product_id and are kept medium, not high.",
+    "Any source for third-party video GMV/orders, audience demographics, or subtitles. TikHub exposes those only for the logged-in creator or not at all."
+  ],
+  "constraints_honored": {
+    "no_fabricated_rows": true,
+    "every_number_has_endpoint_and_field_path": true,
+    "low_confidence_excluded_from_baseline": true,
+    "low_confidence_single_bucket": "video-product-unconfirmed.jsonl",
+    "canonical_records_unchanged": true,
+    "gold_set_unchanged": true,
+    "database_writes": 0
+  },
+  "outputs": {
+    "video_creator": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/relations/video-creator.jsonl",
+    "video_product": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/relations/video-product.jsonl",
+    "video_product_candidates": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/relations/video-product-candidates.jsonl",
+    "video_product_unconfirmed": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/relations/video-product-unconfirmed.jsonl",
+    "video_product_target_baseline": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/relations/video-product-target-baseline.jsonl",
+    "comment_video": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/relations/comment-video.jsonl",
+    "comment_video_gap": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/relations/comment-video-gap.json",
+    "coverage": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/relations/coverage.json"
+  }
+}

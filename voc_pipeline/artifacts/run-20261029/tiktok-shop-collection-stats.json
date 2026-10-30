@@ -1,0 +1,77 @@
+{
+ "run_id": "run-20261029",
+ "product_id": "1729474995478630680",
+ "frame": "tiktok_shop_verified",
+ "pages_fetched": 9,
+ "stop_reason": "window_reached",
+ "listing_total_reviews": 1137,
+ "raw_rows": 180,
+ "duplicate_review_ids": 0,
+ "unique_reviews": 180,
+ "accepted_in_window": 175,
+ "quarantined": 1,
+ "quarantine_records": [
+  {
+   "review_id": "7700760562598151950",
+   "product_id": "1729474995478630680",
+   "sku_id": "1732508209920119064",
+   "variant": "YB003 Oyster Pink, 3XL-PRO",
+   "rating": 2,
+   "text": "It's definitely not for women with apron bellies it kept folding up on me and didn't support me at all.",
+   "text_language": "en",
+   "review_time": "2026-10-26T00:04:25+00:00",
+   "verified_purchase": true,
+   "incentivized": false,
+   "helpful_count": null,
+   "region": "US",
+   "run_id": "run-20261029",
+   "captured_at": "2026-10-29T15:47:10+00:00",
+   "product_name": "Momcozy Pregnancy Belly Band YB001, CozySupport Ergonest Maternity Belly Band, Invisible Pregnancy Belt for Back, Abdomen, Waist,A, Pregnancy Stuff, Maternity Clothing Abdominal Binder",
+   "reviewer_masked": "A**🐢",
+   "author_key": "ebab70a438ba0544",
+   "n_images": 0,
+   "quarantine_reason": "sku_variant_mismatch:YB003 Oyster Pink, 3XL-PRO",
+   "raw_page": 1
+  }
+ ],
+ "out_of_window": 4,
+ "distinct_masked_reviewers": 168,
+ "verified_purchase_true": 175,
+ "incentivized_true": 0,
+ "time_range": {
+  "min": "2026-07-01T01:19:50+00:00",
+  "max": "2026-10-29T06:22:33+00:00"
+ },
+ "time_by_month": {
+  "2026-07": 63,
+  "2026-08": 34,
+  "2026-09": 32,
+  "2026-10": 46
+ },
+ "rating_counts": {
+  "1": 13,
+  "2": 8,
+  "3": 14,
+  "4": 18,
+  "5": 122
+ },
+ "text_bearing": 82,
+ "text_ge_30_chars": 76,
+ "text_codable_en": 81,
+ "language_counts": {
+  "en": 81,
+  "non_en": 1,
+  "none": 93
+ },
+ "cost": {
+  "assumed_usd": 0.009,
+  "measured_usd": 0.009,
+  "balance_before_usd": 37.708,
+  "balance_after_usd": 37.699,
+  "note": "TikHub account from apps/api/.env; user/get_user_info before and after the 9 review pages."
+ },
+ "files": {
+  "reviews": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/tiktok-shop-reviews.jsonl",
+  "quarantine": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/tiktok-shop-quarantine.jsonl"
+ }
+}

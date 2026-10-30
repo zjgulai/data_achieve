@@ -1,0 +1,192 @@
+{
+  "generated_at": "2026-10-29T18:04:07.768057+00:00",
+  "source_file": "canonical-records.jsonl",
+  "source_sha256": "e6b9cb2adeabfc0b99efa5e8f492e6ba1aaee43cafa86040a968c587571e7ddf",
+  "source_bytes": 718153,
+  "taxonomy_file": "taxonomy.json",
+  "total_records": 423,
+  "with_text": 330,
+  "with_text_definition": "records whose title+text is non-empty after strip; title alone counts",
+  "text_field_nonempty": 316,
+  "title_only": 14,
+  "both_empty": 93,
+  "skipped_empty_text": 93,
+  "encoded_scope": 330,
+  "num_batches": 8,
+  "batch_counts": {
+    "1": 42,
+    "2": 42,
+    "3": 41,
+    "4": 41,
+    "5": 41,
+    "6": 41,
+    "7": 41,
+    "8": 41
+  },
+  "split_method": "Filter to records whose title+text is non-empty after strip. Sort those records by canonical_id ascending (Python str sort). Assign zero-based rank r to batch ((r % 8) + 1). Write each batch in canonical_id order. Re-running on the same source file reproduces byte-identical batch files.",
+  "fields_kept": [
+    "canonical_id",
+    "source",
+    "title",
+    "text",
+    "product_match",
+    "rating (only when source_meta has it)",
+    "verified_purchase (only when source_meta has it)"
+  ],
+  "rating_records": 82,
+  "verified_purchase_records": 82,
+  "source_counts_total": {
+    "reddit": 248,
+    "tiktok_shop": 175
+  },
+  "source_counts_with_text": {
+    "reddit": 248,
+    "tiktok_shop": 82
+  },
+  "product_match_counts_total": {
+    "brand_other_product": 93,
+    "category_adjacent": 120,
+    "exact_current_family": 191,
+    "irrelevant": 19
+  },
+  "product_match_counts_with_text": {
+    "brand_other_product": 93,
+    "category_adjacent": 120,
+    "exact_current_family": 98,
+    "irrelevant": 19
+  },
+  "skipped_file": "skipped-empty.jsonl",
+  "skipped_sha256": "37cbb8c7ba5c482349046375fdf171aedf40e034c6e2979a8238c277bf43251c",
+  "skipped_reasons": {
+    "empty_text": 93
+  },
+  "batches": [
+    {
+      "batch": 1,
+      "file": "batches/batch-01.jsonl",
+      "count": 42,
+      "source_counts": {
+        "reddit": 32,
+        "tiktok_shop": 10
+      },
+      "product_match_counts": {
+        "brand_other_product": 13,
+        "category_adjacent": 12,
+        "exact_current_family": 15,
+        "irrelevant": 2
+      },
+      "sha256": "bc968c4f8ef0f5b6a081ff82402eb12e3167b562df2c7f40ae3fa2f05c488385"
+    },
+    {
+      "batch": 2,
+      "file": "batches/batch-02.jsonl",
+      "count": 42,
+      "source_counts": {
+        "reddit": 32,
+        "tiktok_shop": 10
+      },
+      "product_match_counts": {
+        "brand_other_product": 15,
+        "category_adjacent": 14,
+        "exact_current_family": 10,
+        "irrelevant": 3
+      },
+      "sha256": "4a279d84bbbcda4184fb4a4bc0096904f30af80a07166c640fbd1deb163c1198"
+    },
+    {
+      "batch": 3,
+      "file": "batches/batch-03.jsonl",
+      "count": 41,
+      "source_counts": {
+        "reddit": 31,
+        "tiktok_shop": 10
+      },
+      "product_match_counts": {
+        "brand_other_product": 13,
+        "category_adjacent": 11,
+        "exact_current_family": 13,
+        "irrelevant": 4
+      },
+      "sha256": "1b28b038b11de5ada567a48868b8a28f5973d7ae53920f961d8ff984dab572c6"
+    },
+    {
+      "batch": 4,
+      "file": "batches/batch-04.jsonl",
+      "count": 41,
+      "source_counts": {
+        "reddit": 30,
+        "tiktok_shop": 11
+      },
+      "product_match_counts": {
+        "brand_other_product": 7,
+        "category_adjacent": 23,
+        "exact_current_family": 11
+      },
+      "sha256": "7cb0b36e72fee29f76c2dfcfe39bc2b81232f432922d1817831003394eebf3ae"
+    },
+    {
+      "batch": 5,
+      "file": "batches/batch-05.jsonl",
+      "count": 41,
+      "source_counts": {
+        "reddit": 30,
+        "tiktok_shop": 11
+      },
+      "product_match_counts": {
+        "brand_other_product": 12,
+        "category_adjacent": 14,
+        "exact_current_family": 13,
+        "irrelevant": 2
+      },
+      "sha256": "e46c67a37ebd1afbcb4d2571e232f7a603a2862cc31f46094643cd994e6f69e6"
+    },
+    {
+      "batch": 6,
+      "file": "batches/batch-06.jsonl",
+      "count": 41,
+      "source_counts": {
+        "reddit": 31,
+        "tiktok_shop": 10
+      },
+      "product_match_counts": {
+        "brand_other_product": 12,
+        "category_adjacent": 15,
+        "exact_current_family": 13,
+        "irrelevant": 1
+      },
+      "sha256": "fa9a2618790c26bc969dca4a8addb33dab89980f1232b05d88109af806114945"
+    },
+    {
+      "batch": 7,
+      "file": "batches/batch-07.jsonl",
+      "count": 41,
+      "source_counts": {
+        "reddit": 31,
+        "tiktok_shop": 10
+      },
+      "product_match_counts": {
+        "brand_other_product": 11,
+        "category_adjacent": 16,
+        "exact_current_family": 12,
+        "irrelevant": 2
+      },
+      "sha256": "66c5ac38e79e54cc2dba269eec55bde49346a970991986c4b3b0ef28f76206fd"
+    },
+    {
+      "batch": 8,
+      "file": "batches/batch-08.jsonl",
+      "count": 41,
+      "source_counts": {
+        "reddit": 31,
+        "tiktok_shop": 10
+      },
+      "product_match_counts": {
+        "brand_other_product": 10,
+        "category_adjacent": 15,
+        "exact_current_family": 11,
+        "irrelevant": 5
+      },
+      "sha256": "a6772ce23ef7aa41b2106bdf2500b02edaf83c272655aa2c040add3d08b96d7c"
+    }
+  ]
+}

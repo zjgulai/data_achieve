@@ -1,0 +1,117 @@
+{
+  "generated_at": "2026-10-30T09:51:59.878783+00:00",
+  "gold_set": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/gold-set-50.jsonl",
+  "evaluated_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/llm-coding/coded/ALL.jsonl",
+  "filter": {
+    "confidence": "high",
+    "applied": "high_only.strict is inherited from v1 and is not a v2 evaluation; the report marks it unverified",
+    "evaluation_corpus": "v1 coded/ALL.jsonl filtered to confidence == \"high\"; v2 shares the same numbers unchanged"
+  },
+  "rule": {
+    "matching": "per-record multiset intersection; each LLM aspect consumes at most one gold aspect",
+    "strict": "[code, polarity] exact",
+    "family": "[code, polarity family] with qualified_positive->positive, qualified_negative->negative",
+    "code_only": "[code]",
+    "implementation": "score()/table()/KEYS/FP_CATEGORY imported unchanged from eval_gold.py"
+  },
+  "verification": {
+    "status": "unverified_inherited_from_v1",
+    "v2_gold_evaluated": false,
+    "human_gold_available": false,
+    "statement": "v2 未做 gold 评测，精度数字沿用 v1 并标注为未验证",
+    "reason": "No human gold set exists for v2. The report therefore inherits the published v1 high-only strict table instead of presenting a non-human reference check as v2 precision. A supplementary v2-vs-frozen-reference check is recorded under v2_reference_check, but the report does not use it.",
+    "inherited_from": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/llm-coding/eval-result-high.json",
+    "v1_artifact_sha256": "b3ad75b6e86810b39a582898d4987381258ee2ec1033b23bbe85d4422080fa28",
+    "v2_artifact_sha256": "bd300107ecbb4f94776eb8587e946311f05f7905a2ebc17a379f2d87d9651de5",
+    "v2_reference_check": {
+      "performed": true,
+      "reference": "same frozen 50-record gold-set-50.jsonl (single LLM reference, not human gold)",
+      "used_by_report": false,
+      "why_not_used": "The report must not present a non-human reference as validated v2 precision. This table is supplementary only.",
+      "high_only_strict": {
+        "TikTok": {
+          "coder_aspects": 47,
+          "gold_aspects": 77,
+          "true_positives": 46,
+          "precision_pct": 97.9,
+          "recall_pct": 59.7
+        },
+        "Reddit": {
+          "coder_aspects": 2,
+          "gold_aspects": 8,
+          "true_positives": 2,
+          "precision_pct": 100.0,
+          "recall_pct": 25.0
+        },
+        "ALL": {
+          "coder_aspects": 49,
+          "gold_aspects": 85,
+          "true_positives": 48,
+          "precision_pct": 98.0,
+          "recall_pct": 56.5
+        }
+      },
+      "all_mode_strict": {
+        "TikTok": {
+          "coder_aspects": 62,
+          "gold_aspects": 77,
+          "true_positives": 58,
+          "precision_pct": 93.5,
+          "recall_pct": 75.3
+        },
+        "Reddit": {
+          "coder_aspects": 6,
+          "gold_aspects": 8,
+          "true_positives": 3,
+          "precision_pct": 50.0,
+          "recall_pct": 37.5
+        },
+        "ALL": {
+          "coder_aspects": 68,
+          "gold_aspects": 85,
+          "true_positives": 61,
+          "precision_pct": 89.7,
+          "recall_pct": 71.8
+        }
+      }
+    }
+  },
+  "high_only": {
+    "strict": {
+      "TikTok": {
+        "coder_aspects": 42,
+        "gold_aspects": 77,
+        "true_positives": 38,
+        "precision_pct": 90.5,
+        "recall_pct": 49.4
+      },
+      "Reddit": {
+        "coder_aspects": 4,
+        "gold_aspects": 8,
+        "true_positives": 2,
+        "precision_pct": 50.0,
+        "recall_pct": 25.0
+      },
+      "ALL": {
+        "coder_aspects": 46,
+        "gold_aspects": 85,
+        "true_positives": 40,
+        "precision_pct": 87.0,
+        "recall_pct": 47.1
+      }
+    }
+  },
+  "gold_set_abstentions": {
+    "coder_aspects": 68,
+    "high_aspects": 49,
+    "abstained_aspects": 19,
+    "abstention_share_pct": 27.9,
+    "note": "v2 raw aspects on the 50 gold records; 19 medium-confidence aspects fall below the high gate. This is a v2 coding count, not inherited from v1."
+  },
+  "notes": [
+    "This file exists so voc.build --coder llm-v2 does not borrow the v1 eval path.",
+    "The high_only.strict table is a verbatim copy of the v1 table and is marked unverified_inherited_from_v1.",
+    "v2 was re-coded after v1; its coding artifact covers all 330 text records but has no human gold evaluation.",
+    "The supplementary v2_reference_check is not displayed as the report headline and does not change any claim grade."
+  ]
+}

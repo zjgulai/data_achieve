@@ -1,0 +1,220 @@
+{
+ "provider": "amazon",
+ "fetched_at": "2026-10-29T14:20:36.096076+00:00",
+ "asins": [
+  "B0H8LVJ81X",
+  "B0HC2FG4QC"
+ ],
+ "products": {
+  "B0H8LVJ81X": {
+   "title": "Momcozy Pregnancy Belly Band, CozySupport 3D Ergonest Maternity Belly Band",
+   "rating_count_text": "2,654 Reviews",
+   "rating_value": 4.1,
+   "variants": {
+    "B0D8QPHYYW": [
+     "Black",
+     "Large"
+    ],
+    "B0HC2JV3HN": [
+     "Black",
+     "Small"
+    ],
+    "B0D8QPSK61": [
+     "Oyster Pink",
+     "Medium"
+    ],
+    "B0HJZ2MF81": [
+     "Cocoa Brown",
+     "Small"
+    ],
+    "B0HJYYQ8MJ": [
+     "Cocoa Brown",
+     "3X-Large"
+    ],
+    "B0HJYW1ZBN": [
+     "Cocoa Brown",
+     "X-Large"
+    ],
+    "B0HJYZKGD1": [
+     "Cocoa Brown",
+     "Medium"
+    ],
+    "B0FN766SSY": [
+     "Oyster Pink",
+     "X-Large"
+    ],
+    "B0D8QNSYHK": [
+     "Oyster Pink",
+     "Large"
+    ],
+    "B0D8QPC7H9": [
+     "Black",
+     "Medium"
+    ],
+    "B0DDQ679GB": [
+     "Black",
+     "XX-Large"
+    ],
+    "B0HJYXRVKL": [
+     "Cocoa Brown",
+     "XX-Large"
+    ],
+    "B0HC2FG4QC": [
+     "Oyster Pink",
+     "Small"
+    ],
+    "B0HC29QGHP": [
+     "Oyster Pink",
+     "3X-Large"
+    ],
+    "B0HC2C9HS4": [
+     "Black",
+     "3X-Large"
+    ],
+    "B0FMJ9RQZR": [
+     "Oyster Pink",
+     "XX-Large"
+    ],
+    "B0DDQ5Q2LT": [
+     "Black",
+     "X-Large"
+    ],
+    "B0HJZ3SJ6F": [
+     "Cocoa Brown",
+     "Large"
+    ]
+   },
+   "variant_count": 18,
+   "brand": "",
+   "price": "00",
+   "availability": "In Stock"
+  },
+  "B0HC2FG4QC": {
+   "title": "Momcozy Pregnancy Belly Band, CozySupport 3D Ergonest Maternity Belly Band",
+   "rating_count_text": "2,654 Reviews",
+   "rating_value": 4.1,
+   "variants": {
+    "B0D8QPHYYW": [
+     "Black",
+     "Large"
+    ],
+    "B0HC2JV3HN": [
+     "Black",
+     "Small"
+    ],
+    "B0D8QPSK61": [
+     "Oyster Pink",
+     "Medium"
+    ],
+    "B0HJZ2MF81": [
+     "Cocoa Brown",
+     "Small"
+    ],
+    "B0HJYYQ8MJ": [
+     "Cocoa Brown",
+     "3X-Large"
+    ],
+    "B0HJYW1ZBN": [
+     "Cocoa Brown",
+     "X-Large"
+    ],
+    "B0HJYZKGD1": [
+     "Cocoa Brown",
+     "Medium"
+    ],
+    "B0FN766SSY": [
+     "Oyster Pink",
+     "X-Large"
+    ],
+    "B0D8QNSYHK": [
+     "Oyster Pink",
+     "Large"
+    ],
+    "B0D8QPC7H9": [
+     "Black",
+     "Medium"
+    ],
+    "B0DDQ679GB": [
+     "Black",
+     "XX-Large"
+    ],
+    "B0HJYXRVKL": [
+     "Cocoa Brown",
+     "XX-Large"
+    ],
+    "B0HC2FG4QC": [
+     "Oyster Pink",
+     "Small"
+    ],
+    "B0HC29QGHP": [
+     "Oyster Pink",
+     "3X-Large"
+    ],
+    "B0HC2C9HS4": [
+     "Black",
+     "3X-Large"
+    ],
+    "B0FMJ9RQZR": [
+     "Oyster Pink",
+     "XX-Large"
+    ],
+    "B0DDQ5Q2LT": [
+     "Black",
+     "X-Large"
+    ],
+    "B0HJZ3SJ6F": [
+     "Cocoa Brown",
+     "Large"
+    ]
+   },
+   "variant_count": 18,
+   "brand": "",
+   "price": "00",
+   "availability": "In Stock"
+  }
+ },
+ "ledger": {
+  "summary": {
+   "requests": 2,
+   "success": 2,
+   "failed": 0,
+   "records": 2,
+   "zero_result_requests": 0,
+   "cost_usd": 0.0
+  },
+  "rows": [
+   {
+    "raw_id": "raw-001-607fd098",
+    "provider": "amazon",
+    "endpoint": "pdp",
+    "request_id": "001-607fd098",
+    "request": {
+     "asin": "B0H8LVJ81X"
+    },
+    "fetched_at": "2026-10-29T14:20:33.276727+00:00",
+    "path": "artifacts/run-20261029/raw/amazon/001-607fd098.json",
+    "sha256": "f510c2ff685c87989d4f321d43f196d7fc61df4ee056defc1792beda84dd244e",
+    "record_count": 1,
+    "status": "success",
+    "error": null,
+    "cost_usd": 0.0
+   },
+   {
+    "raw_id": "raw-002-ff849966",
+    "provider": "amazon",
+    "endpoint": "pdp",
+    "request_id": "002-ff849966",
+    "request": {
+     "asin": "B0HC2FG4QC"
+    },
+    "fetched_at": "2026-10-29T14:20:36.096024+00:00",
+    "path": "artifacts/run-20261029/raw/amazon/002-ff849966.json",
+    "sha256": "a702e548aff9ae2d6a20539b9e45eda27fee413c4b22d6be5fa85d5e68d5f644",
+    "record_count": 1,
+    "status": "success",
+    "error": null,
+    "cost_usd": 0.0
+   }
+  ]
+ }
+}

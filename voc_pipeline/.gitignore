@@ -1,0 +1,10 @@
+# Raw collection payloads (re-collectable; not needed to rebuild the report)
+artifacts/*/raw/
+artifacts/*/creator-video/raw/
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# QA screenshots (regenerable)
+artifacts/*/qa-*.png

@@ -1,0 +1,718 @@
+{
+ "taxonomy_version": "VOC-BAND-v1.1",
+ "canonical_records": 423,
+ "candidate_clauses": 218,
+ "candidate_clauses_with_literal_support_words": 105,
+ "candidate_clauses_with_relief_or_weight_words": 36,
+ "v1_0": {
+  "ambiguous_clauses": 14,
+  "ambiguous_pct": 6.4,
+  "pair_counts": {
+   "SUP.BACK x SUP.GENERAL": 8,
+   "SUP.BACK x SUP.PRESSURE_OFFLOAD": 4,
+   "SUP.GENERAL x SUP.PRESSURE_OFFLOAD": 4
+  }
+ },
+ "v1_1": {
+  "raw_lexical_overlap_clauses": 19,
+  "raw_lexical_overlap_pct": 8.7,
+  "priority_resolved_clauses": 17,
+  "coordinated_multi_aspect_clauses": 2,
+  "unresolved_ambiguous_clauses": 0,
+  "unresolved_ambiguous_pct": 0.0,
+  "pair_counts": {
+   "SUP.BACK x SUP.GENERAL": 8,
+   "SUP.BACK x SUP.PRESSURE_OFFLOAD": 6,
+   "SUP.BELLY_LIFT x SUP.GENERAL": 1,
+   "SUP.BELLY_LIFT x SUP.PRESSURE_OFFLOAD": 2,
+   "SUP.GENERAL x SUP.PRESSURE_OFFLOAD": 4
+  }
+ },
+ "attribution_excluded_single_code_clauses": 8,
+ "coded_artifact": {
+  "path": "artifacts/run-20261029/llm-coding/coded/ALL.jsonl",
+  "records": 330,
+  "records_with_sup": 59,
+  "sup_aspects": 65,
+  "records_with_two_or_more_sup": 5,
+  "sup_pairs_same_record": 7,
+  "sup_pairs_same_evidence_span": 0,
+  "same_span_ambiguous_cases": []
+ },
+ "b05": {
+  "case": "1",
+  "canonical_id": "c-1mdp0wu",
+  "evidence": "the weight off my pelvis and lower back is incredible",
+  "expected": "SUP.PRESSURE_OFFLOAD",
+  "clause": "I’m still wearing it right now because the weight off my pelvis and lower back is incredible",
+  "resolved": "SUP.PRESSURE_OFFLOAD",
+  "step": 2,
+  "attribution_excluded": false,
+  "experience_gated": false,
+  "actual_coded": [
+   {
+    "code": "SUP.PRESSURE_OFFLOAD",
+    "polarity": "positive"
+   }
+  ],
+  "match": true
+ },
+ "cases": [
+  {
+   "case": "1",
+   "canonical_id": "c-1mdp0wu",
+   "evidence": "the weight off my pelvis and lower back is incredible",
+   "expected": "SUP.PRESSURE_OFFLOAD",
+   "clause": "I’m still wearing it right now because the weight off my pelvis and lower back is incredible",
+   "resolved": "SUP.PRESSURE_OFFLOAD",
+   "step": 2,
+   "attribution_excluded": false,
+   "experience_gated": false,
+   "actual_coded": [
+    {
+     "code": "SUP.PRESSURE_OFFLOAD",
+     "polarity": "positive"
+    }
+   ],
+   "match": true
+  },
+  {
+   "case": "2",
+   "canonical_id": "c-7659507976003651341",
+   "evidence": "excellent support for my lower back",
+   "expected": "SUP.BACK",
+   "clause": "It provides excellent support for my lower back and growing belly without feeling too tight or uncomfortable",
+   "resolved": "SUP.BACK",
+   "step": 3,
+   "attribution_excluded": false,
+   "experience_gated": false,
+   "actual_coded": [
+    {
+     "code": "SUP.BACK",
+     "polarity": "positive"
+    }
+   ],
+   "match": true
+  },
+  {
+   "case": "2b",
+   "canonical_id": "c-7659507976003651341",
+   "evidence": "offers noticeable relief",
+   "expected": "SUP.PRESSURE_OFFLOAD",
+   "clause": "It stays in place throughout the day and offers noticeable relief when I’m walking, standing, or doing everyday activities",
+   "resolved": "SUP.PRESSURE_OFFLOAD",
+   "step": 4,
+   "attribution_excluded": false,
+   "experience_gated": false,
+   "actual_coded": [
+    {
+     "code": "SUP.BACK",
+     "polarity": "positive"
+    }
+   ],
+   "match": true
+  },
+  {
+   "case": "3",
+   "canonical_id": "c-7690266633513518861",
+   "evidence": "helped so much with hip and lower back pain",
+   "expected": "SUP.BACK",
+   "clause": "This has helped so much with hip and lower back pain",
+   "resolved": "SUP.BACK",
+   "step": 3,
+   "attribution_excluded": false,
+   "experience_gated": false,
+   "actual_coded": [
+    {
+     "code": "SUP.BACK",
+     "polarity": "positive"
+    }
+   ],
+   "match": true
+  },
+  {
+   "case": "4",
+   "canonical_id": "c-7658003601176119053",
+   "evidence": "Almost fully takes away the sciatica",
+   "expected": "SUP.PRESSURE_OFFLOAD",
+   "clause": "Almost fully takes away the sciatica I’ve had for the last 20 weeks of pregnancy",
+   "resolved": "SUP.PRESSURE_OFFLOAD",
+   "step": 4,
+   "attribution_excluded": false,
+   "experience_gated": false,
+   "actual_coded": [
+    {
+     "code": "SUP.BACK",
+     "polarity": "positive"
+    }
+   ],
+   "match": true
+  },
+  {
+   "case": "5",
+   "canonical_id": "c-7665021905910384398",
+   "evidence": "helps relieve the pain",
+   "expected": "SUP.PRESSURE_OFFLOAD",
+   "clause": "It definitely helps relieve the pain",
+   "resolved": "SUP.PRESSURE_OFFLOAD",
+   "step": 4,
+   "attribution_excluded": false,
+   "experience_gated": false,
+   "actual_coded": [],
+   "match": true
+  },
+  {
+   "case": "6",
+   "canonical_id": "c-7667963659528931085",
+   "evidence": "did not find that it provided optimal relief",
+   "expected": "SUP.PRESSURE_OFFLOAD",
+   "clause": "Personally, I did not find that it provided optimal relief and experienced some stomach discomfort during the initial days",
+   "resolved": "SUP.PRESSURE_OFFLOAD",
+   "step": 4,
+   "attribution_excluded": false,
+   "experience_gated": false,
+   "actual_coded": [
+    {
+     "code": "SUP.GENERAL",
+     "polarity": "negative"
+    }
+   ],
+   "match": true
+  },
+  {
+   "case": "7",
+   "canonical_id": "c-7671622567216498445",
+   "evidence": "saving my back",
+   "expected": "SUP.BACK",
+   "clause": "This belly band is saving my back and my bladder",
+   "resolved": "SUP.BACK",
+   "step": 3,
+   "attribution_excluded": false,
+   "experience_gated": false,
+   "actual_coded": [
+    {
+     "code": "SUP.BACK",
+     "polarity": "positive"
+    },
+    {
+     "code": "SUP.BELLY_LIFT",
+     "polarity": "positive"
+    }
+   ],
+   "match": true
+  },
+  {
+   "case": "7b",
+   "canonical_id": "c-7671622567216498445",
+   "evidence": "lift and support the baby",
+   "expected": "SUP.BELLY_LIFT",
+   "clause": "Them babies think your bladder is a toy so it is nice to find something that can lift and support the baby and your self to make life a little easier",
+   "resolved": "SUP.BELLY_LIFT",
+   "step": 1,
+   "attribution_excluded": false,
+   "experience_gated": false,
+   "actual_coded": [
+    {
+     "code": "SUP.BACK",
+     "polarity": "positive"
+    },
+    {
+     "code": "SUP.BELLY_LIFT",
+     "polarity": "positive"
+    }
+   ],
+   "match": true
+  },
+  {
+   "case": "8",
+   "canonical_id": "c-7674647274773759757",
+   "evidence": "it takes the weight of the baby",
+   "expected": "SUP.PRESSURE_OFFLOAD",
+   "clause": "My says it takes the weight of the baby",
+   "resolved": "SUP.PRESSURE_OFFLOAD",
+   "step": 2,
+   "attribution_excluded": false,
+   "experience_gated": false,
+   "actual_coded": [
+    {
+     "code": "SUP.GENERAL",
+     "polarity": "positive"
+    }
+   ],
+   "match": true
+  },
+  {
+   "case": "8b",
+   "canonical_id": "c-7674647274773759757",
+   "evidence": "Very good support system",
+   "expected": "SUP.GENERAL",
+   "clause": "Very good support system",
+   "resolved": "SUP.GENERAL",
+   "step": 5,
+   "attribution_excluded": false,
+   "experience_gated": false,
+   "actual_coded": [
+    {
+     "code": "SUP.GENERAL",
+     "polarity": "positive"
+    }
+   ],
+   "match": true
+  },
+  {
+   "case": "9",
+   "canonical_id": "c-7667984767955748622",
+   "evidence": "it feels like a weight is lifted",
+   "expected": "SUP.PRESSURE_OFFLOAD",
+   "clause": "At 8 months pregnant it feels like a weight is lifted and perfectly conforms to my body and lifts that big belly effortlessly",
+   "resolved": "SUP.PRESSURE_OFFLOAD",
+   "step": 2,
+   "attribution_excluded": false,
+   "experience_gated": false,
+   "actual_coded": [
+    {
+     "code": "SUP.PRESSURE_OFFLOAD",
+     "polarity": "positive"
+    },
+    {
+     "code": "SUP.BELLY_LIFT",
+     "polarity": "positive"
+    },
+    {
+     "code": "SUP.GENERAL",
+     "polarity": "positive"
+    }
+   ],
+   "match": true
+  },
+  {
+   "case": "9b",
+   "canonical_id": "c-7667984767955748622",
+   "evidence": "lifts that big belly effortlessly",
+   "expected": "SUP.BELLY_LIFT",
+   "clause": "At 8 months pregnant it feels like a weight is lifted and perfectly conforms to my body and lifts that big belly effortlessly",
+   "resolved": "SUP.BELLY_LIFT",
+   "step": 1,
+   "attribution_excluded": false,
+   "experience_gated": false,
+   "actual_coded": [
+    {
+     "code": "SUP.PRESSURE_OFFLOAD",
+     "polarity": "positive"
+    },
+    {
+     "code": "SUP.BELLY_LIFT",
+     "polarity": "positive"
+    },
+    {
+     "code": "SUP.GENERAL",
+     "polarity": "positive"
+    }
+   ],
+   "match": true
+  },
+  {
+   "case": "9c",
+   "canonical_id": "c-7667984767955748622",
+   "evidence": "would support my big belly but it does",
+   "expected": "SUP.GENERAL",
+   "clause": "It's so light weight I didn't think it would support my big belly but it does",
+   "resolved": "SUP.GENERAL",
+   "step": 5,
+   "attribution_excluded": false,
+   "experience_gated": false,
+   "actual_coded": [
+    {
+     "code": "SUP.PRESSURE_OFFLOAD",
+     "polarity": "positive"
+    },
+    {
+     "code": "SUP.BELLY_LIFT",
+     "polarity": "positive"
+    },
+    {
+     "code": "SUP.GENERAL",
+     "polarity": "positive"
+    }
+   ],
+   "match": true
+  },
+  {
+   "case": "10",
+   "canonical_id": "c-7677755508020528910",
+   "evidence": "very comfortable and weightless but supports the belly just enough",
+   "expected": "SUP.GENERAL",
+   "clause": "It's very comfortable and weightless but supports the belly just enough to get through my day at 8months pregnant",
+   "resolved": "SUP.GENERAL",
+   "step": 5,
+   "attribution_excluded": false,
+   "experience_gated": false,
+   "actual_coded": [
+    {
+     "code": "SUP.GENERAL",
+     "polarity": "positive"
+    }
+   ],
+   "match": true
+  },
+  {
+   "case": "11",
+   "canonical_id": "c-19rjykcrivso1",
+   "evidence": "take the extra weight off my joints",
+   "expected": null,
+   "clause": "I also have access to a swimming pool that I walk around in regularly for exercise and that really helps take the extra weight off my joints and feels good",
+   "resolved": null,
+   "step": null,
+   "attribution_excluded": true,
+   "experience_gated": false,
+   "actual_coded": [
+    {
+     "code": "SUP.GENERAL",
+     "polarity": "positive"
+    }
+   ],
+   "match": true
+  },
+  {
+   "case": "12",
+   "canonical_id": "c-1svdohq",
+   "evidence": "takes pressure off my pelvis/lower back",
+   "expected": null,
+   "clause": "Main things I'm looking for: something that takes pressure off my pelvis/lower back",
+   "resolved": "SUP.PRESSURE_OFFLOAD",
+   "step": 2,
+   "attribution_excluded": false,
+   "experience_gated": true,
+   "actual_coded": [],
+   "match": true
+  }
+ ],
+ "case_mismatches": [],
+ "old_ambiguous_cases": [
+  {
+   "canonical_id": "c-1x3t1a8",
+   "clause": "Best Maternity Belly Band for Pregnancy Lower Back Pain Relief | Momcozy Review",
+   "codes": [
+    "SUP.BACK",
+    "SUP.PRESSURE_OFFLOAD"
+   ]
+  },
+  {
+   "canonical_id": "c-1svdohq",
+   "clause": "Main things I'm looking for: something that takes pressure off my pelvis/lower back",
+   "codes": [
+    "SUP.BACK",
+    "SUP.PRESSURE_OFFLOAD"
+   ]
+  },
+  {
+   "canonical_id": "c-1s2rcvx",
+   "clause": "With my first, I used an Amazon belly support band (I think it was Azband or something like that) but it caused me to break out all over my back where the band would sit, even with regular washing",
+   "codes": [
+    "SUP.BACK",
+    "SUP.GENERAL"
+   ]
+  },
+  {
+   "canonical_id": "c-1opsx7o",
+   "clause": "It has a patented back support that actually works and really helps with lower back pain",
+   "codes": [
+    "SUP.BACK",
+    "SUP.GENERAL"
+   ]
+  },
+  {
+   "canonical_id": "c-1opsx7o",
+   "clause": "If what you care about most is back support and comfort, go for the Momcozy , I wear it almost every day, and it  makes a huge difference",
+   "codes": [
+    "SUP.BACK",
+    "SUP.GENERAL"
+   ]
+  },
+  {
+   "canonical_id": "c-1ovtxc1",
+   "clause": "I’ve heard belly support bands can help take some of the pressure off and support your back",
+   "codes": [
+    "SUP.GENERAL",
+    "SUP.PRESSURE_OFFLOAD"
+   ]
+  },
+  {
+   "canonical_id": "c-1mdp0wu",
+   "clause": "I’m still wearing it right now because the weight off my pelvis and lower back is incredible",
+   "codes": [
+    "SUP.BACK",
+    "SUP.PRESSURE_OFFLOAD"
+   ]
+  },
+  {
+   "canonical_id": "c-19rkynhhprt2c",
+   "clause": "When it’s particularly bad I use a belly band with a back support element too which also helps",
+   "codes": [
+    "SUP.BACK",
+    "SUP.GENERAL"
+   ]
+  },
+  {
+   "canonical_id": "c-7700787693628868365",
+   "clause": "Gives no lower back support and even when I slide it down to my lower back it ends up sliding back up and hold only mid-back/waist",
+   "codes": [
+    "SUP.BACK",
+    "SUP.GENERAL"
+   ]
+  },
+  {
+   "canonical_id": "c-7694309204774782733",
+   "clause": "Loooove the stretch, the comfort & support and it definitely helps relieve pressure",
+   "codes": [
+    "SUP.GENERAL",
+    "SUP.PRESSURE_OFFLOAD"
+   ]
+  },
+  {
+   "canonical_id": "c-7686709601646593805",
+   "clause": "There is some relief but the pregnancy ball was the best purchase compared to getting relief rather than the support belt",
+   "codes": [
+    "SUP.GENERAL",
+    "SUP.PRESSURE_OFFLOAD"
+   ]
+  },
+  {
+   "canonical_id": "c-7663689857784629006",
+   "clause": "As a plus size expecting momma this belly band has not only provided me with back support but also more confidence with the way it shapes my belly",
+   "codes": [
+    "SUP.BACK",
+    "SUP.GENERAL"
+   ]
+  },
+  {
+   "canonical_id": "c-7659507976003651341",
+   "clause": "It provides excellent support for my lower back and growing belly without feeling too tight or uncomfortable",
+   "codes": [
+    "SUP.BACK",
+    "SUP.GENERAL"
+   ]
+  },
+  {
+   "canonical_id": "c-7657656517294638862",
+   "clause": "The support and immediate relief from back pain is so worth the purchase",
+   "codes": [
+    "SUP.BACK",
+    "SUP.GENERAL",
+    "SUP.PRESSURE_OFFLOAD"
+   ]
+  }
+ ],
+ "new_multi_cases": [
+  {
+   "canonical_id": "c-1x3t1a8",
+   "clause": "Best Maternity Belly Band for Pregnancy Lower Back Pain Relief | Momcozy Review",
+   "raw_codes": [
+    "SUP.BACK",
+    "SUP.PRESSURE_OFFLOAD"
+   ],
+   "outcome": "priority_resolved",
+   "resolved_code": "SUP.BACK",
+   "resolved_step": 3
+  },
+  {
+   "canonical_id": "c-1wd1s0m",
+   "clause": "It’s bad when I sit for a while, lay down, and can only be relieved by laying flat on my back",
+   "raw_codes": [
+    "SUP.BACK",
+    "SUP.PRESSURE_OFFLOAD"
+   ],
+   "outcome": "priority_resolved",
+   "resolved_code": "SUP.BACK",
+   "resolved_step": 3
+  },
+  {
+   "canonical_id": "c-1svdohq",
+   "clause": "Main things I'm looking for: something that takes pressure off my pelvis/lower back",
+   "raw_codes": [
+    "SUP.BACK",
+    "SUP.PRESSURE_OFFLOAD"
+   ],
+   "outcome": "priority_resolved",
+   "resolved_code": "SUP.PRESSURE_OFFLOAD",
+   "resolved_step": 2
+  },
+  {
+   "canonical_id": "c-1s2rcvx",
+   "clause": "With my first, I used an Amazon belly support band (I think it was Azband or something like that) but it caused me to break out all over my back where the band would sit, even with regular washing",
+   "raw_codes": [
+    "SUP.BACK",
+    "SUP.GENERAL"
+   ],
+   "outcome": "priority_resolved",
+   "resolved_code": "SUP.BACK",
+   "resolved_step": 3
+  },
+  {
+   "canonical_id": "c-1opsx7o",
+   "clause": "It has a patented back support that actually works and really helps with lower back pain",
+   "raw_codes": [
+    "SUP.BACK",
+    "SUP.GENERAL"
+   ],
+   "outcome": "priority_resolved",
+   "resolved_code": "SUP.BACK",
+   "resolved_step": 3
+  },
+  {
+   "canonical_id": "c-1opsx7o",
+   "clause": "If what you care about most is back support and comfort, go for the Momcozy , I wear it almost every day, and it  makes a huge difference",
+   "raw_codes": [
+    "SUP.BACK",
+    "SUP.GENERAL"
+   ],
+   "outcome": "priority_resolved",
+   "resolved_code": "SUP.BACK",
+   "resolved_step": 3
+  },
+  {
+   "canonical_id": "c-1ovtxc1",
+   "clause": "I’ve heard belly support bands can help take some of the pressure off and support your back",
+   "raw_codes": [
+    "SUP.GENERAL",
+    "SUP.PRESSURE_OFFLOAD"
+   ],
+   "outcome": "priority_resolved",
+   "resolved_code": "SUP.PRESSURE_OFFLOAD",
+   "resolved_step": 2
+  },
+  {
+   "canonical_id": "c-1mdp0wu",
+   "clause": "I’m still wearing it right now because the weight off my pelvis and lower back is incredible",
+   "raw_codes": [
+    "SUP.BACK",
+    "SUP.PRESSURE_OFFLOAD"
+   ],
+   "outcome": "priority_resolved",
+   "resolved_code": "SUP.PRESSURE_OFFLOAD",
+   "resolved_step": 2
+  },
+  {
+   "canonical_id": "c-19rkynhhprt2c",
+   "clause": "When it’s particularly bad I use a belly band with a back support element too which also helps",
+   "raw_codes": [
+    "SUP.BACK",
+    "SUP.GENERAL"
+   ],
+   "outcome": "priority_resolved",
+   "resolved_code": "SUP.BACK",
+   "resolved_step": 3
+  },
+  {
+   "canonical_id": "c-7700787693628868365",
+   "clause": "Gives no lower back support and even when I slide it down to my lower back it ends up sliding back up and hold only mid-back/waist",
+   "raw_codes": [
+    "SUP.BACK",
+    "SUP.GENERAL"
+   ],
+   "outcome": "priority_resolved",
+   "resolved_code": "SUP.BACK",
+   "resolved_step": 3
+  },
+  {
+   "canonical_id": "c-7694309204774782733",
+   "clause": "Loooove the stretch, the comfort & support and it definitely helps relieve pressure",
+   "raw_codes": [
+    "SUP.GENERAL",
+    "SUP.PRESSURE_OFFLOAD"
+   ],
+   "outcome": "priority_resolved",
+   "resolved_code": "SUP.PRESSURE_OFFLOAD",
+   "resolved_step": 4
+  },
+  {
+   "canonical_id": "c-7686709601646593805",
+   "clause": "There is some relief but the pregnancy ball was the best purchase compared to getting relief rather than the support belt",
+   "raw_codes": [
+    "SUP.GENERAL",
+    "SUP.PRESSURE_OFFLOAD"
+   ],
+   "outcome": "priority_resolved",
+   "resolved_code": "SUP.PRESSURE_OFFLOAD",
+   "resolved_step": 4
+  },
+  {
+   "canonical_id": "c-7680524603688634126",
+   "clause": "Helps relieve some back pain too",
+   "raw_codes": [
+    "SUP.BACK",
+    "SUP.PRESSURE_OFFLOAD"
+   ],
+   "outcome": "priority_resolved",
+   "resolved_code": "SUP.BACK",
+   "resolved_step": 3
+  },
+  {
+   "canonical_id": "c-7671622567216498445",
+   "clause": "Them babies think your bladder is a toy so it is nice to find something that can lift and support the baby and your self to make life a little easier",
+   "raw_codes": [
+    "SUP.BELLY_LIFT",
+    "SUP.GENERAL"
+   ],
+   "outcome": "priority_resolved",
+   "resolved_code": "SUP.BELLY_LIFT",
+   "resolved_step": 1
+  },
+  {
+   "canonical_id": "c-7667984767955748622",
+   "clause": "At 8 months pregnant it feels like a weight is lifted and perfectly conforms to my body and lifts that big belly effortlessly",
+   "raw_codes": [
+    "SUP.BELLY_LIFT",
+    "SUP.PRESSURE_OFFLOAD"
+   ],
+   "outcome": "coordinated_multi_aspect",
+   "resolved_code": null,
+   "resolved_step": null
+  },
+  {
+   "canonical_id": "c-7663689857784629006",
+   "clause": "As a plus size expecting momma this belly band has not only provided me with back support but also more confidence with the way it shapes my belly",
+   "raw_codes": [
+    "SUP.BACK",
+    "SUP.GENERAL"
+   ],
+   "outcome": "priority_resolved",
+   "resolved_code": "SUP.BACK",
+   "resolved_step": 3
+  },
+  {
+   "canonical_id": "c-7659507976003651341",
+   "clause": "It provides excellent support for my lower back and growing belly without feeling too tight or uncomfortable",
+   "raw_codes": [
+    "SUP.BACK",
+    "SUP.GENERAL"
+   ],
+   "outcome": "priority_resolved",
+   "resolved_code": "SUP.BACK",
+   "resolved_step": 3
+  },
+  {
+   "canonical_id": "c-7659258409535112974",
+   "clause": "Bought for my daughter and she said it’s a huge help in holding up her little bundle and easing her pelvic pain",
+   "raw_codes": [
+    "SUP.BELLY_LIFT",
+    "SUP.PRESSURE_OFFLOAD"
+   ],
+   "outcome": "coordinated_multi_aspect",
+   "resolved_code": null,
+   "resolved_step": null
+  },
+  {
+   "canonical_id": "c-7657656517294638862",
+   "clause": "The support and immediate relief from back pain is so worth the purchase",
+   "raw_codes": [
+    "SUP.BACK",
+    "SUP.GENERAL",
+    "SUP.PRESSURE_OFFLOAD"
+   ],
+   "outcome": "priority_resolved",
+   "resolved_code": "SUP.BACK",
+   "resolved_step": 3
+  }
+ ]
+}

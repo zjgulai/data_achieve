@@ -1,0 +1,299 @@
+[
+ {
+  "claim_id": "C01",
+  "section": "identity",
+  "headline": "线上商品页当前列出 18 个在售 ASIN 变体，商品身份本身是清楚的，但变体集合已经需要重新冻结。",
+  "grade": "Confirmed",
+  "grade_reason": "规则4 命中：直接事实 + sha256[0:12]=f510c2ff685c + exact_identity=True + inference=False。",
+  "counts": {
+   "n_records": 18,
+   "n_authors": 0,
+   "agreement_pct": 100.0
+  },
+  "observed": "抓取 Amazon PDP：父 ASIN B0H8LVJ81X，子 ASIN B0HC2FG4QC，标题包含 CozySupport 3D Ergonest；页面解析出 18 个 ASIN → 颜色/尺码组合。",
+  "interpretation": "商品身份字段可核对，但变体数与 2026-09-23 归档中的 12 个 family children 不一致；归档不是当前事实。",
+  "counterevidence": "PDP 会随会话、地区和库存变化；单次抓取不能证明所有变体在任何时点都可售。",
+  "decision": "在任何 variant-specific 结论之前重跑 G1，并把变体矩阵版本化。",
+  "basis": "amazon-identity-raw.json + PDP HTML sha256",
+  "unit": "ASIN / 变体组合",
+  "limit": "单时点、单地区（US）、未登录会话",
+  "status": "Confirmed · fetched 2026-10-29T14:20:36.096076+00:00",
+  "records": [],
+  "numbers": {
+   "live_variants": 18,
+   "prior_archived_children": 12
+  }
+ },
+ {
+  "claim_id": "C02",
+  "section": "corpus",
+  "headline": "本轮把 250 条 provider 记录收敛为 250 条 occurrence 和 248 条 canonical，扣减全部带理由。",
+  "grade": "Confirmed",
+  "grade_reason": "规则4 命中：直接事实 + sha256[0:12]=47b48fb3681e + exact_identity=True + inference=False。",
+  "counts": {
+   "n_records": 248,
+   "n_authors": 236,
+   "agreement_pct": 100.0
+  },
+  "observed": "raw objects 250；occurrence 去重扣除 0 条同 frame 重复；canonical 合并 2 条重复内容。",
+  "interpretation": "四层计数各不相同，不能把任何一个数当成消费者人数。",
+  "counterevidence": "样本来自关键词检索而非概率抽样，缺席记录不代表不存在。",
+  "decision": "报告只使用 canonical 与 frame 数，不把覆盖当成逐级转化。",
+  "basis": "collection-run-ledger.json + occurrences + canonical-records",
+  "unit": "条 / 记录",
+  "limit": "关键词与 subreddit 选择决定召回；未做全站抽样",
+  "status": "Confirmed · 自建 ledger 可复算",
+  "records": [],
+  "numbers": {
+   "raw_objects": 250,
+   "occurrences_raw": 250,
+   "occurrences_deduplicated": 250,
+   "canonical_records": 248,
+   "frame_memberships": 257
+  }
+ },
+ {
+  "claim_id": "C03",
+  "section": "coverage",
+  "headline": "提到 Momcozy 的记录有 109 条，其中与支撑带相关的 16 条，提到 Ergonest / CozySupport 型号的有 1 条，其中属于本人使用体验的 0 条。",
+  "grade": "Evidence gap",
+  "grade_reason": "规则3 命中：required_cell_count=0、required_field_missing_rate=0.00；该格没有记录。",
+  "counts": {
+   "n_records": 0,
+   "n_authors": 0,
+   "agreement_pct": 0.0
+  },
+  "observed": "关键词 momcozy 命中 109 条 canonical；product_match=exact_current_family 的 16 条；直接讨论 belly band 的 11 条。",
+  "interpretation": "品牌被提及不等于型号被评价；不能把品牌级讨论转移到具体 SKU。",
+  "counterevidence": "Reddit 不是 Amazon 评论的替代品，购买者更可能在商品页留言。",
+  "decision": "补 exact-variant 评论层，或在报告中保持型号级空白。",
+  "basis": "canonical-records.jsonl（product_match / brand_mention）",
+  "unit": "canonical records",
+  "limit": "仅 Reddit；Amazon 评论正文本轮不可得",
+  "status": "Evidence gap · 缺 exact-variant 评论层",
+  "records": [
+   "c-1x3t1a8",
+   "c-1svdohq",
+   "c-1sg2gon",
+   "c-1opsx7o",
+   "c-1ok0mye"
+  ],
+  "numbers": {
+   "momcozy_records": 109,
+   "momcozy_band_records": 16,
+   "exact_like": 11,
+   "exact_model_mentions": 1,
+   "exact_model_experience": 0
+  }
+ },
+ {
+  "claim_id": "C11",
+  "section": "coverage",
+  "headline": "136 条与支撑带相关的记录里，明确描述本人使用的只有 47 条，其余是求助、比较或无关内容，这解释了结论为什么停在假设级。",
+  "grade": "Confirmed",
+  "grade_reason": "规则4 命中：直接事实 + sha256[0:12]=47b48fb3681e + exact_identity=True + inference=False。",
+  "counts": {
+   "n_records": 47,
+   "n_authors": 45,
+   "agreement_pct": 100.0
+  },
+  "observed": "与支撑带相关的 canonical 136 条；其中 journey 为使用/首次穿戴/护理/退换/推荐，或 outcome 非 unknown 的 47 条。",
+  "interpretation": "关键词检索召回的是提问者多于购买者；提问帖可以生成假设，不能估计体验分布。",
+  "counterevidence": "提问帖仍包含场景、孕周与需求信息，对下一轮采集设计有价值。",
+  "decision": "补评论层或购买者社区；在此之前报告只输出假设与实验。",
+  "basis": "coded-corpus.jsonl（journey / outcome 单值 rollup）",
+  "unit": "canonical records",
+  "limit": "journey/outcome 为规则判定，未人工复核",
+  "status": "Confirmed · 计数事实",
+  "records": [],
+  "numbers": {
+   "relevant_records": 136,
+   "experience_records": 47
+  }
+ },
+ {
+  "claim_id": "C04",
+  "section": "friction",
+  "headline": "自然样本的负向标注里支撑类最多（14 次），价格价值其次（3 次）。",
+  "grade": "Supported hypothesis",
+  "grade_reason": "规则6 命中：agreement=67% 落在 55–70%（n_records=14、n_authors=14、agreement=67%）",
+  "counts": {
+   "n_records": 14,
+   "n_authors": 14,
+   "agreement_pct": 66.7
+  },
+  "observed": "四类摩擦的负向标注：支撑 14、尺码/适配 2、稳定性 2、价格 3；合计 21。",
+  "interpretation": "支撑类是当前语料里最常被提到的失败面，但 annotation hit 不是人数，也不是发生率。",
+  "counterevidence": "正向标注同时存在：舒适类正向 36 次；说明产品并非整体失败，而是条件性兑现。",
+  "decision": "把资源先放在与领先摩擦对应的可逆实验，而不是全面改款。",
+  "basis": "aspect_polarity_counts（多标签，一条记录可贡献多个标注）",
+  "unit": "aspect annotation hits",
+  "limit": "单编码、规则词典、pre-G7；不能读作 prevalence",
+  "status": "Directional · single-coded, pre-G7",
+  "records": [],
+  "numbers": {
+   "support_negative": 14,
+   "fit_negative": 2,
+   "stability_negative": 2,
+   "value_negative": 3,
+   "friction_negative_annotations": 21,
+   "all_negative_annotations": 58,
+   "leader_share": 0.667
+  }
+ },
+ {
+  "claim_id": "C05",
+  "section": "tension",
+  "headline": "27 条舒适或外观正向记录中，3 条同时出现支撑、适配或稳定性负向。",
+  "grade": "Supported hypothesis",
+  "grade_reason": "规则6 命中：n_records=3 落在 3–7 条（n_records=3、n_authors=3、agreement=100%）",
+  "counts": {
+   "n_records": 3,
+   "n_authors": 3,
+   "agreement_pct": 100.0
+  },
+  "observed": "舒适正向 27 条，其中同时有核心摩擦 3 条；纯摩擦记录 10 条。",
+  "interpretation": "共现只发生在少数舒适正向记录里，说明张力是条件性的，不是普遍模式；把两者压成一个“总体情绪”会同时丢掉正向资产与条件性失败。",
+  "counterevidence": "其余 24 条舒适正向记录没有出现核心摩擦；共现也不是因果，不能断言舒适设计导致支撑不足。",
+  "decision": "用 Support ladder 与 Fit chooser 分开验证，而不是改一处结构。",
+  "basis": "record-level co-occurrence（COM/APP positive × SUP/FIT/STB negative）",
+  "unit": "canonical records",
+  "limit": "共现为描述性；样本非概率抽样",
+  "status": "Directional / Supported hypothesis · 取决于是否达到 8 条与 2 作者",
+  "records": [
+   "c-1opsx7o",
+   "c-1purbx5",
+   "c-1x3t1a8"
+  ],
+  "numbers": {
+   "comfort_positive_records": 27,
+   "with_friction": 3,
+   "share": 0.111
+  }
+ },
+ {
+  "claim_id": "C06",
+  "section": "frames",
+  "headline": "自然镜头与诊断镜头给出的第一摩擦不同，自然镜头是背部支撑，诊断镜头是总体舒适。",
+  "grade": "Supported hypothesis",
+  "grade_reason": "规则6 命中：agreement=60% 落在 55–70%（n_records=8、n_authors=8、agreement=60%）",
+  "counts": {
+   "n_records": 8,
+   "n_authors": 8,
+   "agreement_pct": 60.0
+  },
+  "observed": "Natural N=149，前三负向：背部支撑 7、总体舒适 6、轻薄低体积 6；Diagnostic N=8，前三负向：总体舒适 2、带体/绑带设计 1、柔软触感 1。",
+  "interpretation": "两个 frame 回答不同问题；把它们的比例放在同一根轴上比较会误导。",
+  "counterevidence": "诊断 frame 是从自然文本中按失败词筛出的子集，不是独立抽样。",
+  "decision": "Natural 用于方向，Diagnostic 只用于发现失败模式；不合并、不比较百分比。",
+  "basis": "frame membership + aspect_polarity_counts",
+  "unit": "canonical records / annotation hits",
+  "limit": "diagnostic 为内容派生镜头，非独立样本",
+  "status": "Directional · frame-bound",
+  "records": [],
+  "numbers": {
+   "natural_n": 149,
+   "diagnostic_n": 8
+  }
+ },
+ {
+  "claim_id": "C07",
+  "section": "gate",
+  "headline": "G7 没有执行，所以正式指标行是 0，任何比例都只能标为 Blocked。",
+  "grade": "Blocked",
+  "grade_reason": "规则2 命中：required_gate=G7 status=BLOCKED != PASS；n_records=0、n_authors=0 不能替代 gate。",
+  "counts": {
+   "n_records": 0,
+   "n_authors": 0,
+   "agreement_pct": 0.0
+  },
+  "observed": "eligible records 133 条，但 metric rows = 0；G7 状态 BLOCKED。",
+  "interpretation": "有语料不等于有指标；准入条件缺一项就不能生成比率。",
+  "counterevidence": "若把 annotation hits 当分母，会得到看似精确但不可复现的比例。",
+  "decision": "先完成双盲编码与 agreement，再谈任何 share。",
+  "basis": "consumer-metric-view-contract + g7 gate status",
+  "unit": "metric rows",
+  "limit": "fail-closed：缺第二编码员即阻断",
+  "status": "Blocked · G7 not executed",
+  "records": [],
+  "numbers": {
+   "eligible_records": 133,
+   "metric_rows": 0
+  }
+ },
+ {
+  "claim_id": "C08",
+  "section": "medical",
+  "headline": "30 条记录含疼痛或病史自述，这些只能进入 review queue，不能变成疗效或安全结论。",
+  "grade": "Not authorized",
+  "grade_reason": "规则1 命中：topic=medical_efficacy 属于医学/安全/因果/诊断，任何计数都不能把它降级成可发布的结论。",
+  "counts": {
+   "n_records": 30,
+   "n_authors": 28,
+   "agreement_pct": 0.0
+  },
+  "observed": "medical self-report 命中 30 条 canonical；claim relation 仅记录 review_required。",
+  "interpretation": "自我报告描述的是体验，不是诊断、疗效或安全率。",
+  "counterevidence": "缺少临床上下文、剂量、对照与随访。",
+  "decision": "转医疗/法务 review；报告只保留描述层。",
+  "basis": "medical annotations（MED.*）",
+  "unit": "canonical records",
+  "limit": "无临床验证；不得外推",
+  "status": "Not authorized · medical/legal review required",
+  "records": [],
+  "numbers": {
+   "medical_records": 30
+  }
+ },
+ {
+  "claim_id": "C09",
+  "section": "decision",
+  "headline": "下一步值得做的是三个可逆实验，而不是一次产品结构改款。",
+  "grade": "Supported hypothesis",
+  "grade_reason": "规则6 命中：agreement=60% 落在 55–70%（n_records=14、n_authors=14、agreement=60%）",
+  "counts": {
+   "n_records": 14,
+   "n_authors": 14,
+   "agreement_pct": 60.0
+  },
+  "observed": "支撑类负向 14 次、价格 3 次、舒适正向 36 次；共现记录 3 条。",
+  "interpretation": "证据足以支持可逆实验，不足以支持结构改款或对外承诺。",
+  "counterevidence": "单编码、规则词典、诊断 frame 仅 8 条；任何实验都必须自带 guardrail。",
+  "decision": "先跑 Support ladder、Fit chooser 与 Wearing guidance，三项都可回滚。",
+  "basis": "claims C04 / C05 / C06",
+  "unit": "proposed experiments",
+  "limit": "未审批、无 owner、无预算",
+  "status": "Supported hypothesis · Proposed, not approved",
+  "records": [],
+  "numbers": {
+   "support_negative": 14,
+   "value_negative": 3,
+   "cooccurrence": 3
+  }
+ },
+ {
+  "claim_id": "C10",
+  "section": "limits",
+  "headline": "这份报告能支持方向判断，不能支持任何比率、排名或医学结论。",
+  "grade": "Blocked",
+  "grade_reason": "规则2 命中：required_gate=G7 status=BLOCKED != PASS；n_records=0、n_authors=0 不能替代 gate。",
+  "counts": {
+   "n_records": 0,
+   "n_authors": 0,
+   "agreement_pct": 0.0
+  },
+  "observed": "G7 = BLOCKED；metric rows = 0；各结论的等级见本节下表。",
+  "interpretation": "证据成熟度是状态，不是绩效评分；升级必须先过门禁。",
+  "counterevidence": "语料规模、作者数与标注数都不能替代 agreement。",
+  "decision": "对外只发布方向与实验计划；比率、排名与医学措辞一律不发布。",
+  "basis": "gate-ledger.json + claims.json",
+  "unit": "report-level constraint",
+  "limit": "适用于本 run 的全部结论",
+  "status": "Blocked · report-level",
+  "records": [],
+  "numbers": {
+   "metric_rows": 0,
+   "g7_status": "BLOCKED"
+  }
+ }
+]

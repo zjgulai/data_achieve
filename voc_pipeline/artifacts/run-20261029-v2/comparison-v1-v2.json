@@ -1,0 +1,607 @@
+{
+ "schema_version": "voc_v1_v2_full_comparison_v1",
+ "generated_at": "2026-10-30T10:02:27.275919+00:00",
+ "coverage": {
+  "v1_records": 330,
+  "v2_records": 330,
+  "v2_unique": 330,
+  "v2_id_set_equals_v1": true,
+  "text_records": 330
+ },
+ "coding": {
+  "v1": {
+   "records": 330,
+   "is_product_experience_false": 209,
+   "is_product_experience_true": 121,
+   "raw_aspects": 225,
+   "raw_qualified_positive_aspects": 0,
+   "raw_qualified_positive_records": 0,
+   "aspect_records": 118,
+   "high_gate_aspects": 161,
+   "high_gate_polarity": {
+    "positive": 111,
+    "negative": 49,
+    "qualified_negative": 1
+   },
+   "high_gate_aspect_records": 88,
+   "high_gate_qualified_positive_aspects": 0,
+   "high_gate_qualified_positive_records": 0,
+   "experience_true": 119,
+   "experience_false": 304,
+   "experience_scope": {
+    "none": 304,
+    "partial": 18,
+    "full": 101
+   },
+   "confidence_dropped": 60
+  },
+  "v2": {
+   "records": 330,
+   "is_product_experience_false": 206,
+   "is_product_experience_true": 124,
+   "raw_aspects": 241,
+   "raw_qualified_positive_aspects": 10,
+   "raw_qualified_positive_records": 10,
+   "aspect_records": 124,
+   "high_gate_aspects": 168,
+   "high_gate_polarity": {
+    "positive": 122,
+    "negative": 38,
+    "qualified_positive": 5,
+    "qualified_negative": 3
+   },
+   "high_gate_aspect_records": 87,
+   "high_gate_qualified_positive_aspects": 5,
+   "high_gate_qualified_positive_records": 5,
+   "experience_true": 124,
+   "experience_false": 299,
+   "experience_scope": {
+    "none": 299,
+    "partial": 19,
+    "full": 105
+   },
+   "confidence_dropped": 73
+  }
+ },
+ "grade_distribution": {
+  "v1": {
+   "Confirmed": 6,
+   "Evidence gap": 2,
+   "Blocked": 2,
+   "Not authorized": 1,
+   "Directional": 1
+  },
+  "v2": {
+   "Confirmed": 7,
+   "Evidence gap": 1,
+   "Blocked": 2,
+   "Not authorized": 1,
+   "Directional": 1
+  }
+ },
+ "claims": {
+  "changed": {
+   "C11": {
+    "changed_fields": [
+     "headline",
+     "counts",
+     "numbers"
+    ],
+    "v1": {
+     "headline": "136 条与支撑带相关的记录里，journey/outcome 标注可判为本人使用或效果相关的有 35 条；这是单编码覆盖计数，不是人工确认的使用人数，其余 101 条没有这类标注。",
+     "counts": {
+      "n_records": 35,
+      "n_authors": 35,
+      "agreement_pct": null
+     },
+     "numbers": {
+      "relevant_records": 136,
+      "journey_or_outcome_records": 35,
+      "journey_or_outcome_share": 0.257
+     }
+    },
+    "v2": {
+     "headline": "136 条与支撑带相关的记录里，journey/outcome 标注可判为本人使用或效果相关的有 38 条；这是单编码覆盖计数，不是人工确认的使用人数，其余 98 条没有这类标注。",
+     "counts": {
+      "n_records": 38,
+      "n_authors": 38,
+      "agreement_pct": null
+     },
+     "numbers": {
+      "relevant_records": 136,
+      "journey_or_outcome_records": 38,
+      "journey_or_outcome_share": 0.279
+     }
+    }
+   },
+   "C04": {
+    "changed_fields": [
+     "headline",
+     "numbers"
+    ],
+    "v1": {
+     "headline": "自然样本的本人使用体验里（full 19 / partial 18），支撑负向 pooled 3 次（full 1、partial 2）、尺码/适配 0 次、稳定性 0 次、价格价值 0 次；含四类摩擦的记录 pooled 3 条（full 1、partial 2）。",
+     "numbers": {
+      "support_negative": 3,
+      "support_negative_full": 1,
+      "support_negative_partial": 2,
+      "fit_negative": 0,
+      "stability_negative": 0,
+      "value_negative": 0,
+      "friction_negative_annotations": 3,
+      "all_negative_annotations": 10,
+      "friction_records": 3,
+      "friction_records_full": 1,
+      "friction_records_partial": 2,
+      "experience_natural_records": 37,
+      "experience_full_records": 19,
+      "experience_partial_records": 18,
+      "natural_records": 149,
+      "experience_dropped": 112
+     }
+    },
+    "v2": {
+     "headline": "自然样本的本人使用体验里（full 22 / partial 19），支撑负向 pooled 3 次（full 2、partial 1）、尺码/适配 0 次、稳定性 0 次、价格价值 0 次；含四类摩擦的记录 pooled 3 条（full 2、partial 1）。",
+     "numbers": {
+      "support_negative": 3,
+      "support_negative_full": 2,
+      "support_negative_partial": 1,
+      "fit_negative": 0,
+      "stability_negative": 0,
+      "value_negative": 0,
+      "friction_negative_annotations": 3,
+      "all_negative_annotations": 6,
+      "friction_records": 3,
+      "friction_records_full": 2,
+      "friction_records_partial": 1,
+      "experience_natural_records": 41,
+      "experience_full_records": 22,
+      "experience_partial_records": 19,
+      "natural_records": 149,
+      "experience_dropped": 108
+     }
+    }
+   },
+   "C05": {
+    "changed_fields": [
+     "grade",
+     "status",
+     "headline",
+     "counts",
+     "numbers"
+    ],
+    "v1": {
+     "grade": "Evidence gap",
+     "status": "Evidence gap · full 层无共现",
+     "headline": "full 层没有同时出现舒适正向与核心摩擦的记录：full 层（19 条本人体验）舒适正向 1 条、共现 0 条；partial 层（18 条）舒适正向 2 条、共现 1 条；pooled 3 条舒适正向、1 条共现（pooled 不是分布）。",
+     "counts": {
+      "n_records": 0,
+      "n_authors": 0,
+      "agreement_pct": null
+     },
+     "numbers": {
+      "comfort_positive_records": 3,
+      "with_friction": 1,
+      "share": 0.333,
+      "full_comfort_positive_records": 1,
+      "full_with_friction": 0,
+      "partial_comfort_positive_records": 2,
+      "partial_with_friction": 1,
+      "experience_full_records": 19,
+      "experience_partial_records": 18,
+      "experience_dropped": 112
+     }
+    },
+    "v2": {
+     "grade": "Confirmed",
+     "status": "Confirmed · 计数事实（full 层）",
+     "headline": "full 层共现记录：full 层（22 条本人体验）舒适正向 2 条、共现 1 条；partial 层（19 条）舒适正向 1 条、共现 0 条；pooled 3 条舒适正向、1 条共现（pooled 不是分布）。",
+     "counts": {
+      "n_records": 1,
+      "n_authors": 1,
+      "agreement_pct": null
+     },
+     "numbers": {
+      "comfort_positive_records": 3,
+      "with_friction": 1,
+      "share": 0.333,
+      "full_comfort_positive_records": 2,
+      "full_with_friction": 1,
+      "partial_comfort_positive_records": 1,
+      "partial_with_friction": 0,
+      "experience_full_records": 22,
+      "experience_partial_records": 19,
+      "experience_dropped": 108
+     }
+    }
+   },
+   "C08": {
+    "changed_fields": [
+     "headline",
+     "counts",
+     "numbers"
+    ],
+    "v1": {
+     "headline": "107 条记录含疼痛、病史或受力安全自述，这些只能进入 review queue，不能变成疗效或安全结论。",
+     "counts": {
+      "n_records": 107,
+      "n_authors": 102,
+      "agreement_pct": null
+     },
+     "numbers": {
+      "medical_records": 107
+     }
+    },
+    "v2": {
+     "headline": "102 条记录含疼痛、病史或受力安全自述，这些只能进入 review queue，不能变成疗效或安全结论。",
+     "counts": {
+      "n_records": 102,
+      "n_authors": 97,
+      "agreement_pct": null
+     },
+     "numbers": {
+      "medical_records": 102
+     }
+    }
+   },
+   "C13": {
+    "changed_fields": [
+     "headline",
+     "counts",
+     "numbers"
+    ],
+    "v1": {
+     "headline": "在 32 条对支撑方向有明确判断的 verified-purchase 评论里，26 条同向、6 条反向，方向一致度 81%，达到 Directional 门槛。",
+     "counts": {
+      "n_records": 32,
+      "n_authors": 31,
+      "agreement_pct": 81.2
+     },
+     "numbers": {
+      "support_scope": "full",
+      "support_excluded_partial": 0,
+      "support_excluded_none": 1,
+      "support_same_direction": 26,
+      "support_opposite_direction": 6,
+      "support_mixed": 0,
+      "support_decisive": 32,
+      "support_no_direction": 49,
+      "support_annotation_hits": 37,
+      "direction_share": 0.812
+     }
+    },
+    "v2": {
+     "headline": "在 31 条对支撑方向有明确判断的 verified-purchase 评论里，27 条同向、4 条反向，方向一致度 87%，达到 Directional 门槛。",
+     "counts": {
+      "n_records": 31,
+      "n_authors": 30,
+      "agreement_pct": 87.1
+     },
+     "numbers": {
+      "support_scope": "full",
+      "support_excluded_partial": 0,
+      "support_excluded_none": 0,
+      "support_same_direction": 27,
+      "support_opposite_direction": 4,
+      "support_mixed": 0,
+      "support_decisive": 31,
+      "support_no_direction": 51,
+      "support_annotation_hits": 37,
+      "direction_share": 0.871
+     }
+    }
+   }
+  },
+  "unchanged": [
+   "C01",
+   "C02",
+   "C03",
+   "C07",
+   "C10",
+   "C12",
+   "C14"
+  ]
+ },
+ "b05": {
+  "v1": {
+   "aspects": [
+    {
+     "code": "SUP.BACK",
+     "polarity": "positive",
+     "evidence_span": "Almost fully takes away the sciatica",
+     "confidence": "high"
+    },
+    {
+     "code": "GEN.OVERALL_EVALUATION",
+     "polarity": "positive",
+     "evidence_span": "Truly a lifesaver!",
+     "confidence": "high"
+    }
+   ]
+  },
+  "v2": {
+   "aspects": [
+    {
+     "code": "SUP.PRESSURE_OFFLOAD",
+     "polarity": "qualified_positive",
+     "evidence_span": "Almost fully takes away the sciatica I’ve had for the last 20 weeks of pregnancy",
+     "confidence": "high"
+    },
+    {
+     "code": "GEN.OVERALL_EVALUATION",
+     "polarity": "positive",
+     "evidence_span": "Truly a lifesaver!",
+     "confidence": "high"
+    }
+   ]
+  }
+ },
+ "c13": {
+  "v1": {
+   "grade": "Directional",
+   "status": "Directional · single-coded, pre-G7",
+   "headline": "在 32 条对支撑方向有明确判断的 verified-purchase 评论里，26 条同向、6 条反向，方向一致度 81%，达到 Directional 门槛。",
+   "counts": {
+    "n_records": 32,
+    "n_authors": 31,
+    "agreement_pct": 81.2
+   },
+   "numbers": {
+    "support_scope": "full",
+    "support_excluded_partial": 0,
+    "support_excluded_none": 1,
+    "support_same_direction": 26,
+    "support_opposite_direction": 6,
+    "support_mixed": 0,
+    "support_decisive": 32,
+    "support_no_direction": 49,
+    "support_annotation_hits": 37,
+    "direction_share": 0.812
+   }
+  },
+  "v2": {
+   "grade": "Directional",
+   "status": "Directional · single-coded, pre-G7",
+   "headline": "在 31 条对支撑方向有明确判断的 verified-purchase 评论里，27 条同向、4 条反向，方向一致度 87%，达到 Directional 门槛。",
+   "counts": {
+    "n_records": 31,
+    "n_authors": 30,
+    "agreement_pct": 87.1
+   },
+   "numbers": {
+    "support_scope": "full",
+    "support_excluded_partial": 0,
+    "support_excluded_none": 0,
+    "support_same_direction": 27,
+    "support_opposite_direction": 4,
+    "support_mixed": 0,
+    "support_decisive": 31,
+    "support_no_direction": 51,
+    "support_annotation_hits": 37,
+    "direction_share": 0.871
+   }
+  }
+ },
+ "c04": {
+  "v1": {
+   "grade": "Confirmed",
+   "status": "Confirmed · 计数事实",
+   "headline": "自然样本的本人使用体验里（full 19 / partial 18），支撑负向 pooled 3 次（full 1、partial 2）、尺码/适配 0 次、稳定性 0 次、价格价值 0 次；含四类摩擦的记录 pooled 3 条（full 1、partial 2）。",
+   "counts": {
+    "n_records": 3,
+    "n_authors": 3,
+    "agreement_pct": null
+   },
+   "numbers": {
+    "support_negative": 3,
+    "support_negative_full": 1,
+    "support_negative_partial": 2,
+    "fit_negative": 0,
+    "stability_negative": 0,
+    "value_negative": 0,
+    "friction_negative_annotations": 3,
+    "all_negative_annotations": 10,
+    "friction_records": 3,
+    "friction_records_full": 1,
+    "friction_records_partial": 2,
+    "experience_natural_records": 37,
+    "experience_full_records": 19,
+    "experience_partial_records": 18,
+    "natural_records": 149,
+    "experience_dropped": 112
+   }
+  },
+  "v2": {
+   "grade": "Confirmed",
+   "status": "Confirmed · 计数事实",
+   "headline": "自然样本的本人使用体验里（full 22 / partial 19），支撑负向 pooled 3 次（full 2、partial 1）、尺码/适配 0 次、稳定性 0 次、价格价值 0 次；含四类摩擦的记录 pooled 3 条（full 2、partial 1）。",
+   "counts": {
+    "n_records": 3,
+    "n_authors": 3,
+    "agreement_pct": null
+   },
+   "numbers": {
+    "support_negative": 3,
+    "support_negative_full": 2,
+    "support_negative_partial": 1,
+    "fit_negative": 0,
+    "stability_negative": 0,
+    "value_negative": 0,
+    "friction_negative_annotations": 3,
+    "all_negative_annotations": 6,
+    "friction_records": 3,
+    "friction_records_full": 2,
+    "friction_records_partial": 1,
+    "experience_natural_records": 41,
+    "experience_full_records": 22,
+    "experience_partial_records": 19,
+    "natural_records": 149,
+    "experience_dropped": 108
+   }
+  }
+ },
+ "c05": {
+  "v1": {
+   "grade": "Evidence gap",
+   "status": "Evidence gap · full 层无共现",
+   "headline": "full 层没有同时出现舒适正向与核心摩擦的记录：full 层（19 条本人体验）舒适正向 1 条、共现 0 条；partial 层（18 条）舒适正向 2 条、共现 1 条；pooled 3 条舒适正向、1 条共现（pooled 不是分布）。",
+   "counts": {
+    "n_records": 0,
+    "n_authors": 0,
+    "agreement_pct": null
+   },
+   "numbers": {
+    "comfort_positive_records": 3,
+    "with_friction": 1,
+    "share": 0.333,
+    "full_comfort_positive_records": 1,
+    "full_with_friction": 0,
+    "partial_comfort_positive_records": 2,
+    "partial_with_friction": 1,
+    "experience_full_records": 19,
+    "experience_partial_records": 18,
+    "experience_dropped": 112
+   }
+  },
+  "v2": {
+   "grade": "Confirmed",
+   "status": "Confirmed · 计数事实（full 层）",
+   "headline": "full 层共现记录：full 层（22 条本人体验）舒适正向 2 条、共现 1 条；partial 层（19 条）舒适正向 1 条、共现 0 条；pooled 3 条舒适正向、1 条共现（pooled 不是分布）。",
+   "counts": {
+    "n_records": 1,
+    "n_authors": 1,
+    "agreement_pct": null
+   },
+   "numbers": {
+    "comfort_positive_records": 3,
+    "with_friction": 1,
+    "share": 0.333,
+    "full_comfort_positive_records": 2,
+    "full_with_friction": 1,
+    "partial_comfort_positive_records": 1,
+    "partial_with_friction": 0,
+    "experience_full_records": 22,
+    "experience_partial_records": 19,
+    "experience_dropped": 108
+   }
+  }
+ },
+ "v2_eval": {
+  "status": "unverified_inherited_from_v1",
+  "statement": "v2 未做 gold 评测，精度数字沿用 v1 并标注为未验证",
+  "report_headline_uses": "v1 high_only.strict inherited",
+  "supplementary_reference_check": {
+   "performed": true,
+   "reference": "same frozen 50-record gold-set-50.jsonl (single LLM reference, not human gold)",
+   "used_by_report": false,
+   "why_not_used": "The report must not present a non-human reference as validated v2 precision. This table is supplementary only.",
+   "high_only_strict": {
+    "TikTok": {
+     "coder_aspects": 47,
+     "gold_aspects": 77,
+     "true_positives": 46,
+     "precision_pct": 97.9,
+     "recall_pct": 59.7
+    },
+    "Reddit": {
+     "coder_aspects": 2,
+     "gold_aspects": 8,
+     "true_positives": 2,
+     "precision_pct": 100.0,
+     "recall_pct": 25.0
+    },
+    "ALL": {
+     "coder_aspects": 49,
+     "gold_aspects": 85,
+     "true_positives": 48,
+     "precision_pct": 98.0,
+     "recall_pct": 56.5
+    }
+   },
+   "all_mode_strict": {
+    "TikTok": {
+     "coder_aspects": 62,
+     "gold_aspects": 77,
+     "true_positives": 58,
+     "precision_pct": 93.5,
+     "recall_pct": 75.3
+    },
+    "Reddit": {
+     "coder_aspects": 6,
+     "gold_aspects": 8,
+     "true_positives": 3,
+     "precision_pct": 50.0,
+     "recall_pct": 37.5
+    },
+    "ALL": {
+     "coder_aspects": 68,
+     "gold_aspects": 85,
+     "true_positives": 61,
+     "precision_pct": 89.7,
+     "recall_pct": 71.8
+    }
+   }
+  },
+  "gold_set_abstentions": {
+   "coder_aspects": 68,
+   "high_aspects": 49,
+   "abstained_aspects": 19,
+   "abstention_share_pct": 27.9,
+   "note": "v2 raw aspects on the 50 gold records; 19 medium-confidence aspects fall below the high gate. This is a v2 coding count, not inherited from v1."
+  }
+ },
+ "merge": {
+  "rows_written": 330,
+  "unique_canonical_ids": 330,
+  "expected_text_records": 330,
+  "missing_records": 0,
+  "extra_records_not_in_canonical": 0,
+  "duplicate_ids": 0,
+  "per_batch_counts": {
+   "batch-01": 42,
+   "batch-02": 42,
+   "batch-03": 41,
+   "batch-04": 41,
+   "batch-05": 41,
+   "batch-06": 41,
+   "batch-07": 41,
+   "batch-08": 41
+  },
+  "v1_id_set_match": true,
+  "v1_order_match": true
+ },
+ "merge_duplicates": {
+  "duplicate_groups": 83,
+  "full_row_identical_groups": 2,
+  "notes_only_groups": 38,
+  "coding_conflict_groups": 43,
+  "detail_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/llm-coding-v2/duplicate-conflicts.json",
+  "dedupe_policy": "first occurrence in sorted part order"
+ },
+ "duplicate_robustness": {
+  "C11_current": 38,
+  "C11_alternate_copy_choice": 39,
+  "C13_current": {
+   "records": 31,
+   "same": 27,
+   "opposite": 4,
+   "agreement_pct": 87.1
+  },
+  "C13_alternate_copy_choice": {
+   "records": 32,
+   "same": 27,
+   "opposite": 5,
+   "agreement_pct": 84.4
+  },
+  "C04_stable": true,
+  "C05_stable": true
+ },
+ "report": {
+  "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029-v2/report.html",
+  "validation": "report PASS 32/32; spec PASS 13/13"
+ },
+ "hashes": {
+  "v1_coded_sha256": "b3ad75b6e86810b39a582898d4987381258ee2ec1033b23bbe85d4422080fa28",
+  "v2_coded_sha256": "bd300107ecbb4f94776eb8587e946311f05f7905a2ebc17a379f2d87d9651de5"
+ }
+}

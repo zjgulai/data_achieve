@@ -1,0 +1,882 @@
+{
+  "generated_at": "2026-10-30T01:37:03.203095+00:00",
+  "gold_set": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/gold-set-50.jsonl",
+  "evaluated_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/llm-coding/coded/ALL.jsonl",
+  "filter": {
+    "confidence": "high",
+    "applied": "each LLM aspect independently; gold set unchanged",
+    "evaluation_corpus": "coded/ALL.jsonl filtered to confidence == \"high\"; this is the eval_gold.py by-confidence definition used in eval-result.json"
+  },
+  "rule": {
+    "matching": "per-record multiset intersection; each LLM aspect consumes at most one gold aspect",
+    "strict": "[code, polarity] exact",
+    "family": "[code, polarity family] with qualified_positive->positive, qualified_negative->negative",
+    "code_only": "[code]",
+    "implementation": "score()/table()/KEYS/FP_CATEGORY imported unchanged from eval_gold.py"
+  },
+  "reproduction_check": {
+    "passed": true,
+    "note": "old rule-coder table reproduced exactly from gold/coder-output-50.jsonl; all-mode table equals eval-result.json new_llm_coder",
+    "rule_coder_published_values": {
+      "strict": {
+        "TikTok": [
+          63.4,
+          33.8
+        ],
+        "ALL": [
+          63.4,
+          30.6
+        ]
+      },
+      "family": {
+        "TikTok": [
+          73.2,
+          39.0
+        ],
+        "ALL": [
+          73.2,
+          35.3
+        ]
+      },
+      "code_only": {
+        "TikTok": [
+          78.0,
+          41.6
+        ],
+        "ALL": [
+          78.0,
+          37.6
+        ]
+      }
+    },
+    "all_mode_matches_eval_result_json": true
+  },
+  "all_mode": {
+    "strict": {
+      "TikTok": {
+        "coder_aspects": 56,
+        "gold_aspects": 77,
+        "true_positives": 46,
+        "precision_pct": 82.1,
+        "recall_pct": 59.7
+      },
+      "Reddit": {
+        "coder_aspects": 8,
+        "gold_aspects": 8,
+        "true_positives": 5,
+        "precision_pct": 62.5,
+        "recall_pct": 62.5
+      },
+      "ALL": {
+        "coder_aspects": 64,
+        "gold_aspects": 85,
+        "true_positives": 51,
+        "precision_pct": 79.7,
+        "recall_pct": 60.0
+      }
+    },
+    "family": {
+      "TikTok": {
+        "coder_aspects": 56,
+        "gold_aspects": 77,
+        "true_positives": 49,
+        "precision_pct": 87.5,
+        "recall_pct": 63.6
+      },
+      "Reddit": {
+        "coder_aspects": 8,
+        "gold_aspects": 8,
+        "true_positives": 5,
+        "precision_pct": 62.5,
+        "recall_pct": 62.5
+      },
+      "ALL": {
+        "coder_aspects": 64,
+        "gold_aspects": 85,
+        "true_positives": 54,
+        "precision_pct": 84.4,
+        "recall_pct": 63.5
+      }
+    },
+    "code_only": {
+      "TikTok": {
+        "coder_aspects": 56,
+        "gold_aspects": 77,
+        "true_positives": 49,
+        "precision_pct": 87.5,
+        "recall_pct": 63.6
+      },
+      "Reddit": {
+        "coder_aspects": 8,
+        "gold_aspects": 8,
+        "true_positives": 5,
+        "precision_pct": 62.5,
+        "recall_pct": 62.5
+      },
+      "ALL": {
+        "coder_aspects": 64,
+        "gold_aspects": 85,
+        "true_positives": 54,
+        "precision_pct": 84.4,
+        "recall_pct": 63.5
+      }
+    }
+  },
+  "high_only": {
+    "strict": {
+      "TikTok": {
+        "coder_aspects": 42,
+        "gold_aspects": 77,
+        "true_positives": 38,
+        "precision_pct": 90.5,
+        "recall_pct": 49.4
+      },
+      "Reddit": {
+        "coder_aspects": 4,
+        "gold_aspects": 8,
+        "true_positives": 2,
+        "precision_pct": 50.0,
+        "recall_pct": 25.0
+      },
+      "ALL": {
+        "coder_aspects": 46,
+        "gold_aspects": 85,
+        "true_positives": 40,
+        "precision_pct": 87.0,
+        "recall_pct": 47.1
+      }
+    },
+    "family": {
+      "TikTok": {
+        "coder_aspects": 42,
+        "gold_aspects": 77,
+        "true_positives": 40,
+        "precision_pct": 95.2,
+        "recall_pct": 51.9
+      },
+      "Reddit": {
+        "coder_aspects": 4,
+        "gold_aspects": 8,
+        "true_positives": 2,
+        "precision_pct": 50.0,
+        "recall_pct": 25.0
+      },
+      "ALL": {
+        "coder_aspects": 46,
+        "gold_aspects": 85,
+        "true_positives": 42,
+        "precision_pct": 91.3,
+        "recall_pct": 49.4
+      }
+    },
+    "code_only": {
+      "TikTok": {
+        "coder_aspects": 42,
+        "gold_aspects": 77,
+        "true_positives": 40,
+        "precision_pct": 95.2,
+        "recall_pct": 51.9
+      },
+      "Reddit": {
+        "coder_aspects": 4,
+        "gold_aspects": 8,
+        "true_positives": 2,
+        "precision_pct": 50.0,
+        "recall_pct": 25.0
+      },
+      "ALL": {
+        "coder_aspects": 46,
+        "gold_aspects": 85,
+        "true_positives": 42,
+        "precision_pct": 91.3,
+        "recall_pct": 49.4
+      }
+    }
+  },
+  "comparison_all_vs_high": {
+    "strict": {
+      "TikTok": {
+        "all_precision_pct": 82.1,
+        "high_only_precision_pct": 90.5,
+        "delta_precision_pp": 8.4,
+        "all_recall_pct": 59.7,
+        "high_only_recall_pct": 49.4,
+        "delta_recall_pp": -10.3,
+        "all_coder_aspects": 56,
+        "high_only_coder_aspects": 42,
+        "all_true_positives": 46,
+        "high_only_true_positives": 38,
+        "gold_aspects": 77
+      },
+      "Reddit": {
+        "all_precision_pct": 62.5,
+        "high_only_precision_pct": 50.0,
+        "delta_precision_pp": -12.5,
+        "all_recall_pct": 62.5,
+        "high_only_recall_pct": 25.0,
+        "delta_recall_pp": -37.5,
+        "all_coder_aspects": 8,
+        "high_only_coder_aspects": 4,
+        "all_true_positives": 5,
+        "high_only_true_positives": 2,
+        "gold_aspects": 8
+      },
+      "ALL": {
+        "all_precision_pct": 79.7,
+        "high_only_precision_pct": 87.0,
+        "delta_precision_pp": 7.3,
+        "all_recall_pct": 60.0,
+        "high_only_recall_pct": 47.1,
+        "delta_recall_pp": -12.9,
+        "all_coder_aspects": 64,
+        "high_only_coder_aspects": 46,
+        "all_true_positives": 51,
+        "high_only_true_positives": 40,
+        "gold_aspects": 85
+      }
+    },
+    "family": {
+      "TikTok": {
+        "all_precision_pct": 87.5,
+        "high_only_precision_pct": 95.2,
+        "delta_precision_pp": 7.7,
+        "all_recall_pct": 63.6,
+        "high_only_recall_pct": 51.9,
+        "delta_recall_pp": -11.7,
+        "all_coder_aspects": 56,
+        "high_only_coder_aspects": 42,
+        "all_true_positives": 49,
+        "high_only_true_positives": 40,
+        "gold_aspects": 77
+      },
+      "Reddit": {
+        "all_precision_pct": 62.5,
+        "high_only_precision_pct": 50.0,
+        "delta_precision_pp": -12.5,
+        "all_recall_pct": 62.5,
+        "high_only_recall_pct": 25.0,
+        "delta_recall_pp": -37.5,
+        "all_coder_aspects": 8,
+        "high_only_coder_aspects": 4,
+        "all_true_positives": 5,
+        "high_only_true_positives": 2,
+        "gold_aspects": 8
+      },
+      "ALL": {
+        "all_precision_pct": 84.4,
+        "high_only_precision_pct": 91.3,
+        "delta_precision_pp": 6.9,
+        "all_recall_pct": 63.5,
+        "high_only_recall_pct": 49.4,
+        "delta_recall_pp": -14.1,
+        "all_coder_aspects": 64,
+        "high_only_coder_aspects": 46,
+        "all_true_positives": 54,
+        "high_only_true_positives": 42,
+        "gold_aspects": 85
+      }
+    },
+    "code_only": {
+      "TikTok": {
+        "all_precision_pct": 87.5,
+        "high_only_precision_pct": 95.2,
+        "delta_precision_pp": 7.7,
+        "all_recall_pct": 63.6,
+        "high_only_recall_pct": 51.9,
+        "delta_recall_pp": -11.7,
+        "all_coder_aspects": 56,
+        "high_only_coder_aspects": 42,
+        "all_true_positives": 49,
+        "high_only_true_positives": 40,
+        "gold_aspects": 77
+      },
+      "Reddit": {
+        "all_precision_pct": 62.5,
+        "high_only_precision_pct": 50.0,
+        "delta_precision_pp": -12.5,
+        "all_recall_pct": 62.5,
+        "high_only_recall_pct": 25.0,
+        "delta_recall_pp": -37.5,
+        "all_coder_aspects": 8,
+        "high_only_coder_aspects": 4,
+        "all_true_positives": 5,
+        "high_only_true_positives": 2,
+        "gold_aspects": 8
+      },
+      "ALL": {
+        "all_precision_pct": 84.4,
+        "high_only_precision_pct": 91.3,
+        "delta_precision_pp": 6.9,
+        "all_recall_pct": 63.5,
+        "high_only_recall_pct": 49.4,
+        "delta_recall_pp": -14.1,
+        "all_coder_aspects": 64,
+        "high_only_coder_aspects": 46,
+        "all_true_positives": 54,
+        "high_only_true_positives": 42,
+        "gold_aspects": 85
+      }
+    }
+  },
+  "strict_high_only_summary": {
+    "true_positives": 40,
+    "false_positives": 6,
+    "coder_aspects": 46,
+    "gold_aspects": 85,
+    "precision_pct": 87.0,
+    "recall_pct": 47.1,
+    "meets_90pct": false,
+    "gap_to_90_pp": 3.0,
+    "tp_needed_for_90_at_current_denominator": 42,
+    "wilson_95ci_pct": [
+      74.3,
+      93.9
+    ],
+    "verdict_band": "near_miss_85_90"
+  },
+  "dropped_aspects": {
+    "count": 18,
+    "by_confidence": {
+      "medium": 18
+    },
+    "by_source": {
+      "Reddit": 4,
+      "TikTok": 14
+    },
+    "strict_fate_counts": {
+      "TP": 11,
+      "FP": 7
+    },
+    "share_of_all_mode_coder_aspects_pct": 28.1,
+    "recall_delta_pp": -12.9,
+    "precision_delta_pp": 7.3,
+    "audit_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/confidence-dropped.jsonl",
+    "audit_file_matches": true,
+    "audit_file_note": "the pipeline audit has 60 below-threshold rows corpus-wide; the 18 rows below are exactly the gold-set subset",
+    "abstentions": [
+      {
+        "canonical_id": "c-1o9a0w1",
+        "source": "Reddit",
+        "code": "GEN.OVERALL_EVALUATION",
+        "polarity": "positive",
+        "confidence": "medium",
+        "evidence_span": "my trusty momcozy belly band",
+        "reason": "below_confidence_threshold",
+        "threshold": "high",
+        "policy_medium_definition": "CONFIDENCE-POLICY.md §3: medium means the span needs one visible inference, paraphrase, or attribution step before the attribute judgement; the frozen label is used as-is and is not re-scored.",
+        "strict_match_in_all_mode": "TP",
+        "record_text": "For me, my last long run/walks are 15 miles this weekend, then 8 next weekend. I'll be 23 weeks on race day and I've recently started to feel heavy, so my only goal is to have fun out there and hopefully finish with my trusty momcozy belly band. This would be my 4th NYC!"
+      },
+      {
+        "canonical_id": "c-1rpxflg",
+        "source": "Reddit",
+        "code": "GEN.OVERALL_EVALUATION",
+        "polarity": "positive",
+        "confidence": "medium",
+        "evidence_span": "I think they are worth a try!",
+        "reason": "below_confidence_threshold",
+        "threshold": "high",
+        "policy_medium_definition": "CONFIDENCE-POLICY.md §3: medium means the span needs one visible inference, paraphrase, or attribution step before the attribute judgement; the frozen label is used as-is and is not re-scored.",
+        "strict_match_in_all_mode": "TP",
+        "record_text": "Hey everyone, 21+3 weeks and have an anterior placenta. I started feeling butterflies around 16 weeks like once every couple of days, and around week 20 I started feeling a kick or movement like once a night. Now, I can feel movement randomly but I usually need to be sitting or laying in bed and aware to feel it. \n\n\n\nI just got a belly band because my work is physical labor and I started getting lower back/hip pain. I've only worn it 2 days, but its definitely helping me feel more when I'm walking, working, or not actively trying to feel movement. I haven't heard anyone else talk about this. I'm not sure if it could help anyone else, but I think they are worth a try!"
+      },
+      {
+        "canonical_id": "c-1upreg8",
+        "source": "Reddit",
+        "code": "GEN.OVERALL_EVALUATION",
+        "polarity": "positive",
+        "confidence": "medium",
+        "evidence_span": "the combo felt way better",
+        "reason": "below_confidence_threshold",
+        "threshold": "high",
+        "policy_medium_definition": "CONFIDENCE-POLICY.md §3: medium means the span needs one visible inference, paraphrase, or attribution step before the attribute judgement; the frozen label is used as-is and is not re-scored.",
+        "strict_match_in_all_mode": "TP",
+        "record_text": "I am 26 weeks and still running 3 miles twice a week. Around week 22 my belly started feeling heavy and my regular compression tights were cutting it.\n\nI pulled out a pair of Lasora leggings I bought back in my first trimester. I had only worn them to work but the belly band is pretty substantial so I figured I would test them on a run. Four runs in and the band stays put. The leg compression is solid. I did a 5k last weekend and they never rolled down.\n\nBut by mile 2 I still wanted more lift. I grabbed a cheap belly band for my next run and the combo felt way better. The leggings are great on their own for shorter stuff and the gym. For longer runs in the third trimester I think you need both.\n\nHas anyone else run in them? Did the support last you through the whole pregnancy or did you end up adding a belt?"
+      },
+      {
+        "canonical_id": "c-1w3knom",
+        "source": "Reddit",
+        "code": "ACT.COMPATIBILITY",
+        "polarity": "positive",
+        "confidence": "medium",
+        "evidence_span": "actually using a belly band are helping",
+        "reason": "below_confidence_threshold",
+        "threshold": "high",
+        "policy_medium_definition": "CONFIDENCE-POLICY.md §3: medium means the span needs one visible inference, paraphrase, or attribution step before the attribute judgement; the frozen label is used as-is and is not re-scored.",
+        "strict_match_in_all_mode": "FP",
+        "record_text": "This is my third pregnancy. While I was lucky to be able to exercise (walking and weights mostly) through my first two, I had to give up running very early due to pelvic pain. \n\nNot sure what’s going on this time, but I’m currently 29 weeks pregnant and still running 3-4 miles 3 days a week (really … more of a light trot at this point ha). I’ve set the goal of doing as many 5Ks as I can for as long as I can, and not worrying about pace, which has helped stay within reasonable goals. I also think having a treadmill now (downhills outside are a little uncomfy) and actually using a belly band are helping. But it mostly seems to be just another way every pregnancy is so different. \n\nI’m taking it a week at a time, but curious if anyone has been able to continue running/jogging up to your due date? And any tips to do it safely/not destroy your pelvic floor? Should I be using anything other than a belly band? "
+      },
+      {
+        "canonical_id": "c-7660689026319632141",
+        "source": "TikTok",
+        "code": "ADJ.DONNING",
+        "polarity": "negative",
+        "confidence": "medium",
+        "evidence_span": "You have to attached on both sides and pull to try to get a good hold.",
+        "reason": "below_confidence_threshold",
+        "threshold": "high",
+        "policy_medium_definition": "CONFIDENCE-POLICY.md §3: medium means the span needs one visible inference, paraphrase, or attribution step before the attribute judgement; the frozen label is used as-is and is not re-scored.",
+        "strict_match_in_all_mode": "TP",
+        "record_text": "It did not to help support. It’s not sturdy/strong enough. You have to attached on both sides and pull to try to get a good hold. It did not nothing help support my belly or back. Very disappointed"
+      },
+      {
+        "canonical_id": "c-7665021905910384398",
+        "source": "TikTok",
+        "code": "FIT.COVERAGE",
+        "polarity": "positive",
+        "confidence": "medium",
+        "evidence_span": "to hide the extra skin from the last kids",
+        "reason": "below_confidence_threshold",
+        "threshold": "high",
+        "policy_medium_definition": "CONFIDENCE-POLICY.md §3: medium means the span needs one visible inference, paraphrase, or attribution step before the attribute judgement; the frozen label is used as-is and is not re-scored.",
+        "strict_match_in_all_mode": "FP",
+        "record_text": "It definitely helps relieve the pain. And to hide the extra skin from the last kids. I love it very comfortable"
+      },
+      {
+        "canonical_id": "c-7667963659528931085",
+        "source": "TikTok",
+        "code": "ADJ.RANGE_TENSION",
+        "polarity": "negative",
+        "confidence": "medium",
+        "evidence_span": "using it required frequent adjustments",
+        "reason": "below_confidence_threshold",
+        "threshold": "high",
+        "policy_medium_definition": "CONFIDENCE-POLICY.md §3: medium means the span needs one visible inference, paraphrase, or attribution step before the attribute judgement; the frozen label is used as-is and is not re-scored.",
+        "strict_match_in_all_mode": "TP",
+        "record_text": "Personally, I did not find that it provided optimal relief and experienced some stomach discomfort during the initial days. Additionally, using it required frequent adjustments."
+      },
+      {
+        "canonical_id": "c-7672402718996334350",
+        "source": "TikTok",
+        "code": "COM.WEAR_TOLERANCE",
+        "polarity": "positive",
+        "confidence": "medium",
+        "evidence_span": "comfortable for daily wear",
+        "reason": "below_confidence_threshold",
+        "threshold": "high",
+        "policy_medium_definition": "CONFIDENCE-POLICY.md §3: medium means the span needs one visible inference, paraphrase, or attribution step before the attribute judgement; the frozen label is used as-is and is not re-scored.",
+        "strict_match_in_all_mode": "TP",
+        "record_text": "Love this!  Supports and if comfortable for daily wear!"
+      },
+      {
+        "canonical_id": "c-7672402718996334350",
+        "source": "TikTok",
+        "code": "SUP.GENERAL",
+        "polarity": "positive",
+        "confidence": "medium",
+        "evidence_span": "Supports",
+        "reason": "below_confidence_threshold",
+        "threshold": "high",
+        "policy_medium_definition": "CONFIDENCE-POLICY.md §3: medium means the span needs one visible inference, paraphrase, or attribution step before the attribute judgement; the frozen label is used as-is and is not re-scored.",
+        "strict_match_in_all_mode": "TP",
+        "record_text": "Love this!  Supports and if comfortable for daily wear!"
+      },
+      {
+        "canonical_id": "c-7679159693625673485",
+        "source": "TikTok",
+        "code": "GEN.OVERALL_EVALUATION",
+        "polarity": "positive",
+        "confidence": "medium",
+        "evidence_span": "Would definitely order again",
+        "reason": "below_confidence_threshold",
+        "threshold": "high",
+        "policy_medium_definition": "CONFIDENCE-POLICY.md §3: medium means the span needs one visible inference, paraphrase, or attribution step before the attribute judgement; the frozen label is used as-is and is not re-scored.",
+        "strict_match_in_all_mode": "FP",
+        "record_text": "Runs true to size and really helps with back pain! Would definitely order again"
+      },
+      {
+        "canonical_id": "c-7681013357946865421",
+        "source": "TikTok",
+        "code": "SUP.GENERAL",
+        "polarity": "positive",
+        "confidence": "medium",
+        "evidence_span": "And support.",
+        "reason": "below_confidence_threshold",
+        "threshold": "high",
+        "policy_medium_definition": "CONFIDENCE-POLICY.md §3: medium means the span needs one visible inference, paraphrase, or attribution step before the attribute judgement; the frozen label is used as-is and is not re-scored.",
+        "strict_match_in_all_mode": "TP",
+        "record_text": "My daughterloved and appreciated the comfort\nAnd support."
+      },
+      {
+        "canonical_id": "c-7686709601646593805",
+        "source": "TikTok",
+        "code": "SUP.GENERAL",
+        "polarity": "qualified_negative",
+        "confidence": "medium",
+        "evidence_span": "There is some relief but the pregnancy ball was the best purchase",
+        "reason": "below_confidence_threshold",
+        "threshold": "high",
+        "policy_medium_definition": "CONFIDENCE-POLICY.md §3: medium means the span needs one visible inference, paraphrase, or attribution step before the attribute judgement; the frozen label is used as-is and is not re-scored.",
+        "strict_match_in_all_mode": "FP",
+        "record_text": "There is some relief but the pregnancy ball was the best purchase compared to getting relief rather than the support belt. Also, I found KT tapping more supportive than the belt. This might change for third trimester though."
+      },
+      {
+        "canonical_id": "c-7690266633513518861",
+        "source": "TikTok",
+        "code": "ACT.COMPATIBILITY",
+        "polarity": "positive",
+        "confidence": "medium",
+        "evidence_span": "it’s comfortable sitting as well",
+        "reason": "below_confidence_threshold",
+        "threshold": "high",
+        "policy_medium_definition": "CONFIDENCE-POLICY.md §3: medium means the span needs one visible inference, paraphrase, or attribution step before the attribute judgement; the frozen label is used as-is and is not re-scored.",
+        "strict_match_in_all_mode": "TP",
+        "record_text": "This has helped so much with hip and lower back pain. I have a sit down job and it’s comfortable sitting as well. Doesn’t dig in and I love the top bad as well for extra support. Feels very secure."
+      },
+      {
+        "canonical_id": "c-7695606260216399630",
+        "source": "TikTok",
+        "code": "GEN.OVERALL_EVALUATION",
+        "polarity": "positive",
+        "confidence": "medium",
+        "evidence_span": "My wife loves the belt",
+        "reason": "below_confidence_threshold",
+        "threshold": "high",
+        "policy_medium_definition": "CONFIDENCE-POLICY.md §3: medium means the span needs one visible inference, paraphrase, or attribution step before the attribute judgement; the frozen label is used as-is and is not re-scored.",
+        "strict_match_in_all_mode": "TP",
+        "record_text": "My wife loves the belt, she’s carrying twins and it has helped tremendously!"
+      },
+      {
+        "canonical_id": "c-7695606260216399630",
+        "source": "TikTok",
+        "code": "SUP.GENERAL",
+        "polarity": "positive",
+        "confidence": "medium",
+        "evidence_span": "it has helped tremendously",
+        "reason": "below_confidence_threshold",
+        "threshold": "high",
+        "policy_medium_definition": "CONFIDENCE-POLICY.md §3: medium means the span needs one visible inference, paraphrase, or attribution step before the attribute judgement; the frozen label is used as-is and is not re-scored.",
+        "strict_match_in_all_mode": "FP",
+        "record_text": "My wife loves the belt, she’s carrying twins and it has helped tremendously!"
+      },
+      {
+        "canonical_id": "c-7697340641772160781",
+        "source": "TikTok",
+        "code": "SUP.BACK",
+        "polarity": "positive",
+        "confidence": "medium",
+        "evidence_span": "You can feel the difference INSTANTLY for the mommies that are having back pains",
+        "reason": "below_confidence_threshold",
+        "threshold": "high",
+        "policy_medium_definition": "CONFIDENCE-POLICY.md §3: medium means the span needs one visible inference, paraphrase, or attribution step before the attribute judgement; the frozen label is used as-is and is not re-scored.",
+        "strict_match_in_all_mode": "FP",
+        "record_text": "I LITERALLY just tried it on just to see if it really works and IT DOESSSSSSS!!!! You can feel the difference INSTANTLY for the mommies that are having back pains and bellies are VERY noticeable."
+      },
+      {
+        "canonical_id": "c-7700643181202573070",
+        "source": "TikTok",
+        "code": "FIT.SIZE_ACCURACY",
+        "polarity": "negative",
+        "confidence": "medium",
+        "evidence_span": "Small-size up",
+        "reason": "below_confidence_threshold",
+        "threshold": "high",
+        "policy_medium_definition": "CONFIDENCE-POLICY.md §3: medium means the span needs one visible inference, paraphrase, or attribution step before the attribute judgement; the frozen label is used as-is and is not re-scored.",
+        "strict_match_in_all_mode": "TP",
+        "record_text": "Small-size up"
+      },
+      {
+        "canonical_id": "c-7700979310009550605",
+        "source": "TikTok",
+        "code": "MAT.FABRIC",
+        "polarity": "positive",
+        "confidence": "medium",
+        "evidence_span": "great quality",
+        "reason": "below_confidence_threshold",
+        "threshold": "high",
+        "policy_medium_definition": "CONFIDENCE-POLICY.md §3: medium means the span needs one visible inference, paraphrase, or attribution step before the attribute judgement; the frozen label is used as-is and is not re-scored.",
+        "strict_match_in_all_mode": "FP",
+        "record_text": "Fits good, great quality and support"
+      }
+    ]
+  },
+  "high_only_false_positives": [
+    {
+      "canonical_id": "c-1x65j91",
+      "source": "Reddit",
+      "code": "COM.GENERAL",
+      "polarity": "negative",
+      "confidence": "high",
+      "evidence_span": "it felt so restrictive and uncomfortable",
+      "gold_aspects": [],
+      "same_code_in_gold": [],
+      "strict_mismatch": "gold_empty_record_not_product_experience",
+      "pattern": "other_product_scope",
+      "is_product_experience_gold": false,
+      "record_text": "Hi 🫶 I'm in my second pregnancy 24 weeks along. I have had some severe muscle pain around the belly button associated with moderate activity/lifting and a bad case of diastasis recti. My OB gave me a 20 lb lift restriction (unfortunately I am a nurse and have a 33 lb toddler so this is hard) and recommended a good belly band and KT tape.\n\nAre there any that are particularly good for diastasis recti during pregnancy? I honestly hated my belly band my first pregnancy because it felt so restrictive and uncomfortable. Thanks!! "
+    },
+    {
+      "canonical_id": "c-1x65j91",
+      "source": "Reddit",
+      "code": "GEN.OVERALL_EVALUATION",
+      "polarity": "negative",
+      "confidence": "high",
+      "evidence_span": "I honestly hated my belly band",
+      "gold_aspects": [],
+      "same_code_in_gold": [],
+      "strict_mismatch": "gold_empty_record_not_product_experience",
+      "pattern": "other_product_scope",
+      "is_product_experience_gold": false,
+      "record_text": "Hi 🫶 I'm in my second pregnancy 24 weeks along. I have had some severe muscle pain around the belly button associated with moderate activity/lifting and a bad case of diastasis recti. My OB gave me a 20 lb lift restriction (unfortunately I am a nurse and have a 33 lb toddler so this is hard) and recommended a good belly band and KT tape.\n\nAre there any that are particularly good for diastasis recti during pregnancy? I honestly hated my belly band my first pregnancy because it felt so restrictive and uncomfortable. Thanks!! "
+    },
+    {
+      "canonical_id": "c-7658003601176119053",
+      "source": "TikTok",
+      "code": "SUP.BACK",
+      "polarity": "positive",
+      "confidence": "high",
+      "evidence_span": "Almost fully takes away the sciatica",
+      "gold_aspects": [
+        {
+          "code": "SUP.PRESSURE_OFFLOAD",
+          "polarity": "qualified_positive",
+          "evidence": "Almost fully takes away the sciatica"
+        },
+        {
+          "code": "GEN.OVERALL_EVALUATION",
+          "polarity": "positive",
+          "evidence": "Truly a lifesaver"
+        }
+      ],
+      "same_code_in_gold": [],
+      "strict_mismatch": "code_mismatch",
+      "pattern": "support_family_boundary",
+      "is_product_experience_gold": true,
+      "record_text": "Almost fully takes away the sciatica I’ve had for the last 20 weeks of pregnancy. Truly a lifesaver!"
+    },
+    {
+      "canonical_id": "c-7667963659528931085",
+      "source": "TikTok",
+      "code": "COM.GENERAL",
+      "polarity": "negative",
+      "confidence": "high",
+      "evidence_span": "experienced some stomach discomfort during the initial days",
+      "gold_aspects": [
+        {
+          "code": "SUP.PRESSURE_OFFLOAD",
+          "polarity": "qualified_negative",
+          "evidence": "did not find that it provided optimal relief"
+        },
+        {
+          "code": "COM.GENERAL",
+          "polarity": "qualified_negative",
+          "evidence": "experienced some stomach discomfort"
+        },
+        {
+          "code": "ADJ.RANGE_TENSION",
+          "polarity": "negative",
+          "evidence": "required frequent adjustments"
+        }
+      ],
+      "same_code_in_gold": [
+        {
+          "code": "COM.GENERAL",
+          "polarity": "qualified_negative"
+        }
+      ],
+      "strict_mismatch": "polarity_mismatch_on_same_code",
+      "pattern": "polarity_hedge",
+      "is_product_experience_gold": true,
+      "record_text": "Personally, I did not find that it provided optimal relief and experienced some stomach discomfort during the initial days. Additionally, using it required frequent adjustments."
+    },
+    {
+      "canonical_id": "c-7667963659528931085",
+      "source": "TikTok",
+      "code": "SUP.GENERAL",
+      "polarity": "negative",
+      "confidence": "high",
+      "evidence_span": "did not find that it provided optimal relief",
+      "gold_aspects": [
+        {
+          "code": "SUP.PRESSURE_OFFLOAD",
+          "polarity": "qualified_negative",
+          "evidence": "did not find that it provided optimal relief"
+        },
+        {
+          "code": "COM.GENERAL",
+          "polarity": "qualified_negative",
+          "evidence": "experienced some stomach discomfort"
+        },
+        {
+          "code": "ADJ.RANGE_TENSION",
+          "polarity": "negative",
+          "evidence": "required frequent adjustments"
+        }
+      ],
+      "same_code_in_gold": [],
+      "strict_mismatch": "code_mismatch",
+      "pattern": "support_family_boundary",
+      "is_product_experience_gold": true,
+      "record_text": "Personally, I did not find that it provided optimal relief and experienced some stomach discomfort during the initial days. Additionally, using it required frequent adjustments."
+    },
+    {
+      "canonical_id": "c-7679740736191088397",
+      "source": "TikTok",
+      "code": "SUP.GENERAL",
+      "polarity": "negative",
+      "confidence": "high",
+      "evidence_span": "I wish it added just a little more support",
+      "gold_aspects": [
+        {
+          "code": "COM.GENERAL",
+          "polarity": "positive",
+          "evidence": "more comfortable than my other  bands"
+        },
+        {
+          "code": "ADJ.DONNING",
+          "polarity": "positive",
+          "evidence": "eat to assemble"
+        },
+        {
+          "code": "SUP.GENERAL",
+          "polarity": "qualified_negative",
+          "evidence": "wish it added just a little more support"
+        }
+      ],
+      "same_code_in_gold": [
+        {
+          "code": "SUP.GENERAL",
+          "polarity": "qualified_negative"
+        }
+      ],
+      "strict_mismatch": "polarity_mismatch_on_same_code",
+      "pattern": "polarity_hedge",
+      "is_product_experience_gold": true,
+      "record_text": "It is more comfortable than my other  bands eat to assemble but I wish it added just a little more support."
+    }
+  ],
+  "high_only_false_positive_count": 6,
+  "false_positive_pattern_counts": {
+    "other_product_scope": 2,
+    "support_family_boundary": 2,
+    "polarity_hedge": 2
+  },
+  "c13_check": {
+    "high_mode": {
+      "same_direction_records": 26,
+      "opposite_direction_records": 6,
+      "mixed_records": 0,
+      "no_direction_records": 50,
+      "decisive_records": 32,
+      "n_authors": 31,
+      "agreement_pct": 81.2
+    },
+    "all_mode": {
+      "same_direction_records": 31,
+      "opposite_direction_records": 9,
+      "mixed_records": 0,
+      "no_direction_records": 42,
+      "decisive_records": 40,
+      "n_authors": 39,
+      "agreement_pct": 77.5
+    },
+    "grade": "Directional",
+    "downgraded": false,
+    "reason": "n_records=32 >= 8, n_authors=31 >= 2, agreement=81.2% >= 70%, single_coded=True; the Directional threshold still passes",
+    "claims_evidence_gap_check": "no claim becomes Evidence gap because of the confidence gate; C03 remains Evidence gap for its pre-existing structural reason (0 exact-model first-person experience records)"
+  },
+  "build_level_sensitivity": {
+    "definition": "high confidence AND polarity not in {unknown, mixed}; this is what llm_coder.code_record actually emits as annotations",
+    "why": "one high-confidence gold-set aspect (c-1s8bn5y, SUP.GENERAL, gold polarity also unknown) is converted to an abstention by llm_coder.py:285-299; eval_gold.py by-confidence counting keeps it",
+    "tables": {
+      "strict": {
+        "TikTok": {
+          "coder_aspects": 42,
+          "gold_aspects": 77,
+          "true_positives": 38,
+          "precision_pct": 90.5,
+          "recall_pct": 49.4
+        },
+        "Reddit": {
+          "coder_aspects": 3,
+          "gold_aspects": 8,
+          "true_positives": 1,
+          "precision_pct": 33.3,
+          "recall_pct": 12.5
+        },
+        "ALL": {
+          "coder_aspects": 45,
+          "gold_aspects": 85,
+          "true_positives": 39,
+          "precision_pct": 86.7,
+          "recall_pct": 45.9
+        }
+      },
+      "family": {
+        "TikTok": {
+          "coder_aspects": 42,
+          "gold_aspects": 77,
+          "true_positives": 40,
+          "precision_pct": 95.2,
+          "recall_pct": 51.9
+        },
+        "Reddit": {
+          "coder_aspects": 3,
+          "gold_aspects": 8,
+          "true_positives": 1,
+          "precision_pct": 33.3,
+          "recall_pct": 12.5
+        },
+        "ALL": {
+          "coder_aspects": 45,
+          "gold_aspects": 85,
+          "true_positives": 41,
+          "precision_pct": 91.1,
+          "recall_pct": 48.2
+        }
+      },
+      "code_only": {
+        "TikTok": {
+          "coder_aspects": 42,
+          "gold_aspects": 77,
+          "true_positives": 40,
+          "precision_pct": 95.2,
+          "recall_pct": 51.9
+        },
+        "Reddit": {
+          "coder_aspects": 3,
+          "gold_aspects": 8,
+          "true_positives": 1,
+          "precision_pct": 33.3,
+          "recall_pct": 12.5
+        },
+        "ALL": {
+          "coder_aspects": 45,
+          "gold_aspects": 85,
+          "true_positives": 41,
+          "precision_pct": 91.1,
+          "recall_pct": 48.2
+        }
+      }
+    }
+  },
+  "comparability_with_ref_g7": {
+    "verdict": "not comparable",
+    "ref_requirement": "G7 requires a second independent coder and field-level agreement/kappa: ref/extract/DATA-CONTRACT.md:736 lists agreement, second_coder_id, field_level_kappa; voc-research-charter.json sets semantic_core_cohen_kappa_min=0.8, identity_governance_cohen_kappa_min=0.9, risk_case_review_coverage=1.0.",
+    "why_87_is_not_080": [
+      "precision is TP/(TP+FP) for one coder against a reference; it ignores false negatives. High-only strict recall is 47.1%, so 45 of 85 gold aspects are missed.",
+      "agreement/kappa is symmetric between two coders and Cohen kappa removes chance agreement. A raw precision of 87.0% is not 0.87 kappa.",
+      "the strict F1 is 61.1% and Jaccard is 44.0% (illustrative symmetric overlap, not kappa); both are far below 0.80.",
+      "the gold set is a single reference annotation. voc/report.py:29-31 and 515 describe it as an LLM annotation; gold-set-50.jsonl records no second_coder_id. The 87.0% is therefore at best inter-LLM precision, not human double-blind agreement.",
+      "the sample is 50 records / 85 gold aspects; Reddit has 8 gold aspects. One Reddit FP moves precision by 12.5-25 pp, so the estimate cannot establish a 0.80 threshold."
+    ],
+    "missing": [
+      "a second independent coder (second_coder_id) and a blind coding protocol",
+      "human-verified gold or human adjudication of disagreements",
+      "a pre-registered field-level Cohen kappa, not raw precision/agreement",
+      "a pre-registered abstention rule: high-only abstains on 18/64 gold-set coder aspects (28.1%); G7 must say whether abstentions are missing data or disagreement",
+      "the full G7 sample design: ref has core 50 + boundary 6 + frame eligibility 2 = 58 distinct records; this gold set is 50 records with no boundary/frame-eligibility strata",
+      "the other G7 thresholds: identity/governance kappa >= 0.9 and risk case review coverage = 1.0"
+    ]
+  },
+  "structural_ceiling": [
+    "gold contains 2 qualified_positive aspects; the coding contract forbids emitting qualified_positive, so strict recall can never reach 100% on those units.",
+    "two gold records exceed the contract 6-aspect cap (14 and 8 aspects); recall on those records is structurally truncated regardless of confidence."
+  ],
+  "notes": [
+    "gold set is unchanged; gold denominators stay at 85 for ALL, 77 for TikTok, 8 for Reddit.",
+    "high-only filters LLM aspects, not records: no record is dropped wholesale.",
+    "family and code-only coincide on this gold set because every code-only match also agrees on polarity family.",
+    "the high-only point estimate is below 90 but the 95% Wilson interval (74.3-93.9) still contains 90; the sample cannot resolve a 90% threshold with confidence."
+  ]
+}

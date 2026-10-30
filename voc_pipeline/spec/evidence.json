@@ -1,0 +1,61 @@
+{
+ "grade_count": 6,
+ "note": "Ref 报告显示 5 个标签但表中有 6 种状态：Confirmed / Directional / Supported hypothesis / Evidence gap / Blocked / Not authorized。第六级是医疗与因果禁写区。成熟度是状态，不是评分。",
+ "rules": [
+  {
+   "order": 1,
+   "grade": "Not authorized",
+   "seen": "结论涉及医学功效、安全性、因果、诊断，或需要法律/监管判断。",
+   "mechanical_test": "topic ∈ {medical_efficacy, safety, causality, diagnosis} OR claim requires regulated review",
+   "may_be_used_for": "只记录 self-report、claim relation 与 review queue。",
+   "may_not_be_used_for": "疗效、安全率、因果、诊断。",
+   "upgrade_path": "不升级；转 medical/legal review，且结论措辞必须回到描述层。"
+  },
+  {
+   "order": 2,
+   "grade": "Blocked",
+   "seen": "需要的 gate 未通过，或需要的分母不存在。",
+   "mechanical_test": "gate_status(required_gate) != PASS OR denominator is None/0 OR frame is diagnostic and claim is prevalence",
+   "may_be_used_for": "说明为什么不能说，以及缺哪一份证据。",
+   "may_not_be_used_for": "任何比率、排名、总体结论、正式策略。",
+   "upgrade_path": "补 gate artifact；不能用语料规模替代 gate。"
+  },
+  {
+   "order": 3,
+   "grade": "Evidence gap",
+   "seen": "要求的 cell 里记录数为 0，或关键字段缺失，或声明的对比支持门槛未通过。",
+   "mechanical_test": "required_cell_count == 0 OR required_field_missing_rate == 1.0 OR required_support_gate != PASS",
+   "may_be_used_for": "指出证据缺口与补证动作。",
+   "may_not_be_used_for": "用 family / adjacent / 其他 variant 推断该 cell。",
+   "upgrade_path": "定向补采或换来源；补齐后再评级。"
+  },
+  {
+   "order": 4,
+   "grade": "Confirmed",
+   "seen": "直接观察到的事实，带不可变原始 artifact、精确身份与时间戳，且不含解释。",
+   "mechanical_test": "fact_type ∈ {identity, count, ledger, field_value} AND artifact_sha256 present AND exact_identity true AND no inference",
+   "may_be_used_for": "身份、计数、成本、字段值、血缘。",
+   "may_not_be_used_for": "把事实外推成体验、偏好或因果。",
+   "upgrade_path": "已是最高级；如需解释，另立 Directional 结论。"
+  },
+  {
+   "order": 5,
+   "grade": "Directional",
+   "seen": "同一 frame 内 ≥8 条独立 canonical records、≥2 个作者、方向一致度 ≥70%，但仍是单编码 / pre-G7。",
+   "mechanical_test": "n_independent >= 8 AND n_authors >= 2 AND direction_share >= 0.70 AND single_coded",
+   "may_be_used_for": "方向性判断、下一步实验设计。",
+   "may_not_be_used_for": "prevalence、总体情绪率、对外承诺、ROI 排序。",
+   "upgrade_path": "完成 G7 双盲 agreement 后，才可能进入 G8 的正式 metric。"
+  },
+  {
+   "order": 6,
+   "grade": "Supported hypothesis",
+   "seen": "3–7 条独立记录，或方向一致度 55–70%，或只来自一个 thread / 一个作者，或有 ≥8 条记录但方向一致度仍低于 70%。",
+   "mechanical_test": "3 <= n_independent < 8 OR 0.55 <= direction_share < 0.70 OR n_authors == 1 OR (n_independent >= 8 AND n_authors >= 2 AND direction_share < 0.70)",
+   "may_be_used_for": "提出假设、设计下一轮采集。",
+   "may_not_be_used_for": "写成发现，或据此改产品。",
+   "upgrade_path": "扩样到 ≥8 条且 ≥2 作者且方向一致度 ≥70%，或补充第二来源。"
+  }
+ ],
+ "ordering": "first match wins: Not authorized > Blocked > Evidence gap > Confirmed > Directional > Supported hypothesis"
+}

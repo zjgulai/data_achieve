@@ -1,0 +1,177 @@
+{
+ "schema_version": "voc_llm_coding_v2_merge_v2",
+ "generated_at": "2026-10-30T09:50:15+00:00",
+ "status": "COMPLETE",
+ "buildable": true,
+ "strategy": "batch is the unit; by-batch wins; parts fill missing batches by canonical_id",
+ "inputs": {
+  "by_batch": [
+   "batch-05",
+   "batch-07"
+  ],
+  "parts": [
+   "part-01.jsonl",
+   "part-02.jsonl",
+   "part-03.jsonl",
+   "part-04.jsonl"
+  ],
+  "batch_counts": {
+   "batch-01": 42,
+   "batch-02": 42,
+   "batch-03": 41,
+   "batch-04": 41,
+   "batch-05": 41,
+   "batch-06": 41,
+   "batch-07": 41,
+   "batch-08": 41
+  }
+ },
+ "merged": {
+  "rows_written": 330,
+  "unique_canonical_ids": 330,
+  "expected_text_records": 330,
+  "missing_records": 0,
+  "extra_records_not_in_canonical": 0,
+  "duplicate_ids": 0,
+  "per_batch_counts": {
+   "batch-01": 42,
+   "batch-02": 42,
+   "batch-03": 41,
+   "batch-04": 41,
+   "batch-05": 41,
+   "batch-06": 41,
+   "batch-07": 41,
+   "batch-08": 41
+  },
+  "v1_id_set_match": true,
+  "v1_order_match": true
+ },
+ "duplicates": {
+  "duplicate_groups": 83,
+  "full_row_identical_groups": 2,
+  "notes_only_groups": 38,
+  "coding_conflict_groups": 43,
+  "detail_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/llm-coding-v2/duplicate-conflicts.json",
+  "dedupe_policy": "first occurrence in sorted part order"
+ },
+ "validation": {
+  "failures": 0,
+  "failure_samples": [],
+  "aspects": 241,
+  "aspect_records": 124,
+  "experience_true": 124,
+  "experience_false": 206,
+  "experience_scope": {
+   "none": 206,
+   "full": 105,
+   "partial": 19
+  },
+  "polarity_counts": {
+   "negative": 68,
+   "qualified_positive": 10,
+   "positive": 151,
+   "qualified_negative": 9,
+   "unknown": 3
+  },
+  "code_counts": {
+   "SUP.PRESSURE_OFFLOAD": 26,
+   "STB.STAY_IN_PLACE": 13,
+   "ADJ.STRAP_DESIGN": 5,
+   "COM.GENERAL": 19,
+   "COM.SOFTNESS": 8,
+   "SUP.GENERAL": 27,
+   "APP.UNDER_CLOTHING": 3,
+   "GEN.OVERALL_EVALUATION": 44,
+   "ADJ.DONNING": 7,
+   "COM.WEAR_TOLERANCE": 2,
+   "APP.LOW_PROFILE": 3,
+   "SUP.BELLY_LIFT": 4,
+   "ACT.COMPATIBILITY": 9,
+   "SUP.BACK": 22,
+   "VAL.PRICE_VALUE": 6,
+   "FIT.SIZE_ACCURACY": 13,
+   "COM.PRESSURE_DIGGING": 2,
+   "CX.RETURN_EXCHANGE": 1,
+   "ADJ.RANGE_TENSION": 3,
+   "FIT.BODY_SHAPE": 4,
+   "MAT.FABRIC": 2,
+   "APP.COLOR_AESTHETIC": 3,
+   "FUL.PRODUCT_CONDITION": 2,
+   "STB.STRAP_POSITION": 2,
+   "COM.BREATHABILITY_HEAT": 3,
+   "COM.SKIN_CHAFE": 3,
+   "FIT.GROWTH_RANGE": 2,
+   "FIT.COVERAGE": 1,
+   "SAF.PRESSURE_PLACEMENT": 1,
+   "MAT.THICKNESS": 1
+  }
+ },
+ "qualified_positive": {
+  "aspects": 10,
+  "records": 10,
+  "occurrences": [
+   {
+    "canonical_id": "c-1rqq680",
+    "code": "STB.STAY_IN_PLACE",
+    "evidence_span": "it doesn't slide around as much and I don't have to keep adjusting it"
+   },
+   {
+    "canonical_id": "c-1qnhsit",
+    "code": "SUP.PRESSURE_OFFLOAD",
+    "evidence_span": "sometimes wearing belly band helps"
+   },
+   {
+    "canonical_id": "c-7661109234825692942",
+    "code": "FIT.GROWTH_RANGE",
+    "evidence_span": "not as effective so early in the pregnancy but awesome later in the pregnancy"
+   },
+   {
+    "canonical_id": "c-7677755508020528910",
+    "code": "SUP.GENERAL",
+    "evidence_span": "supports the belly just enough to get through my day"
+   },
+   {
+    "canonical_id": "c-1srusk5",
+    "code": "SUP.GENERAL",
+    "evidence_span": "a belly band which does help sometimes"
+   },
+   {
+    "canonical_id": "c-19rn656rs3pnk",
+    "code": "SUP.PRESSURE_OFFLOAD",
+    "evidence_span": "will give relief for a short time"
+   },
+   {
+    "canonical_id": "c-1ofb8c1",
+    "code": "SUP.PRESSURE_OFFLOAD",
+    "evidence_span": "which some had been remedied during the day by KT tape or a belly band"
+   },
+   {
+    "canonical_id": "c-7658003601176119053",
+    "code": "SUP.PRESSURE_OFFLOAD",
+    "evidence_span": "Almost fully takes away the sciatica I’ve had for the last 20 weeks of pregnancy"
+   },
+   {
+    "canonical_id": "c-7680524603688634126",
+    "code": "SUP.BACK",
+    "evidence_span": "Helps relieve some back pain too"
+   },
+   {
+    "canonical_id": "c-7686709601646593805",
+    "code": "SUP.PRESSURE_OFFLOAD",
+    "evidence_span": "There is some relief"
+   }
+  ]
+ },
+ "previous_attempt": {
+  "status": "INCOMPLETE",
+  "rows_written": 248,
+  "missing_records": 82,
+  "duplicate_canonical_ids": 83,
+  "coding_conflict_groups": 43,
+  "cause": "part-01..04 were built from the wrong batch pairs; batch-05 and batch-07 were never coded"
+ },
+ "constraints": {
+  "gold_set_read": false,
+  "v1_artifact_modified": false
+ }
+}
