@@ -1,0 +1,235 @@
+{
+ "provider": "tikhub",
+ "endpoint": "shop_reviews",
+ "schema_version": "voc_tiktok_shop_ledger_v1",
+ "generated_at": "2026-10-29T15:44:17+00:00",
+ "product_id": "1729474995478630680",
+ "frame": "tiktok_shop_verified",
+ "window": {
+  "start": "2026-07-01T00:00:00+00:00",
+  "end": "2026-10-29T23:59:59+00:00",
+  "timezone": "UTC"
+ },
+ "region": "US",
+ "summary": {
+  "requests": 9,
+  "success": 9,
+  "failed": 0,
+  "raw_rows": 180,
+  "duplicate_review_ids_dropped": 0,
+  "unique_reviews": 180,
+  "accepted_in_window": 175,
+  "quarantined": 1,
+  "out_of_window": 4,
+  "cost_usd": 0.009
+ },
+ "stop_reason": "window_reached",
+ "rows": [
+  {
+   "raw_id": "raw-001-06c677ac",
+   "provider": "tikhub",
+   "endpoint": "shop_reviews",
+   "request_id": "001-06c677ac",
+   "request": {
+    "frame": "tiktok_shop_verified",
+    "product_id": "1729474995478630680",
+    "page_start": 1,
+    "region": "US",
+    "sort_rule": 2,
+    "filter_type": 1,
+    "filter_value": 6
+   },
+   "fetched_at": "2026-10-29T15:43:48+00:00",
+   "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/raw/tikhub/001-06c677ac.json",
+   "sha256": "ead0783631ae17b6f29083c0b49c45e79145777c4f898588699668b341d2243e",
+   "record_count": 20,
+   "status": "success",
+   "error": null,
+   "cost_usd": 0.001
+  },
+  {
+   "raw_id": "raw-002-5700bf3e",
+   "provider": "tikhub",
+   "endpoint": "shop_reviews",
+   "request_id": "002-5700bf3e",
+   "request": {
+    "frame": "tiktok_shop_verified",
+    "product_id": "1729474995478630680",
+    "page_start": 2,
+    "region": "US",
+    "sort_rule": 2,
+    "filter_type": 1,
+    "filter_value": 6
+   },
+   "fetched_at": "2026-10-29T15:43:50+00:00",
+   "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/raw/tikhub/002-5700bf3e.json",
+   "sha256": "6075da567ae581d3cf2c4d5ba5afc210fd3f5e220c3b9992024d79dc146a5600",
+   "record_count": 20,
+   "status": "success",
+   "error": null,
+   "cost_usd": 0.001
+  },
+  {
+   "raw_id": "raw-003-7cc3f52b",
+   "provider": "tikhub",
+   "endpoint": "shop_reviews",
+   "request_id": "003-7cc3f52b",
+   "request": {
+    "frame": "tiktok_shop_verified",
+    "product_id": "1729474995478630680",
+    "page_start": 3,
+    "region": "US",
+    "sort_rule": 2,
+    "filter_type": 1,
+    "filter_value": 6
+   },
+   "fetched_at": "2026-10-29T15:43:57+00:00",
+   "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/raw/tikhub/003-7cc3f52b.json",
+   "sha256": "423c1f67685b5486cc3e74dd40bd2859a2baafeb4e7998560c6d26f7ba20865f",
+   "record_count": 20,
+   "status": "success",
+   "error": null,
+   "cost_usd": 0.001
+  },
+  {
+   "raw_id": "raw-004-75019d9a",
+   "provider": "tikhub",
+   "endpoint": "shop_reviews",
+   "request_id": "004-75019d9a",
+   "request": {
+    "frame": "tiktok_shop_verified",
+    "product_id": "1729474995478630680",
+    "page_start": 4,
+    "region": "US",
+    "sort_rule": 2,
+    "filter_type": 1,
+    "filter_value": 6
+   },
+   "fetched_at": "2026-10-29T15:43:59+00:00",
+   "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/raw/tikhub/004-75019d9a.json",
+   "sha256": "cc6ab6891c7256a9c67a89f0c8122234ee79a19297fe76879de3fc6d8fb7ceef",
+   "record_count": 20,
+   "status": "success",
+   "error": null,
+   "cost_usd": 0.001
+  },
+  {
+   "raw_id": "raw-005-b360b9fa",
+   "provider": "tikhub",
+   "endpoint": "shop_reviews",
+   "request_id": "005-b360b9fa",
+   "request": {
+    "frame": "tiktok_shop_verified",
+    "product_id": "1729474995478630680",
+    "page_start": 5,
+    "region": "US",
+    "sort_rule": 2,
+    "filter_type": 1,
+    "filter_value": 6
+   },
+   "fetched_at": "2026-10-29T15:44:06+00:00",
+   "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/raw/tikhub/005-b360b9fa.json",
+   "sha256": "93ae48ac4de1d823aa4548c1c6ee8c98297d9d5c1adbd00774bc44202dfc1eed",
+   "record_count": 20,
+   "status": "success",
+   "error": null,
+   "cost_usd": 0.001
+  },
+  {
+   "raw_id": "raw-006-e4113925",
+   "provider": "tikhub",
+   "endpoint": "shop_reviews",
+   "request_id": "006-e4113925",
+   "request": {
+    "frame": "tiktok_shop_verified",
+    "product_id": "1729474995478630680",
+    "page_start": 6,
+    "region": "US",
+    "sort_rule": 2,
+    "filter_type": 1,
+    "filter_value": 6
+   },
+   "fetched_at": "2026-10-29T15:44:10+00:00",
+   "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/raw/tikhub/006-e4113925.json",
+   "sha256": "7baf3f3cb88a03bf125358c22263e624ab5b64cb0177d5faf9ded61970da0cbd",
+   "record_count": 20,
+   "status": "success",
+   "error": null,
+   "cost_usd": 0.001
+  },
+  {
+   "raw_id": "raw-007-64bbd51f",
+   "provider": "tikhub",
+   "endpoint": "shop_reviews",
+   "request_id": "007-64bbd51f",
+   "request": {
+    "frame": "tiktok_shop_verified",
+    "product_id": "1729474995478630680",
+    "page_start": 7,
+    "region": "US",
+    "sort_rule": 2,
+    "filter_type": 1,
+    "filter_value": 6
+   },
+   "fetched_at": "2026-10-29T15:44:12+00:00",
+   "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/raw/tikhub/007-64bbd51f.json",
+   "sha256": "c15117f0f84d8dabcb58def85f3055d01ce092378e4228ad4542a34233de3785",
+   "record_count": 20,
+   "status": "success",
+   "error": null,
+   "cost_usd": 0.001
+  },
+  {
+   "raw_id": "raw-008-4d943e4d",
+   "provider": "tikhub",
+   "endpoint": "shop_reviews",
+   "request_id": "008-4d943e4d",
+   "request": {
+    "frame": "tiktok_shop_verified",
+    "product_id": "1729474995478630680",
+    "page_start": 8,
+    "region": "US",
+    "sort_rule": 2,
+    "filter_type": 1,
+    "filter_value": 6
+   },
+   "fetched_at": "2026-10-29T15:44:15+00:00",
+   "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/raw/tikhub/008-4d943e4d.json",
+   "sha256": "5e8833c57d9e6acce2624f7942a6adaf399238d1aa7b9b31001726d9a9bbd361",
+   "record_count": 20,
+   "status": "success",
+   "error": null,
+   "cost_usd": 0.001
+  },
+  {
+   "raw_id": "raw-009-1ada3e96",
+   "provider": "tikhub",
+   "endpoint": "shop_reviews",
+   "request_id": "009-1ada3e96",
+   "request": {
+    "frame": "tiktok_shop_verified",
+    "product_id": "1729474995478630680",
+    "page_start": 9,
+    "region": "US",
+    "sort_rule": 2,
+    "filter_type": 1,
+    "filter_value": 6
+   },
+   "fetched_at": "2026-10-29T15:44:17+00:00",
+   "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/raw/tikhub/009-1ada3e96.json",
+   "sha256": "df465e18254797164a1628339cb449da173740b53792a03f98e1cc24f3c0b59e",
+   "record_count": 20,
+   "status": "success",
+   "error": null,
+   "cost_usd": 0.001
+  }
+ ],
+ "captured_at": "2026-10-29T15:47:10+00:00",
+ "cost": {
+  "assumed_usd": 0.009,
+  "measured_usd": 0.009,
+  "balance_before_usd": 37.708,
+  "balance_after_usd": 37.699,
+  "note": "TikHub account from apps/api/.env; user/get_user_info before and after the 9 review pages."
+ }
+}

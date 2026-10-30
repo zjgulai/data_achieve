@@ -1,0 +1,493 @@
+{
+  "taxonomy_id": "VOC-BAND-v1.1",
+  "supersedes": "VOC-BAND-v1.0",
+  "frozen_at": "2026-10-30T12:00:00+08:00",
+  "revision_note": "裁决 B（support 族）：四个 SUP code 全部保留，include/exclude 重写为互斥规则，并增加强制优先级：BELLY_LIFT > weight PRESSURE_OFFLOAD > BACK > relief PRESSURE_OFFLOAD > GENERAL。code 集合不变；现有 coded/ALL.jsonl 是 v1.0 产物，未重新编码。",
+  "resolution_rules": [
+    {
+      "step": 1,
+      "code": "SUP.BELLY_LIFT",
+      "condition": "lift / hold up + belly / bump / bundle / baby",
+      "lexicon": [
+        "lift(?:s|ing|ed)?(?: and support)? (?:that |my |your |the )?(?:big )?(?:belly|bump|bundle|baby)",
+        "hold(?:s|ing)? up (?:my |the |her )?(?:little )?(?:bump|belly|bundle|baby)",
+        "belly lift",
+        "托起肚子"
+      ]
+    },
+    {
+      "step": 2,
+      "code": "SUP.PRESSURE_OFFLOAD",
+      "condition": "weight or load transfer: weight off, takes the weight, weight is lifted, pressure off",
+      "lexicon": [
+        "weight off",
+        "weight is lifted",
+        "take(?:s|n)? (?:the )?weight",
+        "pressure off"
+      ]
+    },
+    {
+      "step": 3,
+      "code": "SUP.BACK",
+      "condition": "explicit back or waist reference, and no step-2 weight/load transfer",
+      "lexicon": [
+        "back pain",
+        "backache",
+        "lower back",
+        "back support",
+        "my back"
+      ]
+    },
+    {
+      "step": 4,
+      "code": "SUP.PRESSURE_OFFLOAD",
+      "condition": "relief / ease / take away + pain or pressure, and no back reference",
+      "lexicon": [
+        "reliev(?:e|es|ed|ing)",
+        "relief",
+        "eas(?:e|es|ed|ing)",
+        "take(?:s|n)? away"
+      ]
+    },
+    {
+      "step": 5,
+      "code": "SUP.GENERAL",
+      "condition": "generic support only: no body part, weight/load, or belly lift",
+      "lexicon": [
+        "support",
+        "supportive"
+      ]
+    }
+  ],
+  "resolution_note": "SUP 族按 step 升序判断；第一个命中的 code 是该 evidence span 的唯一 SUP code。step 2（weight/load）优先于 step 3（BACK），因此 'the weight off my pelvis and lower back' 归 SUP.PRESSURE_OFFLOAD。",
+  "source_file": "voc/taxonomy.py",
+  "source_sha256": "914028b2876611470e73c42c75de19ac6ab7488074236d87c2687f4ec6c30df1",
+  "generated_at": "2026-10-30T05:03:35.440765+00:00",
+  "aspect_count": 34,
+  "family_labels": {
+    "SUP": "Support",
+    "FIT": "Fit and sizing",
+    "ADJ": "Adjustment and structure",
+    "STB": "Stability",
+    "COM": "Comfort",
+    "APP": "Appearance under clothing",
+    "MAT": "Material and durability",
+    "VAL": "Value for money",
+    "CX": "Returns and service",
+    "FUL": "Fulfillment condition",
+    "GEN": "Overall evaluation",
+    "USE": "Wearing style",
+    "ACT": "Activity compatibility",
+    "SAF": "Safety of pressure placement"
+  },
+  "derived_fields": [
+    "positive_example",
+    "negative_example"
+  ],
+  "example_note": "positive_example = an utterance that should receive this code with positive polarity. negative_example = a near-miss that must NOT receive this code because it falls under the taxonomy exclude rule. Both are [derived] from the frozen lexicon; the frozen module has no examples of its own. Definitions are verbatim from the frozen module.",
+  "aspects": [
+    {
+      "code": "SUP.GENERAL",
+      "label": "总体支撑",
+      "family": "SUP",
+      "definition": "对支撑效果的评价；仅在没有部位、没有重量转移、没有托起肚子语义时使用。",
+      "positive_example": "[derived] This belly band gives me the support I need to stay on my feet.",
+      "negative_example": "[derived] The fabric feels soft and cozy against my skin.",
+      "include": "support, supportive, holds me（兜底）",
+      "exclude": "back pain / lower back / back support / my back → BACK；weight off / take the weight / weight is lifted → PRESSURE；lift my belly / hold up bump / holding up her bundle → BELLY_LIFT；comfortable / soft → COM.*"
+    },
+    {
+      "code": "SUP.BACK",
+      "label": "背部支撑",
+      "family": "SUP",
+      "definition": "对下背、腰部支撑或该部位疼痛缓解的评价。",
+      "positive_example": "[derived] The back support is firm and my lower back pain has eased.",
+      "negative_example": "[derived] I do prenatal yoga to keep my back flexible.",
+      "include": "back pain, backache, lower back, back support, my back",
+      "exclude": "weight off / take the weight / weight is lifted（即使同句有 lower back）→ PRESSURE；无背部指向的 support → GENERAL；姿势/运动"
+    },
+    {
+      "code": "SUP.PRESSURE_OFFLOAD",
+      "label": "压力卸载",
+      "family": "SUP",
+      "definition": "对重量被卸掉、负载/压力被转移，或疼痛/压力得到缓解的评价。",
+      "positive_example": "[derived] It takes the weight off my hips so I can stand longer.",
+      "negative_example": "[derived] The straps are easy to tighten.",
+      "include": "weight off, takes the weight, weight is lifted, pressure off, relieve/ease/take away pain or pressure",
+      "exclude": "仅描述松紧；单纯 support → GENERAL/BACK；点名 lower back/back pain 且无 weight/load 语义 → BACK；lift/hold up belly → BELLY_LIFT；weightless 仅描述带子本身轻 → APP.LOW_PROFILE/COM.*；缓解来自其他物品/行为 → 不标"
+    },
+    {
+      "code": "SUP.BELLY_LIFT",
+      "label": "腹部托举",
+      "family": "SUP",
+      "definition": "明确描述把肚子托起来、兜住或托举。",
+      "positive_example": "[derived] It lifts my belly and holds up my bump nicely.",
+      "negative_example": "[derived] It gives good overall support.",
+      "include": "lift my belly, lift your belly, hold up bump, holding up her little bundle, 托起肚子",
+      "exclude": "仅说 support → GENERAL；仅说 weightless → PRESSURE/COM.*"
+    },
+    {
+      "code": "FIT.SIZE_ACCURACY",
+      "label": "尺码准确",
+      "family": "FIT",
+      "definition": "尺码是否与标注/预期一致。",
+      "positive_example": "[derived] I ordered my usual medium and it is true to size.",
+      "negative_example": "[derived] Which size should I order at 30 weeks?",
+      "include": "true to size, runs small/large, size up/down",
+      "exclude": "只问该买哪个码"
+    },
+    {
+      "code": "FIT.BODY_SHAPE",
+      "label": "体型适配",
+      "family": "FIT",
+      "definition": "腹型、躯干、身高、plus size 对适配的影响。",
+      "positive_example": "[derived] As a plus size mom with a short torso, this still fits well.",
+      "negative_example": "[derived] I bought a large because the size chart said so.",
+      "include": "short/long torso, plus size, body shape",
+      "exclude": "泛指尺码"
+    },
+    {
+      "code": "FIT.GROWTH_RANGE",
+      "label": "孕期增长区间",
+      "family": "FIT",
+      "definition": "随孕周/肚子增长是否仍可用。",
+      "positive_example": "[derived] It still fits now that my bump has grown at 34 weeks.",
+      "negative_example": "[derived] I wore it once for a short walk.",
+      "include": "as bump grows, later pregnancy, third trimester",
+      "exclude": "单次静态穿着"
+    },
+    {
+      "code": "FIT.COVERAGE",
+      "label": "覆盖范围",
+      "family": "FIT",
+      "definition": "支撑带覆盖面积是否足够。",
+      "positive_example": "[derived] The coverage is wide enough to cover my whole lower belly.",
+      "negative_example": "[derived] The black color matches everything I wear.",
+      "include": "coverage, wide enough, covers",
+      "exclude": "颜色覆盖"
+    },
+    {
+      "code": "ADJ.STRAP_DESIGN",
+      "label": "带体/绑带设计",
+      "family": "ADJ",
+      "definition": "绑带、魔术贴、扣件等结构。",
+      "positive_example": "[derived] The velcro straps let me set the band exactly where I want it.",
+      "negative_example": "[derived] It supports my back well.",
+      "include": "strap, band, velcro, hook",
+      "exclude": "整体支撑评价"
+    },
+    {
+      "code": "ADJ.DONNING",
+      "label": "穿脱难度",
+      "family": "ADJ",
+      "definition": "穿上、脱下、调整的难易。",
+      "positive_example": "[derived] It is easy to put on and take off by myself.",
+      "negative_example": "[derived] I bought it during my second trimester.",
+      "include": "put on, take off, get on",
+      "exclude": "首次购买"
+    },
+    {
+      "code": "ADJ.RANGE_TENSION",
+      "label": "松紧调节",
+      "family": "ADJ",
+      "definition": "可调节范围与张力是否合适。",
+      "positive_example": "[derived] I can adjust the tension so it is snug but not too tight.",
+      "negative_example": "[derived] The band has no buckles or straps to adjust.",
+      "include": "adjust, tighten, loosen, tension",
+      "exclude": "不可调结构"
+    },
+    {
+      "code": "STB.STAY_IN_PLACE",
+      "label": "保持位置",
+      "family": "STB",
+      "definition": "是否下滑、卷边、移位。",
+      "positive_example": "[derived] It stays in place and does not slip down when I walk.",
+      "negative_example": "[derived] It does not give enough support.",
+      "include": "slip, slide, roll down, bunch",
+      "exclude": "支撑不足"
+    },
+    {
+      "code": "STB.STRAP_POSITION",
+      "label": "绑带位置",
+      "family": "STB",
+      "definition": "绑带是否压到不合适的位置。",
+      "positive_example": "[derived] The straps sit comfortably and do not dig into my ribs.",
+      "negative_example": "[derived] It feels a little tight around my waist.",
+      "include": "dig into, strap position",
+      "exclude": "单纯紧"
+    },
+    {
+      "code": "COM.SOFTNESS",
+      "label": "柔软触感",
+      "family": "COM",
+      "definition": "面料柔软、亲肤。",
+      "positive_example": "[derived] The fabric is soft and cozy against my bump.",
+      "negative_example": "[derived] It gives great support.",
+      "include": "soft, cozy, gentle",
+      "exclude": "支撑"
+    },
+    {
+      "code": "COM.BREATHABILITY_HEAT",
+      "label": "透气与发热",
+      "family": "COM",
+      "definition": "闷热、出汗、透气性。",
+      "positive_example": "[derived] It is breathable and I do not sweat under it.",
+      "negative_example": "[derived] The room was hot that day.",
+      "include": "breathable, hot, sweat",
+      "exclude": "环境温度"
+    },
+    {
+      "code": "COM.SKIN_CHAFE",
+      "label": "皮肤摩擦",
+      "family": "COM",
+      "definition": "摩擦、红印、瘙痒、皮疹。",
+      "positive_example": "[derived] It does not rub or leave a rash on my skin.",
+      "negative_example": "[derived] It presses on one spot.",
+      "include": "chafe, rub, rash, itch",
+      "exclude": "压力痛"
+    },
+    {
+      "code": "COM.PRESSURE_DIGGING",
+      "label": "局部压迫",
+      "family": "COM",
+      "definition": "局部压痛、勒痕、digging。",
+      "positive_example": "[derived] It does not dig into my sides or leave marks.",
+      "negative_example": "[derived] The seam rubs against my skin.",
+      "include": "dig, cut into, pressure point",
+      "exclude": "皮肤摩擦"
+    },
+    {
+      "code": "COM.WEAR_TOLERANCE",
+      "label": "长时间穿着",
+      "family": "COM",
+      "definition": "能否全天或长时间穿着。",
+      "positive_example": "[derived] I can wear it all day without discomfort.",
+      "negative_example": "[derived] I wore it for ten minutes to try it on.",
+      "include": "all day, for hours, long wear",
+      "exclude": "单次短时"
+    },
+    {
+      "code": "COM.GENERAL",
+      "label": "总体舒适",
+      "family": "COM",
+      "definition": "整体舒适度评价。",
+      "positive_example": "[derived] It is comfortable overall.",
+      "negative_example": "[derived] The lower back support is excellent.",
+      "include": "comfortable, comfort",
+      "exclude": "具体部位"
+    },
+    {
+      "code": "APP.UNDER_CLOTHING",
+      "label": "衣下表现",
+      "family": "APP",
+      "definition": "穿在衣服下是否可见、是否臃肿。",
+      "positive_example": "[derived] It is invisible under my clothes and does not show through.",
+      "negative_example": "[derived] I wear it over a dress at home.",
+      "include": "under clothes, invisible, not visible",
+      "exclude": "外穿"
+    },
+    {
+      "code": "APP.LOW_PROFILE",
+      "label": "轻薄低体积",
+      "family": "APP",
+      "definition": "体积小、不臃肿、低调。",
+      "positive_example": "[derived] It is slim and low profile, not bulky at all.",
+      "negative_example": "[derived] The material is thick.",
+      "include": "low profile, slim, thin, discreet",
+      "exclude": "面料厚薄本身"
+    },
+    {
+      "code": "APP.COLOR_AESTHETIC",
+      "label": "颜色外观",
+      "family": "APP",
+      "definition": "颜色、外观是否喜欢。",
+      "positive_example": "[derived] The beige color is cute and matches my outfits.",
+      "negative_example": "[derived] It works well under clothes.",
+      "include": "color, cute, looks",
+      "exclude": "功能"
+    },
+    {
+      "code": "MAT.FABRIC",
+      "label": "面料",
+      "family": "MAT",
+      "definition": "面料材质本身。",
+      "positive_example": "[derived] The fabric is a soft cotton blend.",
+      "negative_example": "[derived] It is comfortable.",
+      "include": "fabric, material",
+      "exclude": "舒适评价"
+    },
+    {
+      "code": "MAT.DURABILITY",
+      "label": "耐用性",
+      "family": "MAT",
+      "definition": "洗后/长期使用是否损坏。",
+      "positive_example": "[derived] It is still durable after a few washes.",
+      "negative_example": "[derived] I washed it once before wearing it.",
+      "include": "durable, fell apart, after washes",
+      "exclude": "单次"
+    },
+    {
+      "code": "MAT.ELASTICITY_RETENTION",
+      "label": "弹性保持",
+      "family": "MAT",
+      "definition": "是否被撑松、失去弹性。",
+      "positive_example": "[derived] It has not stretched out or lost its elasticity.",
+      "negative_example": "[derived] The elastic is snug when new.",
+      "include": "stretched out, lost elasticity",
+      "exclude": "初始弹性"
+    },
+    {
+      "code": "MAT.THICKNESS",
+      "label": "厚薄",
+      "family": "MAT",
+      "definition": "厚薄程度。",
+      "positive_example": "[derived] The band is thick and well padded.",
+      "negative_example": "[derived] It is low profile under clothes.",
+      "include": "thick, thin",
+      "exclude": "体积"
+    },
+    {
+      "code": "MAT.CARE",
+      "label": "清洗护理",
+      "family": "MAT",
+      "definition": "清洗、晾干、护理要求。",
+      "positive_example": "[derived] It is easy to wash and dries quickly.",
+      "negative_example": "[derived] It fell apart after a few washes.",
+      "include": "wash, dryer, care",
+      "exclude": "耐用性"
+    },
+    {
+      "code": "VAL.PRICE_VALUE",
+      "label": "价格价值",
+      "family": "VAL",
+      "definition": "价格是否值、性价比。",
+      "positive_example": "[derived] For the price, it is worth every penny.",
+      "negative_example": "[derived] It arrived in a nice box.",
+      "include": "price, expensive, worth, cheap",
+      "exclude": "赠品"
+    },
+    {
+      "code": "CX.RETURN_EXCHANGE",
+      "label": "退换",
+      "family": "CX",
+      "definition": "退货、换货、退款体验。",
+      "positive_example": "[derived] The return was easy and the refund came quickly.",
+      "negative_example": "[derived] I am still deciding whether to buy it.",
+      "include": "return, exchange, refund",
+      "exclude": "犹豫是否买"
+    },
+    {
+      "code": "FUL.PRODUCT_CONDITION",
+      "label": "到货状态",
+      "family": "FUL",
+      "definition": "包装、到货、二手痕迹。",
+      "positive_example": "[derived] It arrived in perfect condition, not damaged.",
+      "negative_example": "[derived] Shipping took a week.",
+      "include": "arrived, package, damaged",
+      "exclude": "物流时效"
+    },
+    {
+      "code": "GEN.OVERALL_EVALUATION",
+      "label": "总体评价",
+      "family": "GEN",
+      "definition": "对产品的整体好恶。",
+      "positive_example": "[derived] Overall I love it and would recommend it.",
+      "negative_example": "[derived] The straps are adjustable.",
+      "include": "overall, love it, hate it, recommend",
+      "exclude": "单一属性"
+    },
+    {
+      "code": "USE.LAYERING",
+      "label": "穿着方式",
+      "family": "USE",
+      "definition": "内穿/外穿/叠穿方式。",
+      "positive_example": "[derived] I wear it over my clothes when I am at home.",
+      "negative_example": "[derived] It is invisible under a shirt.",
+      "include": "over clothes, under shirt, layering",
+      "exclude": "衣下可见性"
+    },
+    {
+      "code": "ACT.COMPATIBILITY",
+      "label": "活动兼容",
+      "family": "ACT",
+      "definition": "走路、跑步、工作、站立、坐着、睡觉时的可用性。",
+      "positive_example": "[derived] I can walk and chase my toddler while wearing it.",
+      "negative_example": "[derived] It fits true to size.",
+      "include": "walking, running, work, standing, sitting, sleeping",
+      "exclude": "静态合身"
+    },
+    {
+      "code": "SAF.PRESSURE_PLACEMENT",
+      "label": "受力位置安全",
+      "family": "SAF",
+      "definition": "对腹部受力位置的安全担忧。",
+      "positive_example": "[derived] It puts no pressure on my belly, so I feel safe wearing it.",
+      "negative_example": "[derived] It feels a bit tight.",
+      "include": "pressure on belly, too much pressure",
+      "exclude": "一般不适"
+    }
+  ],
+  "contexts": [
+    {
+      "code": "CTX.PREGNANCY_T2",
+      "label": "孕中期",
+      "definition": "孕 13–27 周。"
+    },
+    {
+      "code": "CTX.PREGNANCY_T3",
+      "label": "孕晚期",
+      "definition": "孕 28 周以后。"
+    },
+    {
+      "code": "CTX.BODY_PLUS_SIZE",
+      "label": "plus size",
+      "definition": "自述 plus size 或大码需求。"
+    },
+    {
+      "code": "CTX.BODY_TALL_LONG_TORSO",
+      "label": "高个/长躯干",
+      "definition": "自述高个或长躯干。"
+    },
+    {
+      "code": "CTX.BODY_SHORT_TORSO",
+      "label": "矮个/短躯干",
+      "definition": "自述矮个或短躯干。"
+    },
+    {
+      "code": "CTX.MULTIPLES",
+      "label": "多胎",
+      "definition": "双胞胎/多胎。"
+    },
+    {
+      "code": "CTX.ACTIVITY_WORK",
+      "label": "工作场景",
+      "definition": "上班/职业场景。"
+    },
+    {
+      "code": "CTX.ACTIVITY_EXERCISE",
+      "label": "运动场景",
+      "definition": "跑步、健身、瑜伽等。"
+    },
+    {
+      "code": "CTX.DURATION_ALL_DAY",
+      "label": "全天佩戴",
+      "definition": "全天或接近全天。"
+    },
+    {
+      "code": "CTX.PURCHASE_GIFT",
+      "label": "他人购买",
+      "definition": "作为礼物或替他人买。"
+    },
+    {
+      "code": "CTX.SENSITIVE_SKIN",
+      "label": "敏感肌",
+      "definition": "自述皮肤敏感。"
+    },
+    {
+      "code": "CTX.POSTPARTUM",
+      "label": "产后",
+      "definition": "产后使用。"
+    }
+  ],
+  "output_note": "Aspect codes come only from aspects[]. Context codes come only from contexts[]. Journey and outcome outputs use the plain enums defined in CODING-CONTRACT.md, not the JNY.*/OUT.* codes in the frozen module."
+}

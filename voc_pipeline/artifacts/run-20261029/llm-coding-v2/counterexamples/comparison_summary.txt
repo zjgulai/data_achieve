@@ -1,0 +1,201 @@
+{
+  "official_runs": [
+    "gpt6-sol-lex",
+    "kimi-k3-lex",
+    "deepseek-flash-lex"
+  ],
+  "sensitivity_runs": [
+    "gpt6-sol-compact",
+    "kimi-k3-compact",
+    "deepseek-flash-compact"
+  ],
+  "per_run": {
+    "gpt6-sol-lex": {
+      "same_span_conflict_cases": 0,
+      "matches_hand_cases": 8,
+      "extra_only_cases": 0,
+      "validation_errors": 0
+    },
+    "kimi-k3-lex": {
+      "same_span_conflict_cases": 0,
+      "matches_hand_cases": 7,
+      "extra_only_cases": 1,
+      "validation_errors": 0
+    },
+    "deepseek-flash-lex": {
+      "same_span_conflict_cases": 0,
+      "matches_hand_cases": 8,
+      "extra_only_cases": 0,
+      "validation_errors": 0
+    },
+    "gpt6-sol-compact": {
+      "same_span_conflict_cases": 0,
+      "matches_hand_cases": 8,
+      "extra_only_cases": 0,
+      "validation_errors": 0
+    },
+    "kimi-k3-compact": {
+      "same_span_conflict_cases": 0,
+      "matches_hand_cases": 8,
+      "extra_only_cases": 0,
+      "validation_errors": 0
+    },
+    "deepseek-flash-compact": {
+      "same_span_conflict_cases": 0,
+      "matches_hand_cases": 8,
+      "extra_only_cases": 0,
+      "validation_errors": 0
+    },
+    "gpt6-sol-v12": {
+      "same_span_conflict_cases": 0,
+      "matches_hand_cases": 8,
+      "extra_only_cases": 0,
+      "validation_errors": 0
+    },
+    "kimi-k3-v12": {
+      "same_span_conflict_cases": 0,
+      "matches_hand_cases": 8,
+      "extra_only_cases": 0,
+      "validation_errors": 0
+    },
+    "deepseek-flash-v12": {
+      "same_span_conflict_cases": 0,
+      "matches_hand_cases": 8,
+      "extra_only_cases": 0,
+      "validation_errors": 0
+    }
+  },
+  "official_same_span_conflict_total": 0,
+  "official_full_match_runs": {
+    "gpt6-sol-lex": 8,
+    "kimi-k3-lex": 7,
+    "deepseek-flash-lex": 8
+  },
+  "compact_full_match_runs": {
+    "gpt6-sol-compact": 8,
+    "kimi-k3-compact": 8,
+    "deepseek-flash-compact": 8
+  },
+  "v12_runs": [
+    "gpt6-sol-v12",
+    "kimi-k3-v12",
+    "deepseek-flash-v12"
+  ],
+  "v12_full_match_runs": {
+    "gpt6-sol-v12": 8,
+    "kimi-k3-v12": 8,
+    "deepseek-flash-v12": 8
+  }
+}
+
+== gpt6-sol-lex (group/auto-gpt-6-sol, lexicon-inclusive) errors=[]
+  c-ce0000001 PASS 
+  c-ce0000002 PASS 
+  c-ce0000003 PASS 
+  c-ce0000004 PASS 
+  c-ce0000005 PASS 
+  c-ce0000006 PASS 
+  c-ce0000007 PASS 
+  c-ce0000008 PASS 
+
+== kimi-k3-lex (group/auto-kimi-k3, lexicon-inclusive) errors=[]
+  c-ce0000001 PASS 
+  c-ce0000002 PASS 
+  c-ce0000003 PASS 
+  c-ce0000004 PASS 
+  c-ce0000005 FAIL EXTRA SUP.PRESSURE_OFFLOAD
+  c-ce0000006 PASS 
+  c-ce0000007 PASS 
+  c-ce0000008 PASS 
+
+== deepseek-flash-lex (group/auto-deepseek-flash, lexicon-inclusive) errors=[]
+  c-ce0000001 PASS 
+  c-ce0000002 PASS 
+  c-ce0000003 PASS 
+  c-ce0000004 PASS 
+  c-ce0000005 PASS 
+  c-ce0000006 PASS 
+  c-ce0000007 PASS 
+  c-ce0000008 PASS 
+
+== gpt6-sol-compact (group/auto-gpt-6-sol, compact) errors=[]
+  c-ce0000001 PASS 
+  c-ce0000002 PASS 
+  c-ce0000003 PASS 
+  c-ce0000004 PASS 
+  c-ce0000005 PASS 
+  c-ce0000006 PASS 
+  c-ce0000007 PASS 
+  c-ce0000008 PASS 
+
+== kimi-k3-compact (group/auto-kimi-k3, compact) errors=[]
+  c-ce0000001 PASS 
+  c-ce0000002 PASS 
+  c-ce0000003 PASS 
+  c-ce0000004 PASS 
+  c-ce0000005 PASS 
+  c-ce0000006 PASS 
+  c-ce0000007 PASS 
+  c-ce0000008 PASS 
+
+== deepseek-flash-compact (group/auto-deepseek-flash, compact) errors=[]
+  c-ce0000001 PASS 
+  c-ce0000002 PASS 
+  c-ce0000003 PASS 
+  c-ce0000004 PASS 
+  c-ce0000005 PASS 
+  c-ce0000006 PASS 
+  c-ce0000007 PASS 
+  c-ce0000008 PASS 
+
+== gpt6-sol-v12 (group/auto-gpt-6-sol, v1.2-proposed lexicon-inclusive) errors=[]
+  c-ce0000001 PASS 
+  c-ce0000002 PASS 
+  c-ce0000003 PASS 
+  c-ce0000004 PASS 
+  c-ce0000005 PASS 
+  c-ce0000006 PASS 
+  c-ce0000007 PASS 
+  c-ce0000008 PASS 
+
+== kimi-k3-v12 (group/auto-kimi-k3, v1.2-proposed lexicon-inclusive) errors=[]
+  c-ce0000001 PASS 
+  c-ce0000002 PASS 
+  c-ce0000003 PASS 
+  c-ce0000004 PASS 
+  c-ce0000005 PASS 
+  c-ce0000006 PASS 
+  c-ce0000007 PASS 
+  c-ce0000008 PASS 
+
+== deepseek-flash-v12 (group/auto-deepseek-flash, v1.2-proposed lexicon-inclusive) errors=[]
+  c-ce0000001 PASS 
+  c-ce0000002 PASS 
+  c-ce0000003 PASS 
+  c-ce0000004 PASS 
+  c-ce0000005 PASS 
+  c-ce0000006 PASS 
+  c-ce0000007 PASS 
+  c-ce0000008 PASS 
+
+== formal per-span resolver
+  c-ce0000001 SUP.PRESSURE_OFFLOAD raw=['SUP.BACK', 'SUP.PRESSURE_OFFLOAD'] -> SUP.PRESSURE_OFFLOAD step=2 correct=True
+       whole_text raw=['SUP.BACK', 'SUP.PRESSURE_OFFLOAD'] -> SUP.PRESSURE_OFFLOAD step=2 primary=SUP.PRESSURE_OFFLOAD correct=True
+  c-ce0000002 SUP.BELLY_LIFT raw=['SUP.BELLY_LIFT'] -> SUP.BELLY_LIFT step=1 correct=True
+  c-ce0000002 SUP.BACK raw=['SUP.BACK', 'SUP.PRESSURE_OFFLOAD'] -> SUP.BACK step=3 correct=True
+       whole_text raw=['SUP.BACK', 'SUP.BELLY_LIFT', 'SUP.PRESSURE_OFFLOAD'] -> SUP.BELLY_LIFT step=1 primary=SUP.BELLY_LIFT correct=True
+  c-ce0000003 SUP.PRESSURE_OFFLOAD raw=['SUP.PRESSURE_OFFLOAD'] -> SUP.PRESSURE_OFFLOAD step=2 correct=True
+       whole_text raw=['SUP.PRESSURE_OFFLOAD'] -> SUP.PRESSURE_OFFLOAD step=2 primary=SUP.PRESSURE_OFFLOAD correct=True
+  c-ce0000004 SUP.BACK raw=['SUP.BACK', 'SUP.GENERAL'] -> SUP.BACK step=3 correct=True
+       whole_text raw=['SUP.BACK', 'SUP.GENERAL'] -> SUP.BACK step=3 primary=SUP.BACK correct=True
+  c-ce0000005 SUP.BELLY_LIFT raw=[] -> None step=None correct=False
+       whole_text raw=['SUP.PRESSURE_OFFLOAD'] -> SUP.PRESSURE_OFFLOAD step=4 primary=SUP.BELLY_LIFT correct=False
+  c-ce0000006 SUP.GENERAL raw=['SUP.GENERAL'] -> SUP.GENERAL step=5 correct=True
+       whole_text raw=['SUP.GENERAL'] -> SUP.GENERAL step=5 primary=SUP.GENERAL correct=True
+  c-ce0000007 SUP.PRESSURE_OFFLOAD raw=['SUP.PRESSURE_OFFLOAD'] -> SUP.PRESSURE_OFFLOAD step=4 correct=True
+       whole_text raw=['SUP.PRESSURE_OFFLOAD'] -> SUP.PRESSURE_OFFLOAD step=4 primary=SUP.PRESSURE_OFFLOAD correct=True
+  c-ce0000008 SUP.BACK raw=['SUP.BACK', 'SUP.GENERAL'] -> SUP.BACK step=3 correct=True
+       whole_text raw=['SUP.BACK', 'SUP.GENERAL'] -> SUP.BACK step=3 primary=SUP.BACK correct=True
+
+formal summary: {'formal_expected_span_total': 9, 'formal_expected_span_correct': 8, 'formal_expected_span_raw_overlap': 4, 'formal_whole_text_primary_correct': 7}
+formal v1.2 summary: {'formal_v12_expected_span_total': 9, 'formal_v12_expected_span_correct': 9, 'formal_v12_expected_span_raw_overlap': 4, 'formal_v12_whole_text_primary_correct': 8}

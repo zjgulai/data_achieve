@@ -1,0 +1,1205 @@
+{
+ "schema": "voc-scope-audit/2",
+ "contract_version": "E-merge/1",
+ "coder_id": "llm-v2",
+ "generated_at": "2026-10-30T22:38:56+08:00",
+ "records_total": 423,
+ "on_topic_records": 306,
+ "in_experience_cohort": 119,
+ "scope_counts": {
+  "none": 272,
+  "partial": 58,
+  "full": 93
+ },
+ "product_match_counts": {
+  "irrelevant": 19,
+  "category_adjacent": 121,
+  "exact_current_family": 185,
+  "brand_other_product": 98
+ },
+ "off_target_evaluations": [
+  {
+   "canonical_id": "c-1s200u5",
+   "source": "reddit",
+   "product_match": "irrelevant",
+   "on_topic": false,
+   "frames": [
+    "diagnostic",
+    "natural"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "product_mismatch",
+   "declared_experience_scope": "none",
+   "assessed_scope": "full",
+   "assessed_reason": "substantive_evaluation",
+   "evaluations": 2,
+   "attributes": 2,
+   "evidence_share": 0.1094,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "**Thoughts**: When I first tried them on I instantly felt the band was too tight",
+    "The jeans themselves are made of extremely stretchy, soft fabric but the top of the band is the least stretchy part"
+   ]
+  },
+  {
+   "canonical_id": "c-1ptfpfj",
+   "source": "reddit",
+   "product_match": "irrelevant",
+   "on_topic": false,
+   "frames": [
+    "natural"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "product_mismatch",
+   "declared_experience_scope": "none",
+   "assessed_scope": "partial",
+   "assessed_reason": "incidental_evaluation",
+   "evaluations": 1,
+   "attributes": 1,
+   "evidence_share": 0.089,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "I was sneakily pulling at my waist band trying to give myself some relief on and off"
+   ]
+  },
+  {
+   "canonical_id": "c-1xhwmdp",
+   "source": "reddit",
+   "product_match": "irrelevant",
+   "on_topic": false,
+   "frames": [
+    "natural"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "product_mismatch",
+   "declared_experience_scope": "none",
+   "assessed_scope": "partial",
+   "assessed_reason": "incidental_evaluation",
+   "evaluations": 1,
+   "attributes": 1,
+   "evidence_share": 0.0279,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "The straps are also a U shape in the back instead of a Y shape, so they were sliding down off my shoulders"
+   ]
+  },
+  {
+   "canonical_id": "c-1q4drhv",
+   "source": "reddit",
+   "product_match": "irrelevant",
+   "on_topic": false,
+   "frames": [
+    "natural"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "product_mismatch",
+   "declared_experience_scope": "none",
+   "assessed_scope": "partial",
+   "assessed_reason": "incidental_evaluation",
+   "evaluations": 1,
+   "attributes": 1,
+   "evidence_share": 0.1489,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "My bras still fit me with some difficulty but I can see the band digging deep into my chest"
+   ]
+  },
+  {
+   "canonical_id": "c-19rjo0npo4yjp",
+   "source": "reddit",
+   "product_match": "irrelevant",
+   "on_topic": false,
+   "frames": [
+    "natural"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "product_mismatch",
+   "declared_experience_scope": "none",
+   "assessed_scope": "partial",
+   "assessed_reason": "incidental_evaluation",
+   "evaluations": 1,
+   "attributes": 1,
+   "evidence_share": 0.5333,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "They have a band that goes over my entire belly and it’s the most freeing comfortable thing ever"
+   ]
+  },
+  {
+   "canonical_id": "c-1vghhyk",
+   "source": "reddit",
+   "product_match": "brand_other_product",
+   "on_topic": false,
+   "frames": [
+    "qualitative_seed"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "product_mismatch",
+   "declared_experience_scope": "none",
+   "assessed_scope": "partial",
+   "assessed_reason": "incidental_evaluation",
+   "evaluations": 1,
+   "attributes": 1,
+   "evidence_share": 0.7092,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "I've seen a lot of good things about the one made by momcozy but I want to look at all of my options"
+   ]
+  },
+  {
+   "canonical_id": "c-1v3r86d",
+   "source": "reddit",
+   "product_match": "brand_other_product",
+   "on_topic": false,
+   "frames": [
+    "qualitative_seed"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "product_mismatch",
+   "declared_experience_scope": "none",
+   "assessed_scope": "partial",
+   "assessed_reason": "incidental_evaluation",
+   "evaluations": 1,
+   "attributes": 1,
+   "evidence_share": 0.1223,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "One friend has been raving about the MomCozy bottle dishwasher as a must have/nice upgrade"
+   ]
+  },
+  {
+   "canonical_id": "c-1u1kzys",
+   "source": "reddit",
+   "product_match": "brand_other_product",
+   "on_topic": false,
+   "frames": [
+    "qualitative_seed"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "product_mismatch",
+   "declared_experience_scope": "none",
+   "assessed_scope": "partial",
+   "assessed_reason": "incidental_evaluation",
+   "evaluations": 1,
+   "attributes": 1,
+   "evidence_share": 0.0177,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "The difference in sleep quality (his and ours) was immediate"
+   ]
+  },
+  {
+   "canonical_id": "c-1txf4g7",
+   "source": "reddit",
+   "product_match": "brand_other_product",
+   "on_topic": false,
+   "frames": [
+    "qualitative_seed"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "product_mismatch",
+   "declared_experience_scope": "none",
+   "assessed_scope": "partial",
+   "assessed_reason": "incidental_evaluation",
+   "evaluations": 1,
+   "attributes": 1,
+   "evidence_share": 0.1095,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "Everyone keeps recommending Momcozy, and ngl, I was tempted but also worried it’s just hype"
+   ]
+  },
+  {
+   "canonical_id": "c-1tv2413",
+   "source": "reddit",
+   "product_match": "brand_other_product",
+   "on_topic": false,
+   "frames": [
+    "qualitative_seed"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "product_mismatch",
+   "declared_experience_scope": "none",
+   "assessed_scope": "partial",
+   "assessed_reason": "incidental_evaluation",
+   "evaluations": 1,
+   "attributes": 1,
+   "evidence_share": 0.0976,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "My parents have told me they'll pay for an expensive item (as they did for my SIL who got a glider)"
+   ]
+  },
+  {
+   "canonical_id": "c-1tkcf9u",
+   "source": "reddit",
+   "product_match": "brand_other_product",
+   "on_topic": false,
+   "frames": [
+    "qualitative_seed"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "product_mismatch",
+   "declared_experience_scope": "none",
+   "assessed_scope": "partial",
+   "assessed_reason": "incidental_evaluation",
+   "evaluations": 1,
+   "attributes": 2,
+   "evidence_share": 0.1323,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "My bestie highly recommends Momcozy single breast pump — says it’s good value, works fine for daily use, and won’t break the bank"
+   ]
+  },
+  {
+   "canonical_id": "c-19rnylotzfmkh",
+   "source": "reddit",
+   "product_match": "brand_other_product",
+   "on_topic": false,
+   "frames": [
+    "qualitative_seed"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "product_mismatch",
+   "declared_experience_scope": "none",
+   "assessed_scope": "partial",
+   "assessed_reason": "incidental_evaluation",
+   "evaluations": 2,
+   "attributes": 2,
+   "evidence_share": 0.0285,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "I love the Momcozy three pack personally",
+    "so soft I could cry"
+   ]
+  },
+  {
+   "canonical_id": "c-19rhp9zarbsps",
+   "source": "reddit",
+   "product_match": "brand_other_product",
+   "on_topic": false,
+   "frames": [
+    "qualitative_seed"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "product_mismatch",
+   "declared_experience_scope": "none",
+   "assessed_scope": "partial",
+   "assessed_reason": "incidental_evaluation",
+   "evaluations": 1,
+   "attributes": 1,
+   "evidence_share": 0.1212,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "My favorite for the hospital is the Momcozy Hands Free Pumping & Nursing Bra, Adjustable Cotton Breast Pump Bra"
+   ]
+  },
+  {
+   "canonical_id": "c-19rg8fid9ublx",
+   "source": "reddit",
+   "product_match": "brand_other_product",
+   "on_topic": false,
+   "frames": [
+    "qualitative_seed"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "product_mismatch",
+   "declared_experience_scope": "none",
+   "assessed_scope": "partial",
+   "assessed_reason": "incidental_evaluation",
+   "evaluations": 1,
+   "attributes": 1,
+   "evidence_share": 0.3526,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "I am a similar size to you and found the Momcozy nursing/pumping bra with the mesh inset is the most comfortable and holds the most in"
+   ]
+  },
+  {
+   "canonical_id": "c-ph8npcp",
+   "source": "reddit",
+   "product_match": "brand_other_product",
+   "on_topic": false,
+   "frames": [
+    "qualitative_seed"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "product_mismatch",
+   "declared_experience_scope": "none",
+   "assessed_scope": "partial",
+   "assessed_reason": "incidental_evaluation",
+   "evaluations": 1,
+   "attributes": 1,
+   "evidence_share": 0.2461,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "You can see if you need the electric breast pump later on but not sure about buying it off amazon I got the momcozy and medela and loved it …"
+   ]
+  },
+  {
+   "canonical_id": "c-ph09yrn",
+   "source": "reddit",
+   "product_match": "brand_other_product",
+   "on_topic": false,
+   "frames": [
+    "qualitative_seed"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "product_mismatch",
+   "declared_experience_scope": "none",
+   "assessed_scope": "full",
+   "assessed_reason": "substantive_evaluation",
+   "evaluations": 2,
+   "attributes": 2,
+   "evidence_share": 0.4286,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "I LOVE my momcozy diaper pail",
+    "So convenient and really locks the smell in"
+   ]
+  },
+  {
+   "canonical_id": "c-pgsk2oe",
+   "source": "reddit",
+   "product_match": "brand_other_product",
+   "on_topic": false,
+   "frames": [
+    "qualitative_seed"
+   ],
+   "frozen_is_product_experience": true,
+   "frozen_experience_reason": "first_person_use",
+   "declared_experience_scope": "full",
+   "assessed_scope": "full",
+   "assessed_reason": "substantive_evaluation",
+   "evaluations": 2,
+   "attributes": 2,
+   "evidence_share": 0.976,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "I bought two (momcozy and some amazon one) and felt zero support",
+    "KT tape though got me through racing 5ks up until 38 weeks"
+   ]
+  },
+  {
+   "canonical_id": "c-pgqo9jf",
+   "source": "reddit",
+   "product_match": "brand_other_product",
+   "on_topic": false,
+   "frames": [
+    "qualitative_seed"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "product_mismatch",
+   "declared_experience_scope": "none",
+   "assessed_scope": "partial",
+   "assessed_reason": "incidental_evaluation",
+   "evaluations": 1,
+   "attributes": 1,
+   "evidence_share": 0.4455,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "The momcozy plus size nursing pillows are amazing"
+   ]
+  },
+  {
+   "canonical_id": "c-pgqfcdj",
+   "source": "reddit",
+   "product_match": "brand_other_product",
+   "on_topic": false,
+   "frames": [
+    "qualitative_seed"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "other",
+   "declared_experience_scope": "none",
+   "assessed_scope": "partial",
+   "assessed_reason": "incidental_evaluation",
+   "evaluations": 1,
+   "attributes": 1,
+   "evidence_share": 0.9841,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "I love my momcozy one but I wouldn’t get one with special bags"
+   ]
+  },
+  {
+   "canonical_id": "c-pfc59yj",
+   "source": "reddit",
+   "product_match": "brand_other_product",
+   "on_topic": false,
+   "frames": [
+    "qualitative_seed"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "product_mismatch",
+   "declared_experience_scope": "none",
+   "assessed_scope": "partial",
+   "assessed_reason": "incidental_evaluation",
+   "evaluations": 4,
+   "attributes": 2,
+   "evidence_share": 0.216,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "I do recommend the momcozy bottle washer over the grownsy",
+    "I love ours tbh, it keeps the smells in and I like the way the ‘bags’ are because it’s just one long bag and you cut if off whenever you want to take the bag out and tie the bottom for a new ‘bag’",
+    "Velcro swaddles were amazing and saved us so much stress, especially in the hospital where they only had the blanket ones",
+    "hope it helps"
+   ]
+  },
+  {
+   "canonical_id": "c-pf9w8pu",
+   "source": "reddit",
+   "product_match": "brand_other_product",
+   "on_topic": false,
+   "frames": [
+    "qualitative_seed"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "product_mismatch",
+   "declared_experience_scope": "none",
+   "assessed_scope": "partial",
+   "assessed_reason": "incidental_evaluation",
+   "evaluations": 1,
+   "attributes": 1,
+   "evidence_share": 0.2658,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "That momcozy boppy was my favorite thing that I had for keeping a bit of my autonomy"
+   ]
+  },
+  {
+   "canonical_id": "c-pf9qa30",
+   "source": "reddit",
+   "product_match": "brand_other_product",
+   "on_topic": false,
+   "frames": [
+    "qualitative_seed"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "product_mismatch",
+   "declared_experience_scope": "none",
+   "assessed_scope": "partial",
+   "assessed_reason": "incidental_evaluation",
+   "evaluations": 3,
+   "attributes": 2,
+   "evidence_share": 0.0622,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "\\- the momcozy pillow is incredible",
+    "I hate my boppy and bought the momcozy a couple days ago and I literally cried the first time I used it",
+    "\\- the keababies muslin crib sheets are really nice and soft"
+   ]
+  },
+  {
+   "canonical_id": "c-pf91yi4",
+   "source": "reddit",
+   "product_match": "brand_other_product",
+   "on_topic": false,
+   "frames": [
+    "qualitative_seed"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "product_mismatch",
+   "declared_experience_scope": "none",
+   "assessed_scope": "partial",
+   "assessed_reason": "incidental_evaluation",
+   "evaluations": 1,
+   "attributes": 1,
+   "evidence_share": 0.3377,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "I purchased that momcozy nursing pillow with the clouds and absolutely hate it"
+   ]
+  },
+  {
+   "canonical_id": "c-pf8qhn7",
+   "source": "reddit",
+   "product_match": "brand_other_product",
+   "on_topic": false,
+   "frames": [
+    "qualitative_seed"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "product_mismatch",
+   "declared_experience_scope": "none",
+   "assessed_scope": "partial",
+   "assessed_reason": "incidental_evaluation",
+   "evaluations": 1,
+   "attributes": 1,
+   "evidence_share": 0.5779,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "I have one from momcozy and it was 3x cheaper and now we are using it for our second baby"
+   ]
+  },
+  {
+   "canonical_id": "c-pf8kxkv",
+   "source": "reddit",
+   "product_match": "brand_other_product",
+   "on_topic": false,
+   "frames": [
+    "qualitative_seed"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "product_mismatch",
+   "declared_experience_scope": "none",
+   "assessed_scope": "partial",
+   "assessed_reason": "incidental_evaluation",
+   "evaluations": 1,
+   "attributes": 1,
+   "evidence_share": 0.1007,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "In a similar vein, I’d recommend the MomCozy bottle washer"
+   ]
+  },
+  {
+   "canonical_id": "c-pf8ax08",
+   "source": "reddit",
+   "product_match": "brand_other_product",
+   "on_topic": false,
+   "frames": [
+    "qualitative_seed"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "product_mismatch",
+   "declared_experience_scope": "none",
+   "assessed_scope": "partial",
+   "assessed_reason": "incidental_evaluation",
+   "evaluations": 1,
+   "attributes": 1,
+   "evidence_share": 0.1067,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "The electric Frida had good suction"
+   ]
+  },
+  {
+   "canonical_id": "c-pf83bo1",
+   "source": "reddit",
+   "product_match": "brand_other_product",
+   "on_topic": false,
+   "frames": [
+    "qualitative_seed"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "product_mismatch",
+   "declared_experience_scope": "none",
+   "assessed_scope": "partial",
+   "assessed_reason": "incidental_evaluation",
+   "evaluations": 1,
+   "attributes": 1,
+   "evidence_share": 0.4889,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "I got the momcozy one but there are tons of cheaper ones on amazon"
+   ]
+  },
+  {
+   "canonical_id": "c-pdz98ea",
+   "source": "reddit",
+   "product_match": "brand_other_product",
+   "on_topic": false,
+   "frames": [
+    "qualitative_seed"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "product_mismatch",
+   "declared_experience_scope": "none",
+   "assessed_scope": "partial",
+   "assessed_reason": "incidental_evaluation",
+   "evaluations": 1,
+   "attributes": 1,
+   "evidence_share": 0.1474,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "So I had a cheaper momcozy s9 or some knock off that was similar that I used for emergencies"
+   ]
+  },
+  {
+   "canonical_id": "c-pdpm3cn",
+   "source": "reddit",
+   "product_match": "brand_other_product",
+   "on_topic": false,
+   "frames": [
+    "qualitative_seed"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "product_mismatch",
+   "declared_experience_scope": "none",
+   "assessed_scope": "partial",
+   "assessed_reason": "incidental_evaluation",
+   "evaluations": 1,
+   "attributes": 1,
+   "evidence_share": 0.141,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "Momcozy nursing pillow- this has a “back” or “lip” on the front that I actually loved, it made me feel like my baby was more secure when feeding, and also blocked the tv from view with my endless Netflix those first few months 😂"
+   ]
+  },
+  {
+   "canonical_id": "c-pdfi6vr",
+   "source": "reddit",
+   "product_match": "brand_other_product",
+   "on_topic": false,
+   "frames": [
+    "qualitative_seed"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "product_mismatch",
+   "declared_experience_scope": "none",
+   "assessed_scope": "full",
+   "assessed_reason": "substantive_evaluation",
+   "evaluations": 2,
+   "attributes": 2,
+   "evidence_share": 0.8168,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "slightly pricy but I got the Momcozy nursing bra on Amazon and I love it",
+    "Comfortable, padding is built in so my nips don’t show through it, and it’s seamless"
+   ]
+  },
+  {
+   "canonical_id": "c-pdedro1",
+   "source": "reddit",
+   "product_match": "brand_other_product",
+   "on_topic": false,
+   "frames": [
+    "qualitative_seed"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "other",
+   "declared_experience_scope": "none",
+   "assessed_scope": "partial",
+   "assessed_reason": "incidental_evaluation",
+   "evaluations": 1,
+   "attributes": 1,
+   "evidence_share": 0.3433,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "Momcozy has a great one"
+   ]
+  },
+  {
+   "canonical_id": "c-pdcxf8i",
+   "source": "reddit",
+   "product_match": "brand_other_product",
+   "on_topic": false,
+   "frames": [
+    "qualitative_seed"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "product_mismatch",
+   "declared_experience_scope": "none",
+   "assessed_scope": "partial",
+   "assessed_reason": "incidental_evaluation",
+   "evaluations": 1,
+   "attributes": 1,
+   "evidence_share": 0.4471,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": [
+    "I went for the G-shaped Momcozy one and love it but do still often wake up on my back, when trying to stop that was the main reason for me buying it"
+   ]
+  }
+ ],
+ "downgrades": [
+  {
+   "canonical_id": "c-1tkhcj3",
+   "source": "reddit",
+   "product_match": "category_adjacent",
+   "on_topic": true,
+   "frames": [
+    "natural"
+   ],
+   "frozen_is_product_experience": true,
+   "frozen_experience_reason": "first_person_use",
+   "declared_experience_scope": "full",
+   "assessed_scope": "none",
+   "assessed_reason": "no_experience_text",
+   "evaluations": 0,
+   "attributes": 0,
+   "evidence_share": 0.0,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": []
+  },
+  {
+   "canonical_id": "c-1s21pgr",
+   "source": "reddit",
+   "product_match": "category_adjacent",
+   "on_topic": true,
+   "frames": [
+    "natural"
+   ],
+   "frozen_is_product_experience": true,
+   "frozen_experience_reason": "first_person_use",
+   "declared_experience_scope": "full",
+   "assessed_scope": "none",
+   "assessed_reason": "no_attributable_evaluation",
+   "evaluations": 0,
+   "attributes": 0,
+   "evidence_share": 0.0,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": []
+  },
+  {
+   "canonical_id": "c-1r7qvfd",
+   "source": "reddit",
+   "product_match": "category_adjacent",
+   "on_topic": true,
+   "frames": [
+    "natural"
+   ],
+   "frozen_is_product_experience": true,
+   "frozen_experience_reason": "first_person_use",
+   "declared_experience_scope": "partial",
+   "assessed_scope": "none",
+   "assessed_reason": "no_attributable_evaluation",
+   "evaluations": 0,
+   "attributes": 0,
+   "evidence_share": 0.0,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": []
+  },
+  {
+   "canonical_id": "c-1ofb8c1",
+   "source": "reddit",
+   "product_match": "category_adjacent",
+   "on_topic": true,
+   "frames": [
+    "natural"
+   ],
+   "frozen_is_product_experience": true,
+   "frozen_experience_reason": "first_person_use",
+   "declared_experience_scope": "partial",
+   "assessed_scope": "none",
+   "assessed_reason": "no_attributable_evaluation",
+   "evaluations": 0,
+   "attributes": 0,
+   "evidence_share": 0.0,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": []
+  },
+  {
+   "canonical_id": "c-1nq3i0a",
+   "source": "reddit",
+   "product_match": "category_adjacent",
+   "on_topic": true,
+   "frames": [
+    "natural"
+   ],
+   "frozen_is_product_experience": true,
+   "frozen_experience_reason": "first_person_use",
+   "declared_experience_scope": "full",
+   "assessed_scope": "none",
+   "assessed_reason": "no_attributable_evaluation",
+   "evaluations": 0,
+   "attributes": 0,
+   "evidence_share": 0.0,
+   "in_cohort": false,
+   "aspects_suppressed": true,
+   "evidence_clauses": []
+  }
+ ],
+ "admit_candidates": [
+  {
+   "canonical_id": "c-phyrbxj",
+   "source": "reddit",
+   "product_match": "category_adjacent",
+   "on_topic": true,
+   "frames": [
+    "diagnostic",
+    "natural"
+   ],
+   "frozen_is_product_experience": false,
+   "frozen_experience_reason": "other",
+   "declared_experience_scope": "none",
+   "assessed_scope": "partial",
+   "assessed_reason": "incidental_evaluation",
+   "evaluations": 1,
+   "attributes": 2,
+   "evidence_share": 0.0754,
+   "in_cohort": true,
+   "aspects_suppressed": false,
+   "evidence_clauses": [
+    "I have belly band, compression garment, take multiple baths a day, and I still hurt so bad some days"
+   ]
+  }
+ ],
+ "scope_false_positives": [
+  {
+   "canonical_id": "c-1uuim67",
+   "reason": "evidence clause is a symptom; the anchor came from the previous sentence",
+   "verified_scope": "none",
+   "verified_product_match": "category_adjacent"
+  }
+ ],
+ "declared_scope_mismatches": [
+  {
+   "canonical_id": "c-1tkhcj3",
+   "declared_scope": "full",
+   "assessed_scope": "none",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-1sn9hb1",
+   "declared_scope": "full",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-1s21pgr",
+   "declared_scope": "full",
+   "assessed_scope": "none",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-1s200u5",
+   "declared_scope": "none",
+   "assessed_scope": "full",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-1rpxflg",
+   "declared_scope": "full",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-1r7qvfd",
+   "declared_scope": "partial",
+   "assessed_scope": "none",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-1pwnioo",
+   "declared_scope": "partial",
+   "assessed_scope": "full",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-1ptfpfj",
+   "declared_scope": "none",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-1pfyruu",
+   "declared_scope": "full",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-1ofb8c1",
+   "declared_scope": "partial",
+   "assessed_scope": "none",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-1xhwmdp",
+   "declared_scope": "none",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-1upreg8",
+   "declared_scope": "partial",
+   "assessed_scope": "full",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-1rqq680",
+   "declared_scope": "partial",
+   "assessed_scope": "full",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-1q4drhv",
+   "declared_scope": "none",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-1o9a0w1",
+   "declared_scope": "full",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-1nq3i0a",
+   "declared_scope": "full",
+   "assessed_scope": "none",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-1lijqy4",
+   "declared_scope": "full",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-19rtrxy45qs8x",
+   "declared_scope": "full",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-19rt8k4ja4txf",
+   "declared_scope": "full",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-19rt15mqlhu00",
+   "declared_scope": "full",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-19rq03p7e949w",
+   "declared_scope": "full",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-19rn656rs3pnk",
+   "declared_scope": "full",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-19rm4lmi0oa78",
+   "declared_scope": "full",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-19rljfjm31o5e",
+   "declared_scope": "full",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-19rkynhhprt2c",
+   "declared_scope": "full",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-19rjykcrivso1",
+   "declared_scope": "full",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-19rjo0npo4yjp",
+   "declared_scope": "none",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-19rhmz6kcrj45",
+   "declared_scope": "full",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-phyrbxj",
+   "declared_scope": "none",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-1vghhyk",
+   "declared_scope": "none",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-1v3r86d",
+   "declared_scope": "none",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-1u1kzys",
+   "declared_scope": "none",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-1txf4g7",
+   "declared_scope": "none",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-1tv2413",
+   "declared_scope": "none",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-1tkcf9u",
+   "declared_scope": "none",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-19rnylotzfmkh",
+   "declared_scope": "none",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-19rhp9zarbsps",
+   "declared_scope": "none",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-19rg8fid9ublx",
+   "declared_scope": "none",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-ph8npcp",
+   "declared_scope": "none",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-ph09yrn",
+   "declared_scope": "none",
+   "assessed_scope": "full",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-pgqo9jf",
+   "declared_scope": "none",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-pgqfcdj",
+   "declared_scope": "none",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-pfc59yj",
+   "declared_scope": "none",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-pf9w8pu",
+   "declared_scope": "none",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-pf9qa30",
+   "declared_scope": "none",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-pf91yi4",
+   "declared_scope": "none",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-pf8qhn7",
+   "declared_scope": "none",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-pf8kxkv",
+   "declared_scope": "none",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-pf8ax08",
+   "declared_scope": "none",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-pf83bo1",
+   "declared_scope": "none",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-pdz98ea",
+   "declared_scope": "none",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-pdpm3cn",
+   "declared_scope": "none",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-pdfi6vr",
+   "declared_scope": "none",
+   "assessed_scope": "full",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-pdedro1",
+   "declared_scope": "none",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  },
+  {
+   "canonical_id": "c-pdcxf8i",
+   "declared_scope": "none",
+   "assessed_scope": "partial",
+   "reason": "declared scope is audit-only; assessment owns the value"
+  }
+ ],
+ "legacy_product_match": []
+}

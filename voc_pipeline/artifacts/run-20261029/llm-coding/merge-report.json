@@ -1,0 +1,177 @@
+{
+  "generated_at": "2026-10-29T18:14:26.831451+00:00",
+  "inputs": {
+    "batches_dir": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/llm-coding/batches",
+    "coded_dir": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/llm-coding/coded",
+    "coded_files": [
+      "batch-01.jsonl",
+      "batch-02.jsonl",
+      "batch-03.jsonl",
+      "batch-04.jsonl",
+      "batch-05.jsonl",
+      "batch-06.jsonl",
+      "batch-07.jsonl",
+      "batch-08.jsonl"
+    ],
+    "manifest_total_records": 423,
+    "manifest_encoded_scope": 330,
+    "manifest_with_text": 330,
+    "manifest_both_empty": 93,
+    "manifest_skipped_empty_text": 93,
+    "manifest_batch_counts": {
+      "1": 42,
+      "2": 42,
+      "3": 41,
+      "4": 41,
+      "5": 41,
+      "6": 41,
+      "7": 41,
+      "8": 41
+    }
+  },
+  "merge": {
+    "output": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/llm-coding/coded/ALL.jsonl",
+    "merged_records": 330,
+    "merged_nonempty_lines": 330,
+    "per_file": [
+      {
+        "file": "batch-01.jsonl",
+        "records": 42
+      },
+      {
+        "file": "batch-02.jsonl",
+        "records": 42
+      },
+      {
+        "file": "batch-03.jsonl",
+        "records": 41
+      },
+      {
+        "file": "batch-04.jsonl",
+        "records": 41
+      },
+      {
+        "file": "batch-05.jsonl",
+        "records": 41
+      },
+      {
+        "file": "batch-06.jsonl",
+        "records": 41
+      },
+      {
+        "file": "batch-07.jsonl",
+        "records": 41
+      },
+      {
+        "file": "batch-08.jsonl",
+        "records": 41
+      }
+    ],
+    "matches_encoded_scope": true,
+    "delta_vs_encoded_scope": 0,
+    "matches_total_records": false,
+    "source_records_union": 330,
+    "batch_source_counts": {
+      "batch-01": 42,
+      "batch-02": 42,
+      "batch-03": 41,
+      "batch-04": 41,
+      "batch-05": 41,
+      "batch-06": 41,
+      "batch-07": 41,
+      "batch-08": 41
+    }
+  },
+  "integrity": {
+    "duplicate_canonical_ids": [],
+    "duplicate_canonical_id_count": 0,
+    "duplicate_source_ids": [],
+    "missing_canonical_ids": [],
+    "missing_count": 0,
+    "extra_canonical_ids": [],
+    "extra_count": 0,
+    "order_mismatches": [],
+    "parse_errors": []
+  },
+  "evidence_span_validation": {
+    "rule": "exact substring of source title or text, <=120 chars, no reuse in record",
+    "aspects_checked": 225,
+    "failures": 0,
+    "failure_rate_pct": 0.0,
+    "failure_detail": [],
+    "duplicate_span_in_record": []
+  },
+  "structural": {
+    "records": 330,
+    "is_product_experience_true": 121,
+    "records_with_aspects": 118,
+    "records_with_zero_aspects": 212,
+    "aspect_count_distribution": {
+      "0": 212,
+      "1": 60,
+      "2": 28,
+      "3": 18,
+      "4": 7,
+      "5": 3,
+      "6": 2
+    },
+    "n_aspects": 225,
+    "non_experience_with_aspects": [],
+    "too_many_aspects": [],
+    "structural_errors": [],
+    "invalid_codes": [],
+    "invalid_enums": []
+  },
+  "distributions": {
+    "polarity": {
+      "mixed": 1,
+      "negative": 72,
+      "positive": 148,
+      "qualified_negative": 3,
+      "unknown": 1
+    },
+    "confidence": {
+      "high": 165,
+      "low": 2,
+      "medium": 58
+    },
+    "codes": {
+      "ACT.COMPATIBILITY": 7,
+      "ADJ.DONNING": 7,
+      "ADJ.RANGE_TENSION": 4,
+      "ADJ.STRAP_DESIGN": 4,
+      "APP.COLOR_AESTHETIC": 1,
+      "APP.LOW_PROFILE": 1,
+      "APP.UNDER_CLOTHING": 3,
+      "COM.BREATHABILITY_HEAT": 3,
+      "COM.GENERAL": 22,
+      "COM.PRESSURE_DIGGING": 2,
+      "COM.SKIN_CHAFE": 2,
+      "COM.SOFTNESS": 8,
+      "COM.WEAR_TOLERANCE": 4,
+      "CX.RETURN_EXCHANGE": 1,
+      "FIT.BODY_SHAPE": 1,
+      "FIT.COVERAGE": 2,
+      "FIT.GROWTH_RANGE": 3,
+      "FIT.SIZE_ACCURACY": 12,
+      "FUL.PRODUCT_CONDITION": 2,
+      "GEN.OVERALL_EVALUATION": 50,
+      "MAT.FABRIC": 3,
+      "MAT.THICKNESS": 1,
+      "SAF.PRESSURE_PLACEMENT": 1,
+      "STB.STAY_IN_PLACE": 11,
+      "SUP.BACK": 22,
+      "SUP.BELLY_LIFT": 4,
+      "SUP.GENERAL": 34,
+      "SUP.PRESSURE_OFFLOAD": 5,
+      "VAL.PRICE_VALUE": 5
+    }
+  },
+  "unknown_aspects": [
+    {
+      "canonical_id": "c-1s8bn5y",
+      "code": "SUP.GENERAL",
+      "span": "jury is still out on if it’s helping"
+    }
+  ]
+}

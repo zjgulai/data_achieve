@@ -1,0 +1,455 @@
+"""G0-G10 gate chain as executable data.
+
+Each gate declares:
+  entry   - what must already be true before the gate may start
+  inputs  - artifacts consumed (named files)
+  steps   - ordered actions with the actor that can perform them
+  outputs - artifacts produced, each with a machine check
+  accept  - conditions that must hold for PASS
+  rollback- the earliest gate to return to when a condition fails
+  fail_closed - what stays forbidden while the gate is not PASS
+
+The module is intentionally declarative: ``voc spec`` serialises it, and the
+orchestrator evaluates the machine checks against the artifact directory.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Any
+
+from .contracts import GateStatus, Role
+
+
+@dataclass
+class GateStep:
+    action: str
+    actor: Role
+    check: str = ""
+
+
+@dataclass
+class Gate:
+    gate_id: str
+    name: str
+    purpose: str
+    entry: list[str]
+    inputs: list[str]
+    steps: list[GateStep]
+    outputs: list[str]
+    accept: list[str]
+    rollback: str
+    fail_closed: list[str]
+    owner: str
+    machine_checks: list[str] = field(default_factory=list)
+    human_decisions: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "gate_id": self.gate_id,
+            "name": self.name,
+            "purpose": self.purpose,
+            "entry": self.entry,
+            "inputs": self.inputs,
+            "steps": [
+                {"action": s.action, "actor": s.actor.value, "check": s.check}
+                for s in self.steps
+            ],
+            "outputs": self.outputs,
+            "accept": self.accept,
+            "rollback": self.rollback,
+            "fail_closed": self.fail_closed,
+            "owner": self.owner,
+            "machine_checks": self.machine_checks,
+            "human_decisions": self.human_decisions,
+        }
+
+
+GATES: list[Gate] = [
+    Gate(
+        gate_id="G0",
+        name="Decision Charter",
+        purpose="先冻结业务选择、证据边界与停损条件，再允许采集。",
+        entry=["stakeholder request 已记录", "无上游 gate"],
+        inputs=[
+            "business question",
+            "decision owner",
+            "product / market / time window / channel",
+            "budget / deadline / publication boundary",
+        ],
+        steps=[
+            GateStep("把业务问题改写成一个可判定的选择", Role.HUMAN),
+            GateStep("指定唯一 decision owner 与唯一决策问题", Role.HUMAN),
+            GateStep("为每个 sample frame 写用途与分母规则", Role.HUMAN),
+            GateStep("写 QA 阈值（semantic / identity governance）", Role.HUMAN),
+            GateStep("序列化 charter 并校验必填字段", Role.CODE, "charter_schema"),
+        ],
+        outputs=[
+            "voc-research-charter.json",
+            "metric-intent-and-denominator-rules.json",
+            "qa-thresholds.json",
+            "gate-plan.json",
+        ],
+        accept=[
+            "唯一 decision owner 与唯一决策问题被命名",
+            "每个 frame 有 purpose 与 denominator rule",
+            "exact-variant metric 声明需要 verified review-variant 证据",
+            "QA 阈值是数值且按字段区分",
+            "外部调用与发布边界显式",
+            "stop condition 可机器检查",
+        ],
+        rollback="产品范围、决策 owner、市场、发布边界或预算变化时回到 G0。",
+        fail_closed=["任何采集", "任何对外发布"],
+        owner="business decision owner",
+        machine_checks=["charter_required_fields", "qa_thresholds_numeric", "frame_purpose_unique"],
+        human_decisions=["decision question", "owner", "budget", "publication boundary"],
+    ),
+    Gate(
+        gate_id="G1",
+        name="Product Identity",
+        purpose="把目标 SKU / variant 与 marketplace / social 标识冻结成可审计映射。",
+        entry=["G0 = PASS，或 G0 = CONDITIONAL 且只授权 research-only 范围"],
+        inputs=["voc-research-charter.json", "official product URL or catalog record", "candidate identifiers"],
+        steps=[
+            GateStep("抓取官方 PDP / catalog 原始响应并保存 hash", Role.CODE, "identity_raw_hash"),
+            GateStep("解析 parent / child / variant / legacy / adjacent", Role.CODE, "identity_parse"),
+            GateStep("对模糊匹配做人工裁决并写 confidence", Role.HUMAN),
+            GateStep("隔离 legacy 与 adjacent", Role.HUMAN),
+        ],
+        outputs=[
+            "product-identity-crosswalk.json",
+            "variant-matrix.csv",
+            "identity-evidence-ledger.json",
+            "identity-quarantine.json",
+        ],
+        accept=[
+            "target SKU 与 variant 显式",
+            "marketplace parent / child 角色分离",
+            "legacy 与 adjacent 被隔离",
+            "每个 mapping 带证据、时间戳、confidence 与 review status",
+        ],
+        rollback="出现新 child ASIN、SKU、bundle、颜色、尺码或 legacy 映射变化时回到 G1。",
+        fail_closed=["exact-variant metric", "variant-specific 结论"],
+        owner="research lead + catalog owner",
+        machine_checks=["identity_parent_child_consistent", "identity_timestamp_present", "identity_variants_unique"],
+        human_decisions=["fuzzy match adjudication", "legacy / adjacent quarantine"],
+    ),
+    Gate(
+        gate_id="G2",
+        name="Source and Rights Audit",
+        purpose="每个来源先写清能回答什么、不能回答什么、权利与隐私状态。",
+        entry=["G1 = PASS"],
+        inputs=["G0 charter", "G1 identity crosswalk", "candidate source inventory"],
+        steps=[
+            GateStep("逐源登记 rights / privacy / commerciality / content role", Role.HUMAN),
+            GateStep("写 allowed use 与 forbidden use", Role.HUMAN),
+            GateStep("把 blocked source 写入 register", Role.CODE, "blocked_source_out_of_denominator"),
+        ],
+        outputs=[
+            "source-rights-matrix.json",
+            "source-role-contract.json",
+            "privacy-and-retention-plan.md",
+            "blocked-source-register.json",
+        ],
+        accept=[
+            "每个来源有 rights 与 privacy 状态",
+            "商业与创作者内容被隔离出 organic consumer metric",
+            "allowed / forbidden use 显式",
+            "blocked source 不能进入下游分母",
+        ],
+        rollback="endpoint、权利状态、披露、访问路径或发布用途变化时回到 G2。",
+        fail_closed=["blocked source 的记录进入 metric row"],
+        owner="legal / privacy owner",
+        machine_checks=["every_source_has_rights_state", "blocked_not_in_metric"],
+        human_decisions=["rights state", "allowed use", "retention"],
+    ),
+    Gate(
+        gate_id="G3",
+        name="Source Pilot",
+        purpose="先 inspect 再 run，用小样本验证产品匹配、字段、重复与成本。",
+        entry=["G2 = PASS，或 G2 = CONDITIONAL 且有显式 allowed use 与 blocked register"],
+        inputs=["G0 budget", "G1 identity", "G2 source contract", "provider / endpoint candidates"],
+        steps=[
+            GateStep("inspect endpoint：字段、分页、地区、评论层、限制", Role.CODE, "inspect_before_run"),
+            GateStep("最小 run 并保存不可变 raw", Role.CODE, "raw_immutable"),
+            GateStep("对账记录数、zero result、错误与成本", Role.CODE, "ledger_reconciles"),
+            GateStep("给每个来源写 scorecard 与 limitation", Role.LLM_ASSISTED),
+            GateStep("接受或拒绝该来源", Role.HUMAN),
+        ],
+        outputs=[
+            "pilot-raw/",
+            "monid-run-ledger.json",
+            "pilot-source-scorecard.json",
+            "pilot-gate-decision.json",
+        ],
+        accept=[
+            "run 之前已有 inspect 记录",
+            "成本在 G0 上限内",
+            "raw 响应不可变且与 ledger 关联",
+            "conditional source 有显式 limitation 与 next action",
+        ],
+        rollback="权利/角色问题回 G2；产品不匹配回 G1；预算或范围变化回 G0。",
+        fail_closed=["扩量采集"],
+        owner="research lead",
+        machine_checks=["inspect_run_order", "cost_within_ceiling", "raw_hash_present", "zero_results_visible"],
+        human_decisions=["source accept / reject", "conditional limitation"],
+    ),
+    Gate(
+        gate_id="G4",
+        name="Taxonomy Freeze",
+        purpose="把定义、include / exclude 规则、枚举与 exact-variant 谓词冻结成可执行合同。",
+        entry=["G3 = PASS 或 CONDITIONAL"],
+        inputs=["pilot records", "research questions", "category terminology", "G0 metric rules"],
+        steps=[
+            GateStep("从 pilot 归纳 aspect / context / journey / outcome / gap 轴", Role.LLM_ASSISTED),
+            GateStep("为每个 code 写定义、include、exclude", Role.HUMAN),
+            GateStep("写 machine enums 与 exact-variant predicate", Role.CODE, "enum_contract_complete"),
+            GateStep("迁移 pilot 编码并对账", Role.CODE, "pilot_migration_reconciles"),
+            GateStep("冻结版本号并出 gate decision", Role.HUMAN),
+        ],
+        outputs=[
+            "taxonomy.json",
+            "codebook.md",
+            "alias-map.json",
+            "pilot-coded.jsonl",
+            "taxonomy-coverage.json",
+            "consumer-metric-view-contract.json",
+            "social-governance-rules.json",
+            "g7-calibration-plan.json",
+            "g4-gate-decision.json",
+        ],
+        accept=[
+            "定义与 include / exclude 完整",
+            "unknown 与 negative / absent 分开",
+            "mixed 保留正负两个 component",
+            "machine contract 定义合法枚举与 exact-variant 谓词",
+            "G7 plan 读取 G0 阈值并把风险建模为 coverage",
+            "pilot migration 与 source inventory 对账",
+        ],
+        rollback="反复不可编码证据或 code collision 超过阈值时，带新 taxonomy 版本回到 G4。",
+        fail_closed=["G5 扩量", "任何 prevalence"],
+        owner="taxonomy owner + research lead",
+        machine_checks=["every_code_has_definition", "enum_unknown_present", "pilot_migration_reconciles"],
+        human_decisions=["code definitions", "include / exclude", "freeze"],
+    ),
+    Gate(
+        gate_id="G5",
+        name="Stratified Collection",
+        purpose="按 frame 分层采集，保留空格、零结果与成本，杜绝只采到能采的。",
+        entry=["G4 = PASS"],
+        inputs=["G0 sample plan", "G1 identity", "G2 contracts", "G3 endpoints", "G4 taxonomy"],
+        steps=[
+            GateStep("生成 collection matrix（frame × source × query × quota）", Role.CODE, "matrix_complete"),
+            GateStep("按矩阵执行采集并逐条写 ledger", Role.CODE, "every_raw_has_request"),
+            GateStep("保留 missing / zero-result cell", Role.CODE, "missing_cells_visible"),
+            GateStep("对账成本与记录数", Role.CODE, "cost_reconciles"),
+        ],
+        outputs=[
+            "collection-matrix.json",
+            "raw/",
+            "collection-run-ledger.json",
+            "quota-and-gap-report.json",
+            "raw-manifest.sha256",
+        ],
+        accept=[
+            "每个 raw object 可追溯到一个批准请求",
+            "missing 与 zero-result cell 保持可见",
+            "frame membership 显式且可重叠不重复计数",
+            "成本与记录总数对账",
+        ],
+        rollback="endpoint 漂移回 G3；权利漂移回 G2；产品匹配恶化回 G1。",
+        fail_closed=["G6"],
+        owner="collection operator",
+        machine_checks=["quota_cells_present", "raw_manifest_matches", "cost_reconciles"],
+        human_decisions=["quota acceptance"],
+    ),
+    Gate(
+        gate_id="G6",
+        name="Canonicalize and Deduplicate",
+        purpose="把 raw / occurrence / canonical / membership 四个数分开，并让每个扣减有理由。",
+        entry=["G5 = PASS 或 CONDITIONAL"],
+        inputs=["raw corpus + manifest", "identity crosswalk", "source-role contract", "taxonomy ids"],
+        steps=[
+            GateStep("raw → occurrence：按 source + external id + frame 建 occurrence", Role.CODE, "occurrence_unique"),
+            GateStep("exact dedup：规范化文本 hash", Role.CODE, "exact_group_one_representative"),
+            GateStep("fuzzy 候选：相似度阈值以上进入 review", Role.CODE, "fuzzy_requires_review"),
+            GateStep("确定性选代表并写 duplicate group", Role.CODE, "representative_deterministic"),
+            GateStep("写 exclusion 与 metric eligibility", Role.CODE, "exclusion_reason_present"),
+            GateStep("对账 98→96→95 式血缘", Role.CODE, "reconciliation_balances"),
+        ],
+        outputs=[
+            "canonical-voc-record.schema.json",
+            "occurrences.jsonl",
+            "canonical-records.jsonl",
+            "duplicate-groups.json",
+            "lineage-edges.jsonl",
+            "metric-eligibility-manifest.jsonl",
+            "exclusion-quarantine.jsonl",
+            "g6-reconciliation.json",
+        ],
+        accept=[
+            "raw / occurrence / canonical / membership 数互不混用",
+            "每个 canonical 至少链接一个 occurrence",
+            "每条记录满足 canonical schema 与 G4 enum",
+            "每个 duplicate group 恰好一个代表",
+            "metric eligibility 与 exclusion 机器可读",
+            "代表选择确定性可复现",
+        ],
+        rollback="新来源暴露新重复组或规范化规则变化时回到 G6，并保留旧版本。",
+        fail_closed=["G7", "任何以 canonical 数当消费者数的表述"],
+        owner="data engineer",
+        machine_checks=["one_representative_per_group", "canonical_has_occurrence", "reconciliation_balances"],
+        human_decisions=["fuzzy duplicate adjudication"],
+    ),
+    Gate(
+        gate_id="G7",
+        name="Coding Calibration",
+        purpose="双盲编码与逐字段 agreement 达标后，编码才可进入指标。",
+        entry=["G6 = PASS"],
+        inputs=["G4 taxonomy + metric contract + g7 plan", "G6 canonical corpus", "G0 qa thresholds"],
+        steps=[
+            GateStep("抽 calibration sample（覆盖 core / boundary / spillover）", Role.CODE, "sample_covers_risk"),
+            GateStep("coder A 与 coder B 独立编码", Role.HUMAN),
+            GateStep("计算逐字段 agreement", Role.CODE, "agreement_by_field"),
+            GateStep("对分歧做 adjudication 并写 ledger", Role.HUMAN),
+            GateStep("出 gate decision；未达标字段阻断下游", Role.HUMAN),
+        ],
+        outputs=[
+            "calibration-sample.json",
+            "coder-a.jsonl",
+            "coder-b.jsonl",
+            "agreement-report.json",
+            "adjudication-ledger.json",
+            "production-coded.jsonl",
+            "g7-gate-decision.json",
+        ],
+        accept=[
+            "core semantic agreement 达到 charter 阈值",
+            "identity / governance 达到更高阈值",
+            "risk 与 boundary case 100% review",
+            "未达标字段阻断 metric view",
+        ],
+        rollback="定义失败回 G4；血缘失败回 G6；codebook 有界修订后重跑 G7。",
+        fail_closed=["G8", "任何 formal metric row"],
+        owner="coding lead + independent second coder",
+        machine_checks=["two_coders_present", "agreement_computed", "failed_fields_block_downstream"],
+        human_decisions=["coding", "adjudication", "gate decision"],
+    ),
+    Gate(
+        gate_id="G8",
+        name="Insight Analysis",
+        purpose="每个指标可从命名记录复现，每个 headline 都带反证与敏感度。",
+        entry=["G7 = PASS"],
+        inputs=["G0 metric rules", "G4 metric view contract", "G6 canonical + eligibility", "G7 coded"],
+        steps=[
+            GateStep("物化 metric definition（numerator / denominator / filters）", Role.CODE, "metric_has_denominator"),
+            GateStep("计算并冻结 metric table", Role.CODE, "metric_reproducible"),
+            GateStep("写 insight ledger 与 counterevidence ledger", Role.LLM_ASSISTED),
+            GateStep("做 sensitivity 与稀疏性检查", Role.CODE, "sensitivity_present"),
+        ],
+        outputs=[
+            "materialized-metric-definitions.json",
+            "metric-table.parquet-or-csv",
+            "insight-ledger.json",
+            "counterevidence-ledger.json",
+            "g8-gate-decision.json",
+        ],
+        accept=[
+            "所有指标可从命名记录复现",
+            "sample-frame 分母不静默混合",
+            "diagnostic sample 不产生 prevalence claim",
+            "每个 headline insight 含反证与 confidence",
+        ],
+        rollback="编码可靠性回 G7；重复回 G6；缺失 cell 回 G5；决策变化回 G0。",
+        fail_closed=["G9"],
+        owner="analyst",
+        machine_checks=["metric_denominator_nonzero", "frame_not_mixed", "counterevidence_present"],
+        human_decisions=["insight acceptance"],
+    ),
+    Gate(
+        gate_id="G9",
+        name="Strategy Activation",
+        purpose="每个行动追溯到洞察，每个实验有 owner、KPI、guardrail、stop。",
+        entry=["G8 = PASS"],
+        inputs=["G8 insight + counterevidence", "G0 business decision", "operational constraints"],
+        steps=[
+            GateStep("把洞察映射到可控 lever 与 lane owner", Role.HUMAN),
+            GateStep("设计最小可逆实验与 baseline", Role.HUMAN),
+            GateStep("写 KPI、guardrail、stop condition", Role.HUMAN),
+            GateStep("记录 approval 状态", Role.HUMAN),
+        ],
+        outputs=[
+            "strategy-option-ledger.json",
+            "experiment-portfolio.json",
+            "experiment-baseline-plan.json",
+            "owner-and-kpi-map.json",
+            "g9-decision-record.json",
+        ],
+        accept=[
+            "每个行动追溯到一条或多条洞察",
+            "每个实验有 owner、KPI、guardrail、stop",
+            "医学与安全边界已 review",
+            "approval 状态显式",
+        ],
+        rollback="证据解释变化回 G8；业务决策变化回 G0。",
+        fail_closed=["G10"],
+        owner="product / growth owner",
+        machine_checks=["action_has_insight", "experiment_has_stop"],
+        human_decisions=["option selection", "KPI", "approval"],
+    ),
+    Gate(
+        gate_id="G10",
+        name="Measurement Review",
+        purpose="结果、guardrail、漂移与回滚进入决策史，而不是只报好消息。",
+        entry=["G9 = PASS 且实验已运行"],
+        inputs=["G9 portfolio", "baseline", "outcome + guardrail data", "drift signals"],
+        steps=[
+            GateStep("对齐 outcome 与 guardrail 数据", Role.CODE, "outcome_reconciles"),
+            GateStep("按设计限制因果措辞", Role.HUMAN),
+            GateStep("记录 decision、rollback 与 refresh trigger", Role.HUMAN),
+        ],
+        outputs=[
+            "experiment-readout.json",
+            "guardrail-report.json",
+            "drift-register.json",
+            "decision-history.json",
+            "refresh-plan.json",
+        ],
+        accept=[
+            "outcome 与 guardrail 数据对账",
+            "因果措辞与设计匹配",
+            "decision 与 rollback 被记录",
+            "refresh trigger 有 owner 与到期日",
+        ],
+        rollback="使用最早受影响 gate；不得在上游漂移后补丁式修改下游指标。",
+        fail_closed=["对外结果声明"],
+        owner="experiment owner",
+        machine_checks=["readout_reconciles", "causal_language_flagged"],
+        human_decisions=["causal wording", "scale / revise / stop"],
+    ),
+]
+
+
+def gate_by_id(gate_id: str) -> Gate:
+    for gate in GATES:
+        if gate.gate_id == gate_id:
+            return gate
+    raise KeyError(gate_id)
+
+
+def gate_spec() -> list[dict[str, Any]]:
+    return [gate.to_dict() for gate in GATES]
+
+
+def default_statuses(up_to: str = "G0") -> dict[str, GateStatus]:
+    statuses = {}
+    reached = False
+    for gate in GATES:
+        if gate.gate_id == up_to:
+            reached = True
+            statuses[gate.gate_id] = GateStatus.PASS
+        elif not reached:
+            statuses[gate.gate_id] = GateStatus.NOT_STARTED
+        else:
+            statuses[gate.gate_id] = GateStatus.BLOCKED
+    return statuses

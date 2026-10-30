@@ -1,0 +1,107 @@
+{
+  "generated_at": "2026-10-29T18:07:47.079222+00:00",
+  "batches_dir": "/private/tmp/b02check/batches",
+  "outputs_dir": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/llm-coding/coded",
+  "strict": true,
+  "ok": true,
+  "total_errors": 0,
+  "total_warnings": 1,
+  "errors_truncated": false,
+  "warnings_truncated": false,
+  "totals": {
+    "batches": 1,
+    "records": 42,
+    "output_records": 42,
+    "missing_records": 0,
+    "extra_records": 0,
+    "parse_errors": 0,
+    "n_aspects": 23,
+    "aspects_per_record": 0.5476,
+    "unknown_polarity": 0,
+    "unknown_ratio": 0.0,
+    "is_product_experience_true": 14,
+    "is_product_experience_ratio": 0.3333,
+    "evidence_span_failures": 0,
+    "non_experience_with_aspects": 0,
+    "records_with_zero_aspects": 28,
+    "polarity_counts": {
+      "mixed": 1,
+      "negative": 10,
+      "positive": 11,
+      "qualified_negative": 1
+    },
+    "confidence_counts": {
+      "high": 20,
+      "medium": 3
+    },
+    "code_counts": {
+      "ACT.COMPATIBILITY": 1,
+      "ADJ.STRAP_DESIGN": 1,
+      "COM.GENERAL": 2,
+      "COM.SOFTNESS": 1,
+      "FIT.COVERAGE": 1,
+      "FIT.SIZE_ACCURACY": 2,
+      "GEN.OVERALL_EVALUATION": 10,
+      "STB.STAY_IN_PLACE": 1,
+      "SUP.BACK": 1,
+      "SUP.GENERAL": 2,
+      "VAL.PRICE_VALUE": 1
+    }
+  },
+  "batches": [
+    {
+      "batch": "batch-02",
+      "output_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/llm-coding/coded/batch-02.jsonl",
+      "source_records": 42,
+      "output_records": 42,
+      "missing_records": 0,
+      "extra_records": 0,
+      "parse_errors": 0,
+      "error_count": 0,
+      "warning_count": 0,
+      "n_aspects": 23,
+      "aspects_per_record": 0.5476,
+      "unknown_polarity": 0,
+      "unknown_ratio": 0.0,
+      "is_product_experience_true": 14,
+      "is_product_experience_ratio": 0.3333,
+      "polarity_counts": {
+        "mixed": 1,
+        "negative": 10,
+        "positive": 11,
+        "qualified_negative": 1
+      },
+      "confidence_counts": {
+        "high": 20,
+        "medium": 3
+      },
+      "code_counts": {
+        "ACT.COMPATIBILITY": 1,
+        "ADJ.STRAP_DESIGN": 1,
+        "COM.GENERAL": 2,
+        "COM.SOFTNESS": 1,
+        "FIT.COVERAGE": 1,
+        "FIT.SIZE_ACCURACY": 2,
+        "GEN.OVERALL_EVALUATION": 10,
+        "STB.STAY_IN_PLACE": 1,
+        "SUP.BACK": 1,
+        "SUP.GENERAL": 2,
+        "VAL.PRICE_VALUE": 1
+      },
+      "evidence_span_failures": 0,
+      "non_experience_with_aspects": 0,
+      "records_with_zero_aspects": 28,
+      "max_aspects_per_record": 3
+    }
+  ],
+  "errors": [],
+  "warnings": [
+    {
+      "batch": "-",
+      "line": null,
+      "canonical_id": null,
+      "kind": "unexpected_output_file",
+      "detail": "batch-08.jsonl"
+    }
+  ]
+}

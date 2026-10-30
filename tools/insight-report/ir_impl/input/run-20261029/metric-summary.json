@@ -1,0 +1,534 @@
+{
+ "frame_inventory": {
+  "counts": {
+   "natural": 149,
+   "diagnostic": 8,
+   "qualitative_seed": 100
+  },
+  "overlap": {
+   "natural+diagnostic": 8,
+   "natural+qualitative_seed": 1
+  },
+  "distinct_records": 248
+ },
+ "aspect_polarity_counts": {
+  "ACT.COMPATIBILITY": {
+   "positive": 16,
+   "negative": 13
+  },
+  "ADJ.STRAP_DESIGN": {
+   "negative": 1,
+   "positive": 1
+  },
+  "APP.LOW_PROFILE": {
+   "negative": 6,
+   "positive": 11
+  },
+  "COM.BREATHABILITY_HEAT": {
+   "positive": 2
+  },
+  "COM.GENERAL": {
+   "negative": 6,
+   "positive": 6
+  },
+  "COM.SKIN_CHAFE": {
+   "negative": 2
+  },
+  "COM.SOFTNESS": {
+   "negative": 3,
+   "positive": 17
+  },
+  "COM.WEAR_TOLERANCE": {
+   "positive": 3
+  },
+  "FIT.BODY_SHAPE": {
+   "negative": 2,
+   "positive": 1
+  },
+  "FIT.GROWTH_RANGE": {
+   "positive": 1
+  },
+  "FIT.SIZE_ACCURACY": {
+   "positive": 1
+  },
+  "FUL.PRODUCT_CONDITION": {
+   "negative": 2,
+   "positive": 5
+  },
+  "GEN.OVERALL_EVALUATION": {
+   "positive": 9
+  },
+  "MAT.CARE": {
+   "positive": 1
+  },
+  "MAT.FABRIC": {
+   "positive": 1
+  },
+  "MAT.THICKNESS": {
+   "negative": 5,
+   "positive": 11
+  },
+  "STB.STAY_IN_PLACE": {
+   "negative": 1
+  },
+  "SUP.BACK": {
+   "negative": 7,
+   "positive": 6
+  },
+  "SUP.GENERAL": {
+   "positive": 23,
+   "negative": 5
+  },
+  "SUP.PRESSURE_OFFLOAD": {
+   "negative": 2,
+   "positive": 3
+  },
+  "VAL.PRICE_VALUE": {
+   "negative": 3,
+   "positive": 3
+  }
+ },
+ "annotation_totals": {
+  "context": 230,
+  "outcome": 41,
+  "aspect": 179,
+  "journey": 50,
+  "medical": 33
+ },
+ "eligible_records": 133,
+ "eligible_by_frame": {
+  "natural": 127,
+  "diagnostic": 6,
+  "qualitative_seed": 7
+ },
+ "contracts": [
+  {
+   "metric_id": "natural_support_negative_share",
+   "frame": "natural",
+   "numerator_rule": "records with >=1 SUP/FIT/STB negative annotation",
+   "denominator_rule": "eligible natural canonical consumer records with >=1 aspect annotation",
+   "filters": {
+    "product_match": [
+     "exact_current_family",
+     "brand_category",
+     "category_adjacent"
+    ],
+    "commerciality": [
+     "no_signal_observed"
+    ],
+    "content_role": [
+     "consumer_experience"
+    ]
+   },
+   "qa_state": "blocked_g7_not_executed"
+  },
+  {
+   "metric_id": "natural_comfort_positive_share",
+   "frame": "natural",
+   "numerator_rule": "records with >=1 COM/APP positive annotation",
+   "denominator_rule": "eligible natural canonical consumer records with >=1 aspect annotation",
+   "filters": {
+    "product_match": [
+     "exact_current_family",
+     "brand_category",
+     "category_adjacent"
+    ]
+   },
+   "qa_state": "blocked_g7_not_executed"
+  }
+ ],
+ "metric_rows": [],
+ "g7_status": "BLOCKED",
+ "zero_metric_row_reason": "G7 未执行：没有第二编码员与逐字段 agreement，正式指标行按 fail-closed 记为 0。",
+ "cooccurrence": {
+  "comfort_positive_records": 27,
+  "comfort_positive_with_friction": 3,
+  "friction_negative_records": 10,
+  "both_records": 3,
+  "total_annotated_records": 34,
+  "rows": [
+   {
+    "canonical_id": "c-1opsx7o",
+    "comfort_positive": [
+     "APP.LOW_PROFILE",
+     "COM.GENERAL",
+     "COM.SOFTNESS"
+    ],
+    "friction_negative": [
+     "SUP.BACK",
+     "SUP.GENERAL"
+    ],
+    "both": true,
+    "text": "I started having noticeable lower back pain around 26 weeks of pregnancy, and my midwife suggested trying a pregnancy belly band. There are so many options out there, it can be really overwhelming. Every mom’s body and pregnancy are differe",
+    "subreddit": "BabyBumps"
+   },
+   {
+    "canonical_id": "c-1purbx5",
+    "comfort_positive": [
+     "APP.LOW_PROFILE"
+    ],
+    "friction_negative": [
+     "SUP.BACK",
+     "SUP.GENERAL"
+    ],
+    "both": true,
+    "text": "I am SO frustrated by the fact no one sells maternity things in store. I’ve searched everyplace I can online for a maternity/pregnancy belly band support belt and cannot find a single one within an hour of me! \n\nIt was the same for maternit",
+    "subreddit": "BabyBumps"
+   },
+   {
+    "canonical_id": "c-1x3t1a8",
+    "comfort_positive": [
+     "COM.SOFTNESS"
+    ],
+    "friction_negative": [
+     "SUP.BACK"
+    ],
+    "both": true,
+    "text": "",
+    "subreddit": "BabyBumps"
+   },
+   {
+    "canonical_id": "c-19rg8fid9ublx",
+    "comfort_positive": [
+     "COM.GENERAL",
+     "COM.SOFTNESS"
+    ],
+    "friction_negative": [],
+    "both": false,
+    "text": "I am a similar size to you and found the Momcozy nursing/pumping bra with the mesh inset is the most comfortable and holds the most in. (https://a.co/d/0fJX8HdQ) it’s also cheaper than a lot of other brands and one of the only ones I’ve fou",
+    "subreddit": "BabyBumps"
+   },
+   {
+    "canonical_id": "c-19rkynhhprt2c",
+    "comfort_positive": [],
+    "friction_negative": [
+     "SUP.BACK",
+     "SUP.GENERAL"
+    ],
+    "both": false,
+    "text": "Hey! I’ve had pretty bad PGP since around 20 weeks (I’m 40 weeks now) You can contact your midwife and request physical therapy with an OT, they can give you ways to help. I wear proper maternity leggings and underwear which helps lift the ",
+    "subreddit": "pregnant"
+   },
+   {
+    "canonical_id": "c-19rljfjm31o5e",
+    "comfort_positive": [],
+    "friction_negative": [
+     "SUP.BACK"
+    ],
+    "both": false,
+    "text": "Unless you’re on pelvic rest or something like that, there’s 0 reason to worry. I carried my 30lbs toddler home from the park 5 days before my 2nd baby was born. Also went crazy nesting the final month and moved all the furniture to vacuum,",
+    "subreddit": "pregnant"
+   },
+   {
+    "canonical_id": "c-19rnylotzfmkh",
+    "comfort_positive": [
+     "COM.SOFTNESS"
+    ],
+    "friction_negative": [],
+    "both": false,
+    "text": "If someone was putting together a basket for me, here’s what I would want (as someone who lost her mom in her 20s and is pregnant in early 30s) also this is not a particularly budget friendly list lol but hopefully provides some inspo! \n\n\\-",
+    "subreddit": "BabyBumps"
+   },
+   {
+    "canonical_id": "c-1m0835o",
+    "comfort_positive": [
+     "COM.SOFTNESS"
+    ],
+    "friction_negative": [],
+    "both": false,
+    "text": "After giving birth, what bothered me most wasn’t the incision pain. But the feeling that my body is falling apart, especially my core. It feels so weak. My abdomen is soft and completely lacks support. Even just standing and holding my baby",
+    "subreddit": "fitpregnancy"
+   },
+   {
+    "canonical_id": "c-1o715fe",
+    "comfort_positive": [
+     "COM.SOFTNESS"
+    ],
+    "friction_negative": [],
+    "both": false,
+    "text": "Hey mamas, I’m in my second trimester and my pelvis has been killing me. Sitting too long makes my sciatica flare up and it’s honestly draining when I’m stuck at my desk all day.\n\nI keep hearing a pregnancy belly band can take some of the p",
+    "subreddit": "fitpregnancy"
+   },
+   {
+    "canonical_id": "c-1o9a0w1",
+    "comfort_positive": [
+     "COM.SOFTNESS"
+    ],
+    "friction_negative": [],
+    "both": false,
+    "text": "For me, my last long run/walks are 15 miles this weekend, then 8 next weekend. I'll be 23 weeks on race day and I've recently started to feel heavy, so my only goal is to have fun out there and hopefully finish with my trusty momcozy belly ",
+    "subreddit": "fitpregnancy"
+   },
+   {
+    "canonical_id": "c-1ok0mye",
+    "comfort_positive": [
+     "APP.LOW_PROFILE",
+     "COM.BREATHABILITY_HEAT",
+     "COM.SOFTNESS"
+    ],
+    "friction_negative": [],
+    "both": false,
+    "text": "Hey guys! I’ve been reading a lot about postpartum recovery lately, and there’s one thing I just can’t figure out , how soon after birth can you actually start wearing a belly band?\n\nI’ve heard so many different opinions. Some people say yo",
+    "subreddit": "BabyBumps"
+   },
+   {
+    "canonical_id": "c-1oqbtrl",
+    "comfort_positive": [
+     "APP.LOW_PROFILE"
+    ],
+    "friction_negative": [],
+    "both": false,
+    "text": "First- I have talked with my OB and they ended up ordering PT. So they’re aware of the pain and don’t think it’s anything serious.\n\nOk I saw some posts about this but they’re all pretty old. Has anyone dealt with pain from their abs separat",
+    "subreddit": "BabyBumps"
+   },
+   {
+    "canonical_id": "c-1pazgft",
+    "comfort_positive": [
+     "COM.SOFTNESS"
+    ],
+    "friction_negative": [],
+    "both": false,
+    "text": "My friend had everything ready for a vaginal birth, and then things took a turn and she ended up having a C-section a month early. So now she has all the stuff for a vaginal delivery but barely anything she’ll actually need for a C-section.",
+    "subreddit": "fitpregnancy"
+   },
+   {
+    "canonical_id": "c-1pfyruu",
+    "comfort_positive": [],
+    "friction_negative": [
+     "FIT.BODY_SHAPE",
+     "STB.STAY_IN_PLACE"
+    ],
+    "both": false,
+    "text": "I’m 37 weeks my 3rd baby girl is supposed to be a Christmas baby maybe. But oh my goodness this is a new level of pain I am mentally struggling to handle I have struggled a bit with pregnancies but this is beyond awful especially the last f",
+    "subreddit": "BabyBumps"
+   },
+   {
+    "canonical_id": "c-1pueacf",
+    "comfort_positive": [],
+    "friction_negative": [
+     "FIT.BODY_SHAPE",
+     "SUP.GENERAL"
+    ],
+    "both": false,
+    "text": "I'm having a lot of round ligament pain and some pelvic pain. Occasionally I get sciatic nerve pain. I'm a fat lady, so I'm trying to find a plus size belly band that is really aimed at helping round ligament support and lessening that pain",
+    "subreddit": "BabyBumps"
+   },
+   {
+    "canonical_id": "c-1r44c1m",
+    "comfort_positive": [
+     "APP.LOW_PROFILE",
+     "COM.SOFTNESS"
+    ],
+    "friction_negative": [],
+    "both": false,
+    "text": "Hey there! So I am 31 weeks pregnant and have severe pelvic pain. I’m taking care of a 1 1/2 year old, 5 horses and still working. My husband is dealing with severe neurological issues so I am having to just get through this and can’t be be",
+    "subreddit": "BabyBumps"
+   },
+   {
+    "canonical_id": "c-1rpxflg",
+    "comfort_positive": [],
+    "friction_negative": [
+     "SUP.BACK"
+    ],
+    "both": false,
+    "text": "Hey everyone, 21+3 weeks and have an anterior placenta. I started feeling butterflies around 16 weeks like once every couple of days, and around week 20 I started feeling a kick or movement like once a night. Now, I can feel movement random",
+    "subreddit": "BabyBumps"
+   },
+   {
+    "canonical_id": "c-1rqq680",
+    "comfort_positive": [
+     "APP.LOW_PROFILE",
+     "COM.GENERAL",
+     "COM.SOFTNESS"
+    ],
+    "friction_negative": [],
+    "both": false,
+    "text": "A friend of mine recently had her baby and gave me the maternity belly band she used during her pregnancy since she thought I might need it soon. Just what I needed! Before that though, I had already picked up a couple of belly bands myself",
+    "subreddit": "fitpregnancy"
+   },
+   {
+    "canonical_id": "c-1s21pgr",
+    "comfort_positive": [],
+    "friction_negative": [
+     "SUP.GENERAL"
+    ],
+    "both": false,
+    "text": "I’m a member of a union that is currently striking. Labor rights matter greatly to me. I personally and intellectually support this strike wholeheartedly. While I wish this wasn’t happening in my third trimester, I also believe in fighting ",
+    "subreddit": "BabyBumps"
+   },
+   {
+    "canonical_id": "c-1s2rcvx",
+    "comfort_positive": [
+     "APP.LOW_PROFILE",
+     "COM.BREATHABILITY_HEAT"
+    ],
+    "friction_negative": [],
+    "both": false,
+    "text": "Hi all, been lurking in this subreddit for a while and finally have a question I couldn’t already find the answer to.\n\nThis is my second pregnancy. With my first, I used an Amazon belly support band (I think it was Azband or something like ",
+    "subreddit": "BabyBumps"
+   },
+   {
+    "canonical_id": "c-1sg2gon",
+    "comfort_positive": [
+     "COM.SOFTNESS"
+    ],
+    "friction_negative": [],
+    "both": false,
+    "text": "",
+    "subreddit": "BabyBumps"
+   },
+   {
+    "canonical_id": "c-1sg6gqr",
+    "comfort_positive": [
+     "APP.LOW_PROFILE"
+    ],
+    "friction_negative": [],
+    "both": false,
+    "text": "Has anyone else experienced pain in the upper left abdomen?? I'm 25 weeks and have been experiencing what feels like a muscle ripping sharp pain for a few weeks now in the upper left abdomen. My midwife seemed to think it's not something I ",
+    "subreddit": "BabyBumps"
+   },
+   {
+    "canonical_id": "c-1sqysey",
+    "comfort_positive": [
+     "APP.LOW_PROFILE"
+    ],
+    "friction_negative": [],
+    "both": false,
+    "text": "I’m 34 weeks pregnant and still feel quite good during my workouts, but I was finally able to get in the pool over the weekend and when I got out I really realized how heavy my belly is! \n\n  \nDoes anyone have an opinion on using a belly ban",
+    "subreddit": "fitpregnancy"
+   },
+   {
+    "canonical_id": "c-1svdohq",
+    "comfort_positive": [
+     "COM.SOFTNESS"
+    ],
+    "friction_negative": [],
+    "both": false,
+    "text": "Hey all, so this is my 4th pregnancy (yep… idk how we got here either lol) and my body is not playing around this time. Only 17 weeks and I already feel like I skipped straight to third trimester. My belly feels so heavy, walking, standing,",
+    "subreddit": "BabyBumps"
+   },
+   {
+    "canonical_id": "c-1tftmti",
+    "comfort_positive": [],
+    "friction_negative": [
+     "SUP.BACK"
+    ],
+    "both": false,
+    "text": "I’m 30w with my first, working full time, and officially entering the “wait do I really need all this stuff??” phase. Every list online makes it sound like I need 500 different baby products and gadgets, but then I talk to moms irl and half",
+    "subreddit": "BabyBumps"
+   },
+   {
+    "canonical_id": "c-1ttvd7z",
+    "comfort_positive": [
+     "APP.LOW_PROFILE"
+    ],
+    "friction_negative": [],
+    "both": false,
+    "text": "I am currently 17 weeks pregnant and do not have much of a noticeable bump yet. However I noticed a couple of times now that after doing longer runs I have some pubic soreness once I am finished the run that lasts a couple hours then goes a",
+    "subreddit": "fitpregnancy"
+   },
+   {
+    "canonical_id": "c-1u7ofya",
+    "comfort_positive": [
+     "COM.SOFTNESS"
+    ],
+    "friction_negative": [],
+    "both": false,
+    "text": "Back in February my sister gave me a box of postpartum supplies that she didn’t use with her 2nd. She’s very much a get rid of everything asap because she was maybe 2 weeks postpartum. \n\nShe also gave me a Elvie portable pump that a friend ",
+    "subreddit": "BabyBumps"
+   },
+   {
+    "canonical_id": "c-1v31946",
+    "comfort_positive": [
+     "COM.GENERAL"
+    ],
+    "friction_negative": [],
+    "both": false,
+    "text": "I just want to start off by saying I am so grateful to be in this position.  I begged and pleaded for a healthy strong pregnancy.  After 2 losses we are finally there and so close to viability!\n\nHowever.  I am feeling…. So beastly.  Like I ",
+    "subreddit": "BabyBumps"
+   },
+   {
+    "canonical_id": "c-1v4pjez",
+    "comfort_positive": [
+     "COM.GENERAL"
+    ],
+    "friction_negative": [],
+    "both": false,
+    "text": "I’m 33 weeks and I feel like my belly hasn’t changed size in at least a month. In fact, I feel MORE comfortable now than I did a month ago, I don’t even wear my belly band anymore. I just had a growth ultrasound and baby is on track. My OB ",
+    "subreddit": "BabyBumps"
+   },
+   {
+    "canonical_id": "c-1w3knom",
+    "comfort_positive": [
+     "APP.LOW_PROFILE"
+    ],
+    "friction_negative": [],
+    "both": false,
+    "text": "This is my third pregnancy. While I was lucky to be able to exercise (walking and weights mostly) through my first two, I had to give up running very early due to pelvic pain. \n\nNot sure what’s going on this time, but I’m currently 29 weeks",
+    "subreddit": "fitpregnancy"
+   },
+   {
+    "canonical_id": "c-1x65j91",
+    "comfort_positive": [
+     "COM.GENERAL"
+    ],
+    "friction_negative": [],
+    "both": false,
+    "text": "Hi 🫶 I'm in my second pregnancy 24 weeks along. I have had some severe muscle pain around the belly button associated with moderate activity/lifting and a bad case of diastasis recti. My OB gave me a 20 lb lift restriction (unfortunately I ",
+    "subreddit": "BabyBumps"
+   },
+   {
+    "canonical_id": "c-pdjzq5u",
+    "comfort_positive": [
+     "COM.SOFTNESS"
+    ],
+    "friction_negative": [],
+    "both": false,
+    "text": "I bought a full wrap around momcozy one from Amazon when I started getting round ligament pain week 18. I was worried it would take up too much space in our queen size bed.  But I love it! My husband recently pulled his back muscle really b",
+    "subreddit": "BabyBumps"
+   },
+   {
+    "canonical_id": "c-pdp6hz8",
+    "comfort_positive": [
+     "COM.SOFTNESS"
+    ],
+    "friction_negative": [],
+    "both": false,
+    "text": "I had the exact same stats as you and carried low my whole pregnancy. Get into pelvic floor therapy asap, even if you think you have a good floor, and try to go to some gentle prenatal Pilates classes if you can. I had to avoid walking and ",
+    "subreddit": "BabyBumps"
+   },
+   {
+    "canonical_id": "c-ph09yrn",
+    "comfort_positive": [
+     "COM.SOFTNESS"
+    ],
+    "friction_negative": [],
+    "both": false,
+    "text": "I LOVE my momcozy diaper pail. My husband just wanted to use the kitchen trash can and hes even changed his tune about it. So convenient and really locks the smell in. ",
+    "subreddit": "BabyBumps"
+   }
+  ]
+ },
+ "diversity": {
+  "distinct_authors": 236,
+  "distinct_subreddits": 3,
+  "distinct_records": 248,
+  "subreddit_counts": {
+   "BabyBumps": 173,
+   "fitpregnancy": 50,
+   "pregnant": 25
+  }
+ },
+ "product_match_counts": {
+  "irrelevant": 19,
+  "category_adjacent": 120,
+  "exact_current_family": 16,
+  "brand_other_product": 93
+ },
+ "eligibility_counts": {
+  "excluded_irrelevant": 19,
+  "natural_sample_candidate": 126,
+  "qualitative_seed_only": 100,
+  "excluded_low_information": 3
+ }
+}

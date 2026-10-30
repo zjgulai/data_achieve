@@ -1,0 +1,243 @@
+{
+ "report": {
+  "status": "PASS",
+  "checks": 32,
+  "passed": 32,
+  "failed": 0,
+  "results": [
+   {
+    "name": "report_exists",
+    "passed": true,
+    "detail": "63417 chars"
+   },
+   {
+    "name": "h2_count",
+    "passed": true,
+    "detail": "12 h2"
+   },
+   {
+    "name": "h2_are_claim_sentences",
+    "passed": true,
+    "detail": "[]"
+   },
+   {
+    "name": "claim_blocks_present",
+    "passed": true,
+    "detail": "12 blocks"
+   },
+   {
+    "name": "claim_four_cells",
+    "passed": true,
+    "detail": ""
+   },
+   {
+    "name": "claim_blocks_carry_grade",
+    "passed": true,
+    "detail": ""
+   },
+   {
+    "name": "claim_blocks_have_grade_reason",
+    "passed": true,
+    "detail": ""
+   },
+   {
+    "name": "claim_blocks_have_counts",
+    "passed": true,
+    "detail": ""
+   },
+   {
+    "name": "figures_present",
+    "passed": true,
+    "detail": "9 figures"
+   },
+   {
+    "name": "figure_contract",
+    "passed": true,
+    "detail": ""
+   },
+   {
+    "name": "figure_captions_are_claims",
+    "passed": true,
+    "detail": ""
+   },
+   {
+    "name": "figure_status_is_grade",
+    "passed": true,
+    "detail": ""
+   },
+   {
+    "name": "figure_basis_declares_denominator",
+    "passed": true,
+    "detail": ""
+   },
+   {
+    "name": "forbidden_catalog_complete",
+    "passed": true,
+    "detail": ""
+   },
+   {
+    "name": "forbidden_list_rendered",
+    "passed": true,
+    "detail": ""
+   },
+   {
+    "name": "inline_citations_three",
+    "passed": true,
+    "detail": ""
+   },
+   {
+    "name": "precision_split_required",
+    "passed": true,
+    "detail": ""
+   },
+   {
+    "name": "cross_model_agreement_required",
+    "passed": true,
+    "detail": ""
+   },
+   {
+    "name": "no_false_model_diversity",
+    "passed": true,
+    "detail": ""
+   },
+   {
+    "name": "no_forbidden_conclusions",
+    "passed": true,
+    "detail": ""
+   },
+   {
+    "name": "no_anti_patterns",
+    "passed": true,
+    "detail": ""
+   },
+   {
+    "name": "six_evidence_states",
+    "passed": true,
+    "detail": ""
+   },
+   {
+    "name": "forbidden_list_at_end",
+    "passed": true,
+    "detail": "blocks after tail: []"
+   },
+   {
+    "name": "claim_count_matches",
+    "passed": true,
+    "detail": "12 vs 12"
+   },
+   {
+    "name": "claim_grades_valid",
+    "passed": true,
+    "detail": "Blocked,Confirmed,Directional,Evidence gap,Not authorized"
+   },
+   {
+    "name": "claim_text_matches_grade",
+    "passed": true,
+    "detail": ""
+   },
+   {
+    "name": "claims_have_numbers",
+    "passed": true,
+    "detail": ""
+   },
+   {
+    "name": "claims_have_grade_reason",
+    "passed": true,
+    "detail": ""
+   },
+   {
+    "name": "claims_have_no_fallback_grade",
+    "passed": true,
+    "detail": ""
+   },
+   {
+    "name": "claims_have_counts",
+    "passed": true,
+    "detail": ""
+   },
+   {
+    "name": "claim_block_grade_matches_json",
+    "passed": true,
+    "detail": ""
+   },
+   {
+    "name": "figure_status_matches_claim",
+    "passed": true,
+    "detail": ""
+   }
+  ]
+ },
+ "spec": {
+  "status": "PASS",
+  "checks": 13,
+  "passed": 13,
+  "failed": 0,
+  "results": [
+   {
+    "name": "spec_gates.json",
+    "passed": true,
+    "detail": "/Users/lute/Project/data_scrapy/voc_pipeline/spec/gates.json"
+   },
+   {
+    "name": "spec_skills.json",
+    "passed": true,
+    "detail": "/Users/lute/Project/data_scrapy/voc_pipeline/spec/skills.json"
+   },
+   {
+    "name": "spec_counting.json",
+    "passed": true,
+    "detail": "/Users/lute/Project/data_scrapy/voc_pipeline/spec/counting.json"
+   },
+   {
+    "name": "spec_evidence.json",
+    "passed": true,
+    "detail": "/Users/lute/Project/data_scrapy/voc_pipeline/spec/evidence.json"
+   },
+   {
+    "name": "gate_count_11",
+    "passed": true,
+    "detail": "11"
+   },
+   {
+    "name": "gates_have_rollback",
+    "passed": true,
+    "detail": ""
+   },
+   {
+    "name": "skill_count_14",
+    "passed": true,
+    "detail": "14"
+   },
+   {
+    "name": "skills_have_steps",
+    "passed": true,
+    "detail": ""
+   },
+   {
+    "name": "skills_have_handoff",
+    "passed": true,
+    "detail": ""
+   },
+   {
+    "name": "skills_classified",
+    "passed": true,
+    "detail": ""
+   },
+   {
+    "name": "counting_levels_6",
+    "passed": true,
+    "detail": "6"
+   },
+   {
+    "name": "deduction_rules_present",
+    "passed": true,
+    "detail": ""
+   },
+   {
+    "name": "evidence_grades_6",
+    "passed": true,
+    "detail": "6"
+   }
+  ]
+ }
+}

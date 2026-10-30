@@ -1,0 +1,756 @@
+{
+ "schema_version": "voc_creator_video_report_summary_v1",
+ "available": true,
+ "generated_at": "2026-10-30T18:37:28+00:00",
+ "input_sha256": "bcf72af832edf27a9b0f9bad3add5d48de7fb84945e7b5bb831d12c69d7ea5ca",
+ "input_files": {
+  "baseline": {
+   "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/baseline/baseline.json",
+   "sha256": "3fb41acff897d1e70ba05f9bcaf31928c72b1fb174d7d03351954bbbfa930cbc",
+   "missing": false
+  },
+  "coverage": {
+   "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/relations/coverage.json",
+   "sha256": "5aa476089af0a0e80152c19ae32550439a0bd7f14cef6a4b71af80a33fc7e2eb",
+   "missing": false
+  },
+  "features": {
+   "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/features/feature-distribution.json",
+   "sha256": "5cebea9c9fe9ce1d0122c4c036eca5c2f0199f869a4eb84107fe08e52b8d73d6",
+   "missing": false
+  },
+  "comment_video_gap": {
+   "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/relations/comment-video-gap.json",
+   "sha256": "3bbb6820a728e5a75b547ceeed9c69bc815e08c5aaf59d5dbd5d0ec838d98721",
+   "missing": false
+  },
+  "collect_summary": {
+   "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/collect-summary.json",
+   "sha256": "a3276eea695f65d23fa41108c4aa28c1489955d800eb8a4a01eef35375d590b0",
+   "missing": false
+  },
+  "video_creator": {
+   "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/relations/video-creator.jsonl",
+   "sha256": "da9554c2b00e951d3ff3718e3e74e372aa0865b67a22ca82f3c21d4b507a4cd2",
+   "missing": false
+  }
+ },
+ "videos_total": 141,
+ "videos_with_detail": 59,
+ "videos_search_only": 82,
+ "creators_total": 124,
+ "creators_with_profile": 52,
+ "creators_profile_exact": 49,
+ "creators_profile_partial": 3,
+ "relation_confidence": {
+  "high": 10,
+  "medium": 31,
+  "low": 36,
+  "none": 64
+ },
+ "relation_types": {
+  "target_exact": 10
+ },
+ "baseline_n": 10,
+ "baseline_confidence": {
+  "high": 10
+ },
+ "baseline_medium_n": null,
+ "baseline_creators": 10,
+ "target_exact_n": 10,
+ "category_anchor_verified_n": 37,
+ "overall": {
+  "play_median": 172650.0,
+  "interaction_median": 0.011932
+ },
+ "layers": {
+  "duration_bucket": {
+   "label_zh": "时长档",
+   "dimension_status": "insufficient_sample",
+   "groups": {
+    "<=15s": {
+     "n": 1,
+     "status": "insufficient_sample",
+     "confidence_counts": {},
+     "relation_type_counts": {},
+     "play_median": null,
+     "interaction_median": null,
+     "complement_n": null,
+     "complement_median": null,
+     "multiple": null,
+     "p_value": null,
+     "ci95": [
+      null,
+      null
+     ]
+    },
+    "16-30s": {
+     "n": 4,
+     "status": "insufficient_sample",
+     "confidence_counts": {},
+     "relation_type_counts": {},
+     "play_median": null,
+     "interaction_median": null,
+     "complement_n": null,
+     "complement_median": null,
+     "multiple": null,
+     "p_value": null,
+     "ci95": [
+      null,
+      null
+     ]
+    },
+    "31-60s": {
+     "n": 4,
+     "status": "insufficient_sample",
+     "confidence_counts": {},
+     "relation_type_counts": {},
+     "play_median": null,
+     "interaction_median": null,
+     "complement_n": null,
+     "complement_median": null,
+     "multiple": null,
+     "p_value": null,
+     "ci95": [
+      null,
+      null
+     ]
+    },
+    ">60s": {
+     "n": 1,
+     "status": "insufficient_sample",
+     "confidence_counts": {},
+     "relation_type_counts": {},
+     "play_median": null,
+     "interaction_median": null,
+     "complement_n": null,
+     "complement_median": null,
+     "multiple": null,
+     "p_value": null,
+     "ci95": [
+      null,
+      null
+     ]
+    }
+   }
+  },
+  "comparison": {
+   "label_zh": "是否对比测评",
+   "dimension_status": "insufficient_sample",
+   "groups": {
+    "true": {
+     "n": 0,
+     "status": "insufficient_sample",
+     "confidence_counts": {},
+     "relation_type_counts": {},
+     "play_median": null,
+     "interaction_median": null,
+     "complement_n": null,
+     "complement_median": null,
+     "multiple": null,
+     "p_value": null,
+     "ci95": [
+      null,
+      null
+     ]
+    },
+    "false": {
+     "n": 0,
+     "status": "insufficient_sample",
+     "confidence_counts": {},
+     "relation_type_counts": {},
+     "play_median": null,
+     "interaction_median": null,
+     "complement_n": null,
+     "complement_median": null,
+     "multiple": null,
+     "p_value": null,
+     "ci95": [
+      null,
+      null
+     ]
+    },
+    "unknown": {
+     "n": 10,
+     "status": "unclassified",
+     "confidence_counts": {},
+     "relation_type_counts": {},
+     "play_median": null,
+     "interaction_median": null,
+     "complement_n": null,
+     "complement_median": null,
+     "multiple": null,
+     "p_value": null,
+     "ci95": [
+      null,
+      null
+     ]
+    }
+   }
+  },
+  "demo": {
+   "label_zh": "是否演示",
+   "dimension_status": "insufficient_sample",
+   "groups": {
+    "true": {
+     "n": 0,
+     "status": "insufficient_sample",
+     "confidence_counts": {},
+     "relation_type_counts": {},
+     "play_median": null,
+     "interaction_median": null,
+     "complement_n": null,
+     "complement_median": null,
+     "multiple": null,
+     "p_value": null,
+     "ci95": [
+      null,
+      null
+     ]
+    },
+    "false": {
+     "n": 0,
+     "status": "insufficient_sample",
+     "confidence_counts": {},
+     "relation_type_counts": {},
+     "play_median": null,
+     "interaction_median": null,
+     "complement_n": null,
+     "complement_median": null,
+     "multiple": null,
+     "p_value": null,
+     "ci95": [
+      null,
+      null
+     ]
+    },
+    "unknown": {
+     "n": 10,
+     "status": "unclassified",
+     "confidence_counts": {},
+     "relation_type_counts": {},
+     "play_median": null,
+     "interaction_median": null,
+     "complement_n": null,
+     "complement_median": null,
+     "multiple": null,
+     "p_value": null,
+     "ci95": [
+      null,
+      null
+     ]
+    }
+   }
+  },
+  "has_link": {
+   "label_zh": "是否有购买链接",
+   "dimension_status": "insufficient_sample",
+   "groups": {
+    "true": {
+     "n": 10,
+     "status": "insufficient_sample",
+     "confidence_counts": {},
+     "relation_type_counts": {},
+     "play_median": null,
+     "interaction_median": null,
+     "complement_n": null,
+     "complement_median": null,
+     "multiple": null,
+     "p_value": null,
+     "ci95": [
+      null,
+      null
+     ]
+    },
+    "false": {
+     "n": 0,
+     "status": "insufficient_sample",
+     "confidence_counts": {},
+     "relation_type_counts": {},
+     "play_median": null,
+     "interaction_median": null,
+     "complement_n": null,
+     "complement_median": null,
+     "multiple": null,
+     "p_value": null,
+     "ci95": [
+      null,
+      null
+     ]
+    },
+    "unknown": {
+     "n": 0,
+     "status": "unclassified",
+     "confidence_counts": {},
+     "relation_type_counts": {},
+     "play_median": null,
+     "interaction_median": null,
+     "complement_n": null,
+     "complement_median": null,
+     "multiple": null,
+     "p_value": null,
+     "ci95": [
+      null,
+      null
+     ]
+    }
+   }
+  },
+  "ad_disclosure": {
+   "label_zh": "是否有广告披露",
+   "dimension_status": "insufficient_sample",
+   "groups": {
+    "true": {
+     "n": 10,
+     "status": "insufficient_sample",
+     "confidence_counts": {},
+     "relation_type_counts": {},
+     "play_median": null,
+     "interaction_median": null,
+     "complement_n": null,
+     "complement_median": null,
+     "multiple": null,
+     "p_value": null,
+     "ci95": [
+      null,
+      null
+     ]
+    },
+    "false": {
+     "n": 0,
+     "status": "insufficient_sample",
+     "confidence_counts": {},
+     "relation_type_counts": {},
+     "play_median": null,
+     "interaction_median": null,
+     "complement_n": null,
+     "complement_median": null,
+     "multiple": null,
+     "p_value": null,
+     "ci95": [
+      null,
+      null
+     ]
+    },
+    "unknown": {
+     "n": 0,
+     "status": "unclassified",
+     "confidence_counts": {},
+     "relation_type_counts": {},
+     "play_median": null,
+     "interaction_median": null,
+     "complement_n": null,
+     "complement_median": null,
+     "multiple": null,
+     "p_value": null,
+     "ci95": [
+      null,
+      null
+     ]
+    }
+   }
+  },
+  "platform_is_ad": {
+   "label_zh": "平台广告标记",
+   "dimension_status": "insufficient_sample",
+   "groups": {
+    "true": {
+     "n": 9,
+     "status": "insufficient_sample",
+     "confidence_counts": {},
+     "relation_type_counts": {},
+     "play_median": null,
+     "interaction_median": null,
+     "complement_n": null,
+     "complement_median": null,
+     "multiple": null,
+     "p_value": null,
+     "ci95": [
+      null,
+      null
+     ]
+    },
+    "false": {
+     "n": 1,
+     "status": "insufficient_sample",
+     "confidence_counts": {},
+     "relation_type_counts": {},
+     "play_median": null,
+     "interaction_median": null,
+     "complement_n": null,
+     "complement_median": null,
+     "multiple": null,
+     "p_value": null,
+     "ci95": [
+      null,
+      null
+     ]
+    },
+    "unknown": {
+     "n": 0,
+     "status": "unclassified",
+     "confidence_counts": {},
+     "relation_type_counts": {},
+     "play_median": null,
+     "interaction_median": null,
+     "complement_n": null,
+     "complement_median": null,
+     "multiple": null,
+     "p_value": null,
+     "ci95": [
+      null,
+      null
+     ]
+    }
+   }
+  }
+ },
+ "high_performers": {
+  "n": 2,
+  "threshold_multiple": 2.0,
+  "creators": 2,
+  "rows": [
+   {
+    "video_id": "7695942452426968333",
+    "duration_bucket": "16-30s",
+    "play_count": 31500,
+    "interaction_rate": 0.048,
+    "multiple": null,
+    "relation_confidence": "high",
+    "relation_type": "target_exact",
+    "has_link": "true",
+    "ad_disclosure": "true",
+    "low_denominator_flag": false
+   },
+   {
+    "video_id": "7691166964626066701",
+    "duration_bucket": ">60s",
+    "play_count": 38000,
+    "interaction_rate": 0.043868,
+    "multiple": null,
+    "relation_confidence": "high",
+    "relation_type": "target_exact",
+    "has_link": "true",
+    "ad_disclosure": "true",
+    "low_denominator_flag": false
+   }
+  ],
+  "common_features": [],
+  "low_play_n": 0,
+  "play_floor_n": 2,
+  "medium_relation_n": 0
+ },
+ "strongest": {
+  "dimension": null,
+  "dimension_label": null,
+  "layer": null,
+  "n": null,
+  "median": null,
+  "complement_n": null,
+  "complement_median": null,
+  "multiple": null,
+  "p_value": null,
+  "ci95": [
+   null,
+   null
+  ],
+  "verdict": "not_supported",
+  "top_layer_relation_type_counts": {},
+  "sensitivity_exclude_text_n": null,
+  "sensitivity_play_floor_n": null
+ },
+ "layers_seen": {
+  "duration_16_30": {
+   "n": 4,
+   "status": "insufficient_sample",
+   "confidence_counts": {},
+   "relation_type_counts": {},
+   "play_median": null,
+   "interaction_median": null,
+   "complement_n": null,
+   "complement_median": null,
+   "multiple": null,
+   "p_value": null,
+   "ci95": [
+    null,
+    null
+   ]
+  },
+  "duration_31_60": {
+   "n": 4,
+   "status": "insufficient_sample",
+   "confidence_counts": {},
+   "relation_type_counts": {},
+   "play_median": null,
+   "interaction_median": null,
+   "complement_n": null,
+   "complement_median": null,
+   "multiple": null,
+   "p_value": null,
+   "ci95": [
+    null,
+    null
+   ]
+  },
+  "duration_gt_60": {
+   "n": 1,
+   "status": "insufficient_sample",
+   "confidence_counts": {},
+   "relation_type_counts": {},
+   "play_median": null,
+   "interaction_median": null,
+   "complement_n": null,
+   "complement_median": null,
+   "multiple": null,
+   "p_value": null,
+   "ci95": [
+    null,
+    null
+   ]
+  },
+  "duration_le_15": {
+   "n": 1,
+   "status": "insufficient_sample",
+   "confidence_counts": {},
+   "relation_type_counts": {},
+   "play_median": null,
+   "interaction_median": null,
+   "complement_n": null,
+   "complement_median": null,
+   "multiple": null,
+   "p_value": null,
+   "ci95": [
+    null,
+    null
+   ]
+  },
+  "has_link_true": {
+   "n": 10,
+   "status": "insufficient_sample",
+   "confidence_counts": {},
+   "relation_type_counts": {},
+   "play_median": null,
+   "interaction_median": null,
+   "complement_n": null,
+   "complement_median": null,
+   "multiple": null,
+   "p_value": null,
+   "ci95": [
+    null,
+    null
+   ]
+  },
+  "has_link_false": {
+   "n": 0,
+   "status": "insufficient_sample",
+   "confidence_counts": {},
+   "relation_type_counts": {},
+   "play_median": null,
+   "interaction_median": null,
+   "complement_n": null,
+   "complement_median": null,
+   "multiple": null,
+   "p_value": null,
+   "ci95": [
+    null,
+    null
+   ]
+  },
+  "ad_true": {
+   "n": 10,
+   "status": "insufficient_sample",
+   "confidence_counts": {},
+   "relation_type_counts": {},
+   "play_median": null,
+   "interaction_median": null,
+   "complement_n": null,
+   "complement_median": null,
+   "multiple": null,
+   "p_value": null,
+   "ci95": [
+    null,
+    null
+   ]
+  },
+  "ad_false": {
+   "n": 0,
+   "status": "insufficient_sample",
+   "confidence_counts": {},
+   "relation_type_counts": {},
+   "play_median": null,
+   "interaction_median": null,
+   "complement_n": null,
+   "complement_median": null,
+   "multiple": null,
+   "p_value": null,
+   "ci95": [
+    null,
+    null
+   ]
+  }
+ },
+ "feature_availability": {
+  "caption": 48,
+  "hashtags": 45,
+  "duration": 48,
+  "detail_payload": 45,
+  "product_anchor": 29,
+  "transcript_or_audio": 0
+ },
+ "feature_counts": {
+  "comparison": {
+   "true": 1,
+   "false": 0,
+   "unknown": 47,
+   "total": 48
+  },
+  "demo": {
+   "true": 1,
+   "false": 0,
+   "unknown": 47,
+   "total": 48
+  },
+  "before_after": {
+   "true": 0,
+   "false": 0,
+   "unknown": 48,
+   "total": 48
+  },
+  "unboxing": {
+   "true": 0,
+   "false": 0,
+   "unknown": 48,
+   "total": 48
+  },
+  "problem_solution": {
+   "true": 15,
+   "false": 0,
+   "unknown": 33,
+   "total": 48
+  },
+  "visual_only": {
+   "true": 0,
+   "false": 0,
+   "unknown": 48,
+   "total": 48
+  },
+  "has_link": {
+   "true": 35,
+   "false": 11,
+   "unknown": 2,
+   "total": 48
+  },
+  "ad_disclosure": {
+   "true": 33,
+   "false": 13,
+   "unknown": 2,
+   "total": 48
+  },
+  "opens_with_question": {
+   "true": 2,
+   "false": 45,
+   "unknown": 1,
+   "total": 48
+  },
+  "has_number_claim": {
+   "true": 17,
+   "false": 30,
+   "unknown": 1,
+   "total": 48
+  }
+ },
+ "duration_buckets": {
+  "<=15s": {
+   "n": 7,
+   "pct_of_all": 14.583
+  },
+  "16-30s": {
+   "n": 13,
+   "pct_of_all": 27.083
+  },
+  "31-60s": {
+   "n": 18,
+   "pct_of_all": 37.5
+  },
+  ">60s": {
+   "n": 10,
+   "pct_of_all": 20.833
+  },
+  "unknown": {
+   "n": 0,
+   "pct_of_all": 0.0
+  }
+ },
+ "comment_video": {
+  "rows": 0,
+  "coverage_rate": 0.0,
+  "canonical_reviews": 175,
+  "raw_reviews": 180
+ },
+ "sufficiency": {
+  "exact_population_n": 10,
+  "layered_baseline_computed": false,
+  "dimensions_with_any_group_n_ge_8": [
+   "ad_disclosure",
+   "has_link",
+   "platform_is_ad"
+  ],
+  "dimensions_with_usable_layer": [],
+  "groups_with_n_ge_8_raw": [
+   "has_link:true",
+   "ad_disclosure:true",
+   "platform_is_ad:true"
+  ],
+  "usable_layers": [],
+  "bootstrap_performed": false,
+  "single_feature_ranking_computed": false,
+  "causal_claims_supported": 0,
+  "c16_status": "retained_as_negative_but_evidence_changed",
+  "c16_basis": "10 条 exact 无法做分层检验。结论只能写成样本不足以检验，不能写成已证明没有内容形态跑赢。",
+  "statement": "本轮只给 10 条 exact 的整体分布和逐条明细。没有任何一层同时满足层 n>=8 和对照 n>=8，所以只给计数，不给中位数、CI 或结论。"
+ },
+ "gaps": [
+  "商品 → 视频完整列表：TIKHUB_TIKTOK_CREATOR_COOKIE 未配置；get_product_related_videos 与 get_video_associated_product_list 都返回 no login。",
+  "评论 → 视频：175 条 canonical 评论和 180 条 raw 评论都没有 video_id/aweme_id/item_id，可关联率为 0%。",
+  "搜索分页：cursor=20 会重复第一页；12 个关键词各只取 1 页，141 条视频不是品类普查。",
+  "视频详情：59/141 有 fetch_post_detail；82 条只有搜索快照。",
+  "达人档案：52/124 有档案；72 位只有搜索 author 字段，粉丝数是搜索快照值。",
+  "视觉与口播：transcript_or_audio=0；before_after、unboxing、visual_only 全部 unknown 48/48。",
+  "第三方视频 GMV、成交与转化：TikHub 只给登录创作者自己的数据；第三方视频不可得。",
+  "达人受众性别/年龄/地区：只有登录账号自己的 get_video_audience_stats；第三方达人不可得。",
+  "达人层级基线：本轮未做；高表现视频只有 2 条，不能按粉丝层级分层。",
+  "18 个 SKU 与销量 22140：现有评论 raw 没有，需商品详情源复核。",
+  "重复 listing：同一标题对应多个 product_id，未合并；目标商品视频覆盖可能被低估。"
+ ],
+ "caveats": [
+  "中位数和四分位数描述典型视频。均值受长尾影响，表中同时给出 mean/median 比值。",
+  "本轮不做分层基线。任何按内容形态的比较都没有样本支撑。",
+  "高表现视频只做计数和倍数描述，不做因果解释。10 条 exact 里只有少量高表现，不能代表总体。",
+  "category_reference 是品类参照，不是基线。不要把它与 exact 基线合并、比较或用于「哪类跑赢」的结论。",
+  "分层表之间会重叠；同一视频出现在多个维度中，不能相加。",
+  "本轮未写数据库，未修改 canonical-records.jsonl，未修改 gold-set-50.jsonl。"
+ ],
+ "source_evidence_gaps": {
+  "baseline": [
+   "10 条 exact 中没有任何一层同时满足层 n>=8 和对照 n>=8。时长档为 <=15s 1 条、16-30s 4 条、31-60s 4 条、>60s 1 条；has_link 和 ad_disclosure 只有一个取值；platform_is_ad 的 false 只有 1 条。分层基线不成立。",
+   "comparison 与 demo 在 10 条 exact 中全部 unknown。没有字幕、音轨或视频帧，无法判断画面是否对比或演示。",
+   "31 条 medium 只作品类参照。19 条 duplicate_listing_anchor 锚到同品牌 YB001 系列的其他 listing；product_id 不同，标题相似但不相同。12 条 text_brand_and_category 没有商品锚点。",
+   "关键词搜索样本不是概率样本。141 条视频中只有 10 条锚点确证目标商品，不能代表品类普查。",
+   "所有指标是 2026-10-30 的单次快照。播放和互动会继续增长，快照之间不可直接比较寿命周期表现。",
+   "第三方视频的 GMV、成交、转化、受众画像和字幕不可得；本轮不涉及达人受众或达人层级基线。",
+   "is_estimated 字段在所有返回中不存在；产物记 null，未当作实测值。"
+  ],
+  "collect": [
+   "product_id -> video list endpoint: not available without TIKHUB_TIKTOK_CREATOR_COOKIE (provider code 98001002 no login)",
+   "get_product_related_videos play_count: endpoint does not return play_count; per-video fetch_post_detail is required",
+   "product review -> video link: no video_id/aweme_id/item_id in 175 canonical reviews or 180 raw reviews; 0% joinable",
+   "video GMV / orders / conversion: only available to the logged-in creator via get_video_to_product_stats; not available for third-party videos",
+   "creator audience demographics (gender/age/region): only available to the logged-in creator via get_video_audience_stats",
+   "video captions/transcripts: TikHub has no subtitle endpoint; only Apify",
+   "18 SKU count and 22,140 sales: not present in current review raw; needs a product-detail source",
+   "exhaustive product video list: keyword search pagination is broken (cursor repeats page 1), so the product video index is a sample",
+   "creator follower_count in fetch_post_detail: null; fetch_user_profile is required",
+   "duplicate product listings: multiple product IDs share the same Momcozy YB001 / CozySupport Ergonest title; target-product video coverage may be undercounted because IDs are not merged"
+  ]
+ }
+}

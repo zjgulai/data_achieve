@@ -1,0 +1,448 @@
+{
+  "sampling": {
+    "method": "sort pool by canonical_id ascending; random.Random(seed).sample(ids, 25) per stratum",
+    "seed": 20261030,
+    "tiktok_pool": 82,
+    "reddit_pool": 136,
+    "sampled": 50
+  },
+  "gold_counts": {
+    "records": 50,
+    "tiktok": 25,
+    "reddit": 25,
+    "product_experience_true": 31,
+    "aspects": 85
+  },
+  "metrics": {
+    "strict_code_and_polarity": {
+      "TikTok": {
+        "coder_aspects": 41,
+        "gold_aspects": 77,
+        "true_positives": 26,
+        "precision_pct": 63.4,
+        "recall_pct": 33.8
+      },
+      "Reddit": {
+        "coder_aspects": 0,
+        "gold_aspects": 8,
+        "true_positives": 0,
+        "precision_pct": null,
+        "recall_pct": 0.0
+      },
+      "ALL": {
+        "coder_aspects": 41,
+        "gold_aspects": 85,
+        "true_positives": 26,
+        "precision_pct": 63.4,
+        "recall_pct": 30.6
+      }
+    },
+    "polarity_family": {
+      "TikTok": {
+        "coder_aspects": 41,
+        "gold_aspects": 77,
+        "true_positives": 30,
+        "precision_pct": 73.2,
+        "recall_pct": 39.0
+      },
+      "Reddit": {
+        "coder_aspects": 0,
+        "gold_aspects": 8,
+        "true_positives": 0,
+        "precision_pct": null,
+        "recall_pct": 0.0
+      },
+      "ALL": {
+        "coder_aspects": 41,
+        "gold_aspects": 85,
+        "true_positives": 30,
+        "precision_pct": 73.2,
+        "recall_pct": 35.3
+      }
+    },
+    "code_only": {
+      "TikTok": {
+        "coder_aspects": 41,
+        "gold_aspects": 77,
+        "true_positives": 32,
+        "precision_pct": 78.0,
+        "recall_pct": 41.6
+      },
+      "Reddit": {
+        "coder_aspects": 0,
+        "gold_aspects": 8,
+        "true_positives": 0,
+        "precision_pct": null,
+        "recall_pct": 0.0
+      },
+      "ALL": {
+        "coder_aspects": 41,
+        "gold_aspects": 85,
+        "true_positives": 32,
+        "precision_pct": 78.0,
+        "recall_pct": 37.6
+      }
+    }
+  },
+  "experience_flag_confusion": {
+    "tiktok_shop|gold=True|coder=True": 25,
+    "reddit|gold=False|coder=False": 8,
+    "reddit|gold=False|coder=True": 11,
+    "reddit|gold=True|coder=False": 4,
+    "reddit|gold=True|coder=True": 2
+  },
+  "false_positives_strict": [
+    {
+      "canonical_id": "c-7667963659528931085",
+      "source": "TikTok",
+      "coder_code": "SUP.PRESSURE_OFFLOAD",
+      "coder_polarity": "negative",
+      "coder_quote": "I did not find that it provided optimal relief and experienced some stomach discomfort during the initial days",
+      "gold_aspects": [
+        {
+          "code": "SUP.PRESSURE_OFFLOAD",
+          "polarity": "qualified_negative"
+        },
+        {
+          "code": "COM.GENERAL",
+          "polarity": "qualified_negative"
+        },
+        {
+          "code": "ADJ.RANGE_TENSION",
+          "polarity": "negative"
+        }
+      ],
+      "source_text": "Personally, I did not find that it provided optimal relief and experienced some stomach discomfort during the initial days. Additionally, using it required frequent adjustments."
+    },
+    {
+      "canonical_id": "c-7697340641772160781",
+      "source": "TikTok",
+      "coder_code": "ACT.COMPATIBILITY",
+      "coder_polarity": "positive",
+      "coder_quote": "I LITERALLY just tried it on just to see if it really works and IT DOESSSSSSS",
+      "gold_aspects": [
+        {
+          "code": "GEN.OVERALL_EVALUATION",
+          "polarity": "positive"
+        }
+      ],
+      "source_text": "I LITERALLY just tried it on just to see if it really works and IT DOESSSSSSS!!!! You can feel the difference INSTANTLY for the mommies that are having back pains and bellies are VERY noticeable."
+    },
+    {
+      "canonical_id": "c-7679159693625673485",
+      "source": "TikTok",
+      "coder_code": "ACT.COMPATIBILITY",
+      "coder_polarity": "positive",
+      "coder_quote": "Runs true to size and really helps with back pain",
+      "gold_aspects": [
+        {
+          "code": "FIT.SIZE_ACCURACY",
+          "polarity": "positive"
+        },
+        {
+          "code": "SUP.BACK",
+          "polarity": "positive"
+        }
+      ],
+      "source_text": "Runs true to size and really helps with back pain! Would definitely order again"
+    },
+    {
+      "canonical_id": "c-7686709601646593805",
+      "source": "TikTok",
+      "coder_code": "SUP.GENERAL",
+      "coder_polarity": "positive",
+      "coder_quote": "here is some relief but the pregnancy ball was the best purchase compared to getting relief rather than the support belt",
+      "gold_aspects": [
+        {
+          "code": "SUP.PRESSURE_OFFLOAD",
+          "polarity": "qualified_positive"
+        },
+        {
+          "code": "SUP.GENERAL",
+          "polarity": "negative"
+        }
+      ],
+      "source_text": "There is some relief but the pregnancy ball was the best purchase compared to getting relief rather than the support belt. Also, I found KT tapping more supportive than the belt. This might change for third trimester though."
+    },
+    {
+      "canonical_id": "c-7686709601646593805",
+      "source": "TikTok",
+      "coder_code": "SUP.PRESSURE_OFFLOAD",
+      "coder_polarity": "positive",
+      "coder_quote": "There is some relief but the pregnancy ball was the best purchase compared to getting relief rather than the support bel",
+      "gold_aspects": [
+        {
+          "code": "SUP.PRESSURE_OFFLOAD",
+          "polarity": "qualified_positive"
+        },
+        {
+          "code": "SUP.GENERAL",
+          "polarity": "negative"
+        }
+      ],
+      "source_text": "There is some relief but the pregnancy ball was the best purchase compared to getting relief rather than the support belt. Also, I found KT tapping more supportive than the belt. This might change for third trimester though."
+    },
+    {
+      "canonical_id": "c-7671622567216498445",
+      "source": "TikTok",
+      "coder_code": "SUP.GENERAL",
+      "coder_polarity": "qualified_positive",
+      "coder_quote": "r is a toy so it is nice to find something that can lift and support the baby and your self to make life a little easier",
+      "gold_aspects": [
+        {
+          "code": "SUP.BACK",
+          "polarity": "positive"
+        },
+        {
+          "code": "SUP.GENERAL",
+          "polarity": "positive"
+        },
+        {
+          "code": "SUP.BELLY_LIFT",
+          "polarity": "positive"
+        },
+        {
+          "code": "GEN.OVERALL_EVALUATION",
+          "polarity": "positive"
+        }
+      ],
+      "source_text": "This belly band is saving my back and my bladder. And for you pregnant girlies, you know what I mean. Them babies think your bladder is a toy so it is nice to find something that can lift and support the baby and your self to make life a little easier!!!"
+    },
+    {
+      "canonical_id": "c-7679740736191088397",
+      "source": "TikTok",
+      "coder_code": "COM.GENERAL",
+      "coder_polarity": "qualified_positive",
+      "coder_quote": "It is more comfortable than my other  bands eat to assemble but I wish it added just a little more support",
+      "gold_aspects": [
+        {
+          "code": "COM.GENERAL",
+          "polarity": "positive"
+        },
+        {
+          "code": "ADJ.DONNING",
+          "polarity": "positive"
+        },
+        {
+          "code": "SUP.GENERAL",
+          "polarity": "qualified_negative"
+        }
+      ],
+      "source_text": "It is more comfortable than my other  bands eat to assemble but I wish it added just a little more support."
+    },
+    {
+      "canonical_id": "c-7679740736191088397",
+      "source": "TikTok",
+      "coder_code": "SUP.GENERAL",
+      "coder_polarity": "qualified_positive",
+      "coder_quote": "It is more comfortable than my other  bands eat to assemble but I wish it added just a little more support",
+      "gold_aspects": [
+        {
+          "code": "COM.GENERAL",
+          "polarity": "positive"
+        },
+        {
+          "code": "ADJ.DONNING",
+          "polarity": "positive"
+        },
+        {
+          "code": "SUP.GENERAL",
+          "polarity": "qualified_negative"
+        }
+      ],
+      "source_text": "It is more comfortable than my other  bands eat to assemble but I wish it added just a little more support."
+    },
+    {
+      "canonical_id": "c-7672893629816358670",
+      "source": "TikTok",
+      "coder_code": "FUL.PRODUCT_CONDITION",
+      "coder_polarity": "positive",
+      "coder_quote": "Arrived quickly",
+      "gold_aspects": [
+        {
+          "code": "ADJ.DONNING",
+          "polarity": "positive"
+        },
+        {
+          "code": "SUP.GENERAL",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.GENERAL",
+          "polarity": "positive"
+        }
+      ],
+      "source_text": "Arrived quickly, easy to put and and super supportive and comfortable!"
+    },
+    {
+      "canonical_id": "c-7662832010955900686",
+      "source": "TikTok",
+      "coder_code": "SUP.GENERAL",
+      "coder_polarity": "positive",
+      "coder_quote": "Technically Not a shapewear but helps lift your belly",
+      "gold_aspects": [
+        {
+          "code": "SUP.BELLY_LIFT",
+          "polarity": "positive"
+        }
+      ],
+      "source_text": "Technically Not a shapewear but helps lift your belly.  Still need a belly shape wear"
+    },
+    {
+      "canonical_id": "c-7663689857784629006",
+      "source": "TikTok",
+      "coder_code": "FIT.BODY_SHAPE",
+      "coder_polarity": "positive",
+      "coder_quote": "As a plus size expecting momma this belly band has not only provided me with back support but also more confidence with ",
+      "gold_aspects": [
+        {
+          "code": "SUP.BACK",
+          "polarity": "positive"
+        },
+        {
+          "code": "GEN.OVERALL_EVALUATION",
+          "polarity": "positive"
+        }
+      ],
+      "source_text": "As a plus size expecting momma this belly band has not only provided me with back support but also more confidence with the way it shapes my belly. I LOVE IT!"
+    },
+    {
+      "canonical_id": "c-7663689857784629006",
+      "source": "TikTok",
+      "coder_code": "SUP.GENERAL",
+      "coder_polarity": "positive",
+      "coder_quote": "omma this belly band has not only provided me with back support but also more confidence with the way it shapes my belly",
+      "gold_aspects": [
+        {
+          "code": "SUP.BACK",
+          "polarity": "positive"
+        },
+        {
+          "code": "GEN.OVERALL_EVALUATION",
+          "polarity": "positive"
+        }
+      ],
+      "source_text": "As a plus size expecting momma this belly band has not only provided me with back support but also more confidence with the way it shapes my belly. I LOVE IT!"
+    },
+    {
+      "canonical_id": "c-7659507976003651341",
+      "source": "TikTok",
+      "coder_code": "MAT.FABRIC",
+      "coder_polarity": "positive",
+      "coder_quote": "The material is soft",
+      "gold_aspects": [
+        {
+          "code": "GEN.OVERALL_EVALUATION",
+          "polarity": "positive"
+        },
+        {
+          "code": "SUP.BACK",
+          "polarity": "positive"
+        },
+        {
+          "code": "SUP.GENERAL",
+          "polarity": "positive"
+        },
+        {
+          "code": "ADJ.RANGE_TENSION",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.GENERAL",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.SOFTNESS",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.BREATHABILITY_HEAT",
+          "polarity": "positive"
+        },
+        {
+          "code": "MAT.ELASTICITY_RETENTION",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.WEAR_TOLERANCE",
+          "polarity": "positive"
+        },
+        {
+          "code": "STB.STAY_IN_PLACE",
+          "polarity": "positive"
+        },
+        {
+          "code": "SUP.PRESSURE_OFFLOAD",
+          "polarity": "positive"
+        },
+        {
+          "code": "ACT.COMPATIBILITY",
+          "polarity": "positive"
+        },
+        {
+          "code": "FIT.GROWTH_RANGE",
+          "polarity": "positive"
+        },
+        {
+          "code": "FIT.SIZE_ACCURACY",
+          "polarity": "positive"
+        }
+      ],
+      "source_text": "The Momcozy belly band has been a great purchase. It provides excellent support for my lower back and growing belly without feeling too tight or uncomfortable. The material is soft, breathable, and stretchy enough to wear for hours. It stays in place throughout the day and offers noticeable relief when I’m walking, standing, or doing everyday activities. The quality is excellent, and it’s easy to adjust for a comfortable fit as my belly grows. I highly recommend it to anyone looking for extra support during pregnancy."
+    },
+    {
+      "canonical_id": "c-7657728403180635918",
+      "source": "TikTok",
+      "coder_code": "MAT.FABRIC",
+      "coder_polarity": "positive",
+      "coder_quote": "Very smooth and comfy material",
+      "gold_aspects": [
+        {
+          "code": "COM.SOFTNESS",
+          "polarity": "positive"
+        }
+      ],
+      "source_text": "Very smooth and comfy material!\nFit & Sizing: M"
+    },
+    {
+      "canonical_id": "c-7659258409535112974",
+      "source": "TikTok",
+      "coder_code": "MAT.FABRIC",
+      "coder_polarity": "positive",
+      "coder_quote": "The material is soft",
+      "gold_aspects": [
+        {
+          "code": "SUP.BELLY_LIFT",
+          "polarity": "positive"
+        },
+        {
+          "code": "SUP.PRESSURE_OFFLOAD",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.SOFTNESS",
+          "polarity": "positive"
+        },
+        {
+          "code": "COM.SKIN_CHAFE",
+          "polarity": "positive"
+        },
+        {
+          "code": "ADJ.STRAP_DESIGN",
+          "polarity": "positive"
+        },
+        {
+          "code": "ADJ.RANGE_TENSION",
+          "polarity": "positive"
+        }
+      ],
+      "source_text": "Bought for my daughter and she said it’s a huge help in holding up her little bundle and easing her pelvic pain. The material is soft, so it’s not scratchy against the skin. And the Velcro fasteners are strong and easily adjustable."
+    }
+  ],
+  "false_negatives_strict_count": 59,
+  "verdict": {
+    "rule_dictionary_viable": false,
+    "reason": "strict precision 63.4% < 70%; even code-only 78.0% < 90%; recall 30.6% overall and 0% on Reddit",
+    "regression_baseline_C13": "Directional 27 decisive / 24 same / 3 opposite / 88.9%"
+  }
+}

@@ -1,0 +1,115 @@
+{
+  "schema": "voc_sup_definition_patch_proposal_v1",
+  "status": "proposed; not applied; taxonomy.json and voc/taxonomy.py are unchanged",
+  "basis": {
+    "current_taxonomy": "VOC-BAND-v1.1 (artifacts/run-20261029/llm-coding/taxonomy.json)",
+    "counterexamples": "items.jsonl (8 records)",
+    "hand_judgment": "hand-judgment.json (frozen before encoder runs)",
+    "proposed_file": "taxonomy-v1.2-proposed.json",
+    "unified_diff": "taxonomy-v1.2-proposed.diff"
+  },
+  "findings": [
+    {
+      "id": "D1",
+      "type": "too_narrow_plus_over_broad",
+      "case": "c-ce0000005",
+      "sentence": "It holds my belly up so it isn't hanging so low anymore, and that alone is a relief.",
+      "evidence": {
+        "expected_span_resolution": "formal v1.1 resolver returns None for 'holds my belly up' (no SUP lexicon match)",
+        "whole_sentence_resolution": "formal v1.1 resolver returns SUP.PRESSURE_OFFLOAD step 4 via the bare word 'relief'",
+        "llm_encoders": "GPT-6 Sol and DeepSeek Flash output BELLY_LIFT only; Kimi K3 with the v1.1 regex lexicons visible adds a spurious SUP.PRESSURE_OFFLOAD positive on 'that alone is a relief'"
+      },
+      "cause": [
+        "SUP.BELLY_LIFT lexicon only covers 'hold up my belly' word order; natural 'hold my belly up' is not matched",
+        "SUP.PRESSURE_OFFLOAD step 4 lexicon matches bare 'relief'/'eased'/'take away' without requiring a pain/pressure object in the same span"
+      ],
+      "impact": "1 of 9 expected SUP spans is missed by the formal v1.1 resolver; 1 of 3 LLM encoders produces a false SUP aspect. This is a definition defect, not a model failure."
+    },
+    {
+      "id": "D2",
+      "type": "not_lexically_disjoint",
+      "cases": [
+        "c-ce0000001",
+        "c-ce0000002",
+        "c-ce0000004",
+        "c-ce0000008"
+      ],
+      "evidence": "4 of 9 expected SUP spans match two SUP lexicons at once: BACK x PRESSURE on 'the weight off my lower back' and 'my lower back pain has eased'; BACK x GENERAL on 'gives my back solid support' and 'supports my back well'. The priority order resolves all four to the hand-expected code.",
+      "impact": "The v1.1 definitions are not disjoint. Mutual exclusivity is achieved by the mandatory step order, not by the include/exclude text. Any consumer that does not apply SUP_RESOLUTION_ORDER (for example voc/coder.py _match_codes, which matches each aspect lexicon independently) will still emit two SUP codes for one span."
+    },
+    {
+      "id": "D3",
+      "type": "span_segmentation",
+      "case": "c-ce0000002",
+      "evidence": "Whole-sentence formal resolution returns SUP.BELLY_LIFT (step 1) and drops the independent BACK predicate. The LLM encoders split the sentence into two spans, 'lifts my bump nicely' and 'my lower back pain has eased', and get BELLY_LIFT + BACK.",
+      "impact": "The priority rule is per evidence span. The definition must state that coordinated predicates are split into separate spans; otherwise a whole-sentence span silently loses the later aspect."
+    }
+  ],
+  "proposed_patch": {
+    "source_file": "voc/taxonomy.py",
+    "regenerate": "python3 artifacts/run-20261029/llm-coding/build-taxonomy.py",
+    "changes": [
+      {
+        "target": "_SUP_BELLY_LIFT_LEXICON",
+        "op": "add one pattern",
+        "add": "(?:hold(?:s|ing)?|held) (?:my |the |her )?(?:little )?(?:bump|belly|bundle|baby) up",
+        "why": "covers the natural post-object particle order, e.g. 'holds my belly up'"
+      },
+      {
+        "target": "_SUP_RELIEF_LEXICON (step 4 only; step 2 keeps _SUP_WEIGHT_LEXICON)",
+        "op": "replace bare relief/ease patterns with target-guarded patterns",
+        "add": [
+          "(?:reliev(?:e|es|ed|ing)|relief|eas(?:e|es|ed|ing)|take(?:s|n)? away)[^.;!?]{0,40}(?:pain|pressure|ache|aching|soreness|discomfort|sciatica)",
+          "(?:pain|pressure|ache|aching|soreness|discomfort|sciatica)[^.;!?]{0,40}(?:reliev(?:e|es|ed|ing)|relief|eas(?:e|es|ed|ing))"
+        ],
+        "why": "a bare 'relief' with no pain/pressure object must not be SUP.PRESSURE_OFFLOAD. The two patterns cover object-after ('takes away the sciatica') and object-before ('back pain has eased'). Weight/load relief remains step 2's branch; this patch does not widen step 4 to weight/load."
+      },
+      {
+        "target": "resolution_note",
+        "op": "append",
+        "add": "并列谓语（例如 \"It lifts my bump nicely, and my lower back pain has eased\"）按谓语切成独立 span，各自走优先级；不得用整句 span 只取 step 1。",
+        "why": "documents the per-span discipline that CE-02 requires"
+      },
+      {
+        "target": "SUP.BACK.negative_example (build-taxonomy.py EXAMPLES)",
+        "op": "replace",
+        "add": "[derived] The weight off my lower back is unreal.",
+        "why": "makes the step-2-over-step-3 boundary testable as a near-miss example"
+      }
+    ],
+    "optional_consistency_fix": {
+      "target": "SUP.GENERAL include vs _SUP_GENERAL_LEXICON",
+      "issue": "include says 'holds me（兜底）' but the lexicon is only ('support','supportive')",
+      "options": [
+        "add r'holds? me\\b' to _SUP_GENERAL_LEXICON",
+        "or remove 'holds me（兜底）' from include"
+      ],
+      "note": "not exercised by the 8 counterexamples; separate from D1/D2/D3"
+    }
+  },
+  "validation": {
+    "formal_v1_1": {
+      "expected_sup_spans": 9,
+      "correct": 8,
+      "raw_lexical_overlap": 4,
+      "whole_text_primary_correct": "7/8"
+    },
+    "formal_v1_2_proposed": {
+      "expected_sup_spans": 9,
+      "correct": 9,
+      "raw_lexical_overlap": 4,
+      "whole_text_primary_correct": "8/8"
+    },
+    "llm_v1_1_lexicon_inclusive": {
+      "gpt6_sol": "8/8",
+      "deepseek_flash": "8/8",
+      "kimi_k3": "7/8 (CE-05 spurious PRESSURE_OFFLOAD)"
+    },
+    "llm_v1_2_proposed": {
+      "gpt6_sol": "8/8",
+      "deepseek_flash": "8/8",
+      "kimi_k3": "8/8"
+    },
+    "same_span_dual_sup_conflicts": "0 in every run (9 encoder runs x 8 cases = 72 case-runs)"
+  }
+}

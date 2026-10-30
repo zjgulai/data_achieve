@@ -1,0 +1,318 @@
+{
+  "schema_version": "voc_video_features_rules_v1",
+  "generated_at": "2026-10-30T17:14:18+00:00",
+  "value_model": {
+    "true": "an explicit cue is present in a named field",
+    "false": "the named fields can exclude the feature",
+    "unknown": "the available fields cannot answer; no guessing"
+  },
+  "preprocessing": {
+    "caption_clean": "lowercase + strip accents; remove URLs, hashtags (#...), mentions (@...); collapse whitespace",
+    "hashtags_normalized": "lowercase + strip accents + strip leading #",
+    "hashtag_merge": "union of detail hashtags[].name and search text_extra[].hashtag_name",
+    "first_sentence": "caption_clean up to and including the first . ! or ?; whole caption if no punctuation"
+  },
+  "rules": {
+    "comparison": {
+      "pattern_version": "comparison_v1",
+      "positive": "caption_clean or hashtags hit any comparison cue",
+      "caption_patterns": [
+        "\\bvs\\.?\\b",
+        "\\bversus\\b",
+        "\\bcompar(e|es|ed|ing|ison)\\b",
+        "\\bbetter than\\b",
+        "\\bworse than\\b",
+        "\\bwhich one\\b",
+        "\\bside[- ]by[- ]side\\b",
+        "\\bhead[- ]to[- ]head\\b",
+        "\\bdupes?\\b",
+        "\\bcomparaci[oó]n\\b|\\bcomparar\\b",
+        "\\bmejor que\\b"
+      ],
+      "hashtags": [
+        "compared",
+        "comparison",
+        "dupe",
+        "dupes",
+        "versus",
+        "vs"
+      ],
+      "otherwise": "unknown (caption silence cannot exclude visual comparison)"
+    },
+    "demo": {
+      "pattern_version": "demo_v1",
+      "positive": "caption_clean or hashtags hit any how-to/demo cue",
+      "caption_patterns": [
+        "\\bhow to\\b",
+        "\\bhow i (use|wear|put|apply)\\b",
+        "\\btutorial\\b",
+        "\\bstep[- ]by[- ]step\\b",
+        "\\bdemonstrat(e|es|ed|ing|ion)\\b",
+        "\\bdemos?\\b",
+        "\\b(show|shows|showing) you\\b",
+        "\\bwe show\\b",
+        "\\blet me show\\b",
+        "\\bhere'?s how\\b",
+        "\\bin this video\\b",
+        "\\bwatch how\\b",
+        "\\bc[oó]mo (usar|usarlo|poner|ponerlo)\\b",
+        "\\bpaso a paso\\b",
+        "\\bte muestro\\b"
+      ],
+      "hashtags": [
+        "howto",
+        "howtouse",
+        "tutorial"
+      ],
+      "otherwise": "unknown"
+    },
+    "before_after": {
+      "pattern_version": "before_after_v1",
+      "positive": "caption_clean or hashtags hit any before/after or progress cue",
+      "caption_patterns": [
+        "\\bbefore (and|&|/) after\\b",
+        "\\bbefore\\s*(vs\\.?|versus)\\s*after\\b",
+        "\\bbefore[-/]after\\b",
+        "\\btransformation\\b",
+        "\\bthen vs\\.? now\\b",
+        "\\bresults? after\\b",
+        "\\bweeks? apart\\b",
+        "\\bantes y despu[eé]s\\b",
+        "\\btransformaci[oó]n\\b"
+      ],
+      "hashtags": [
+        "beforeafter",
+        "beforeandafter",
+        "bumpprogress",
+        "bumpupdate",
+        "pregnancyprogress",
+        "transformation"
+      ],
+      "otherwise": "unknown"
+    },
+    "unboxing": {
+      "pattern_version": "unboxing_v1",
+      "positive": "caption_clean or hashtags hit any unboxing/haul cue",
+      "caption_patterns": [
+        "\\bunbox(ing|ed|es)?\\b",
+        "\\bhaul\\b",
+        "\\bfirst impression\\b",
+        "\\bmail call\\b",
+        "\\bpr package\\b",
+        "\\bpackage (came|arrived)\\b",
+        "\\bopening (my|the|a) package\\b"
+      ],
+      "hashtags": [
+        "firstimpression",
+        "haul",
+        "mailcall",
+        "prpackage",
+        "unbox",
+        "unboxing"
+      ],
+      "otherwise": "unknown"
+    },
+    "problem_solution": {
+      "pattern_version": "problem_solution_v1",
+      "positive": "at least one problem cue AND at least one solution cue in caption_clean + hashtags",
+      "problem_patterns": [
+        "\\bpain(s|ful|fully)?\\b",
+        "\\bach(e|es|y|ing)\\b",
+        "\\bhurt(s|ing)?\\b",
+        "\\bdiscomfort\\b",
+        "\\bpressure\\b",
+        "\\bheav(y|ier|iest)\\b",
+        "\\bstruggl(e|es|ed|ing)\\b",
+        "\\bproblems?\\b",
+        "\\bsore\\b",
+        "\\buncomfortable\\b",
+        "\\bkilling me\\b",
+        "\\bhard(er)? to carry\\b",
+        "\\bdolor\\b",
+        "\\bmolestia\\b",
+        "\\bpresi[oó]n\\b"
+      ],
+      "solution_patterns": [
+        "\\brelief\\b",
+        "\\breliev(e|es|ed|ing)\\b",
+        "\\bhelp(s|ed|ing)?\\b",
+        "\\bsupport(s|ed|ing)?\\b",
+        "\\bsolv(e|es|ed|ing)\\b",
+        "\\bfix(es|ed)?\\b",
+        "\\bgame changer\\b",
+        "\\bcomfort(able)?\\b",
+        "\\beas(e|es|ed|ing)\\b",
+        "\\blift(s|ed|ing)?\\b",
+        "\\bsaved my\\b",
+        "\\blifesaver\\b",
+        "\\bmakes? it easier\\b",
+        "\\btake the pressure off\\b",
+        "\\balivi(o|a|ar|ado|ada|an)\\b",
+        "\\bayud(a|as|an|ar|ado|ada|ando|o|ó)\\b",
+        "\\bsoport(e|a|as|an|ar|ado|ada)\\b",
+        "\\bcomodidad\\b|\\bc[oó]mod(o|a|os|as)\\b",
+        "\\bsostener\\b|\\bsostiene(n)?\\b|\\bsujet(a|ar|ado|ada)\\b"
+      ],
+      "otherwise": "unknown, with reason partial_cue_problem_only / partial_cue_solution_only / no cue"
+    },
+    "visual_only": {
+      "pattern_version": "visual_only_v1",
+      "positive": "never detectable from current fields",
+      "otherwise": "unknown for every video; no audio or transcript field"
+    },
+    "duration_bucket": {
+      "pattern_version": "duration_bucket_v1",
+      "field": "fetch_post_detail.duration_seconds, else search aweme_info.video.duration/1000",
+      "buckets": [
+        "<=15s",
+        "16-30s",
+        "31-60s",
+        ">60s"
+      ],
+      "boundaries": "exact seconds: <=15, (15,30], (30,60], >60"
+    },
+    "has_link": {
+      "pattern_version": "has_link_v1",
+      "positive": "any product anchor id in detail or search, or caption URL/link-in-bio/storefront cue",
+      "negative": "detail payload present with has_shop_product false and no anchor and no cue",
+      "otherwise": "unknown when no detail payload and no anchor/cue",
+      "caption_patterns": [
+        "https?://\\S+",
+        "\\bwww\\.\\S+",
+        "\\blinks? in (my )?bio\\b",
+        "\\blink below\\b",
+        "\\bstorefront\\b"
+      ],
+      "scope": "platform anchor, shop-product flag, or caption cue only; profile bio links are not checked"
+    },
+    "ad_disclosure": {
+      "pattern_version": "ad_disclosure_v1",
+      "positive": "caption disclosure cue OR disclosure hashtag OR anchor ad_label_name",
+      "negative": "detail payload present and no cue",
+      "otherwise": "unknown when no detail payload and no cue",
+      "caption_patterns": [
+        "(^|[\\s|])ad(?=[\\s|:!.,]|$)",
+        "\\bsponsored\\b",
+        "\\bpaid partnership\\b",
+        "\\bgifted by\\b",
+        "\\baffiliate\\b",
+        "\\bcommission\\b"
+      ],
+      "hashtags": [
+        "ad",
+        "affiliate",
+        "commission",
+        "gifted",
+        "paidpartnership",
+        "shoppartner",
+        "sponsored",
+        "tiktokshoppartner"
+      ],
+      "anchor_path": "anchors[].extra -> list[].extra -> product.extra.ad_label_name",
+      "scope": "text or platform label only; a spoken disclosure is not observable, so platform_is_ad is reported separately"
+    },
+    "opens_with_question": {
+      "pattern_version": "opens_with_question_v1",
+      "positive": "first caption sentence ends with ? or first word is an interrogative",
+      "otherwise": "false for a non-empty caption; unknown if caption empty",
+      "scope": "caption text only, not spoken audio",
+      "interrogatives": [
+        "are",
+        "can",
+        "could",
+        "did",
+        "do",
+        "does",
+        "had",
+        "has",
+        "have",
+        "how",
+        "is",
+        "should",
+        "was",
+        "were",
+        "what",
+        "when",
+        "where",
+        "which",
+        "who",
+        "whom",
+        "whose",
+        "why",
+        "will",
+        "would"
+      ]
+    },
+    "has_number_claim": {
+      "pattern_version": "has_number_claim_v1",
+      "positive": "standalone digit token or ordinal in caption_clean, or a hashtag whose numeric prefix is followed by a unit (weeks/wks/months/days/st/nd/rd/th)",
+      "regex": "(?<![A-Za-z0-9])(?:\\d[\\d,]*(?:\\.\\d+)?(?![A-Za-z0-9])|\\d+(?:st|nd|rd|th)(?![A-Za-z0-9]))",
+      "hashtag_regex": "^(\\d+)(weeks?|wks?|months?|days?|st|nd|rd|th)",
+      "exclusions": "digits attached to letters in prose (coupon codes, 3D) and digits inside hashtags without a recognised unit suffix",
+      "otherwise": "false for a non-empty caption; unknown if caption empty"
+    },
+    "platform_is_ad": {
+      "pattern_version": "platform_is_ad_v1",
+      "field": "fetch_post_detail.data.itemInfo.is_ad",
+      "otherwise": "unknown when detail payload absent"
+    },
+    "platform_is_ec_video": {
+      "pattern_version": "platform_is_ec_video_v1",
+      "field": "fetch_post_detail.data.itemInfo.is_ec_video",
+      "otherwise": "unknown when detail payload absent"
+    }
+  },
+  "supplementary_rules": {
+    "has_coupon_or_discount": {
+      "pattern_version": "has_coupon_or_discount_v1",
+      "positive": "caption discount/coupon cue or discount hashtag",
+      "caption_patterns": [
+        "\\buse (my |the )?code\\b",
+        "\\bcoupon\\b",
+        "\\bpromo code\\b",
+        "\\bdiscount\\b",
+        "\\b\\d+(?:\\.\\d+)?\\s*%\\s*off\\b",
+        "\\bcode\\s+[A-Z0-9]{4,}\\b"
+      ],
+      "hashtags": [
+        "blackfriday",
+        "coupon",
+        "deals",
+        "discount",
+        "promocode",
+        "sale"
+      ],
+      "otherwise": "false for a non-empty caption; unknown if caption empty"
+    },
+    "has_cta": {
+      "pattern_version": "has_cta_v1",
+      "positive": "direct caption call-to-action cue (imperative or audience-directed). Shoppable hashtags alone do not count.",
+      "caption_patterns": [
+        "\\bgrab (yours|your|one|them)\\b",
+        "\\bget yours\\b",
+        "\\bshop now\\b",
+        "\\border (yours|now)\\b",
+        "\\bcheck (it|them) out\\b",
+        "\\blinks? in (my )?bio\\b",
+        "\\bclick the link\\b",
+        "\\buse (my |the )?code\\b",
+        "\\bavailable (at|on)\\b"
+      ],
+      "otherwise": "false for a non-empty caption; unknown if caption empty"
+    },
+    "mentions_brand": {
+      "pattern_version": "mentions_brand_v1",
+      "positive": "caption contains an @handle starting with momcozy (for example @momcozy, @Momcozy US, @momcozyofficial)",
+      "regex": "@mom\\s?cozy[a-z0-9_.]*",
+      "otherwise": "false for a non-empty caption; unknown if caption empty"
+    },
+    "caption_word_count": {
+      "pattern_version": "caption_word_count_v1",
+      "definition": "whitespace token count of caption_clean"
+    },
+    "hashtag_count": {
+      "pattern_version": "hashtag_count_v1",
+      "definition": "length of the merged hashtag list"
+    }
+  }
+}

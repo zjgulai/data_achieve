@@ -1,0 +1,193 @@
+{
+  "schema": "voc_counterexample_hand_judgment_v1",
+  "frozen_at": "2026-10-30T16:20:00+08:00",
+  "basis": [
+    "taxonomy.json VOC-BAND-v1.1 SUP definitions and resolution_rules",
+    "CODING-CONTRACT.md v1 sections 2-7"
+  ],
+  "rule": "Written and frozen before any encoder run. Encoder prompts contain only CODING-CONTRACT.md and taxonomy.json, never this file.",
+  "cases": [
+    {
+      "canonical_id": "c-ce0000001",
+      "case_no": 1,
+      "scenario": "explicit 'lower back' but offload semantics",
+      "text": "I've been living in this band since 30 weeks and the weight off my lower back is unreal. I can stand at the stove again without needing to sit down every five minutes.",
+      "expected_sup": [
+        {
+          "code": "SUP.PRESSURE_OFFLOAD",
+          "polarity": "positive",
+          "span": "the weight off my lower back",
+          "confidence": "high"
+        }
+      ],
+      "must_not_same_span": [
+        "SUP.BACK"
+      ],
+      "optional_other": [
+        {
+          "code": "ACT.COMPATIBILITY",
+          "polarity": "positive",
+          "note": "can stand at the stove again"
+        }
+      ],
+      "reason": "Step 2 weight/load transfer ('weight off') outranks step 3 explicit back reference ('lower back'). This is the B05 pattern. A BACK code on the same span is the old-definition error."
+    },
+    {
+      "canonical_id": "c-ce0000002",
+      "case_no": 2,
+      "scenario": "back plus lifted belly in one record",
+      "text": "It lifts my bump nicely, and my lower back pain has eased by the end of the day.",
+      "expected_sup": [
+        {
+          "code": "SUP.BELLY_LIFT",
+          "polarity": "positive",
+          "span": "lifts my bump nicely",
+          "confidence": "high"
+        },
+        {
+          "code": "SUP.BACK",
+          "polarity": "positive",
+          "span": "my lower back pain has eased",
+          "confidence": "high"
+        }
+      ],
+      "must_not_same_span": [],
+      "optional_other": [
+        {
+          "code": "OUT.RELIEF",
+          "note": "back pain eased"
+        }
+      ],
+      "reason": "Two coordinated predicates, two attributes, two distinct spans. Step 1 takes the belly clause. The back clause has explicit back + pain relief and no weight/load term, so step 3 BACK applies; step 4 PRESSURE is blocked by its 'no back reference' guard."
+    },
+    {
+      "canonical_id": "c-ce0000003",
+      "case_no": 3,
+      "scenario": "pressure only, no back",
+      "text": "It really takes the pressure off my hips, especially by the end of the day.",
+      "expected_sup": [
+        {
+          "code": "SUP.PRESSURE_OFFLOAD",
+          "polarity": "positive",
+          "span": "takes the pressure off my hips",
+          "confidence": "high"
+        }
+      ],
+      "must_not_same_span": [
+        "SUP.BACK",
+        "SUP.GENERAL"
+      ],
+      "optional_other": [],
+      "reason": "Step 2 'pressure off'. No back reference and no belly lift, so BACK/GENERAL cannot apply."
+    },
+    {
+      "canonical_id": "c-ce0000004",
+      "case_no": 4,
+      "scenario": "supports my back, no weight-transfer semantics",
+      "text": "It gives my back solid support and keeps me sitting up straight at my desk.",
+      "expected_sup": [
+        {
+          "code": "SUP.BACK",
+          "polarity": "positive",
+          "span": "gives my back solid support",
+          "confidence": "high"
+        }
+      ],
+      "must_not_same_span": [
+        "SUP.PRESSURE_OFFLOAD",
+        "SUP.GENERAL"
+      ],
+      "optional_other": [],
+      "reason": "Explicit 'my back' + support, no weight/load transfer, so step 3 BACK. The generic word 'support' must not also produce GENERAL: the priority order makes BACK the only SUP code for this span."
+    },
+    {
+      "canonical_id": "c-ce0000005",
+      "case_no": 5,
+      "scenario": "belly held up, no explicit support force",
+      "text": "It holds my belly up so it isn't hanging so low anymore, and that alone is a relief.",
+      "expected_sup": [
+        {
+          "code": "SUP.BELLY_LIFT",
+          "polarity": "positive",
+          "span": "holds my belly up",
+          "confidence": "high"
+        }
+      ],
+      "must_not_same_span": [
+        "SUP.PRESSURE_OFFLOAD",
+        "SUP.GENERAL"
+      ],
+      "optional_other": [],
+      "reason": "Step 1 'holds my belly up'. The trailing 'relief' has no pain or pressure object and no back reference, so step 4 must not fire; GENERAL is excluded by step 1. Risk: over-broad reading of 'relief' as PRESSURE_OFFLOAD."
+    },
+    {
+      "canonical_id": "c-ce0000006",
+      "case_no": 6,
+      "scenario": "generic support, no body part",
+      "text": "It's really supportive and I feel much more secure with it on.",
+      "expected_sup": [
+        {
+          "code": "SUP.GENERAL",
+          "polarity": "positive",
+          "span": "really supportive",
+          "confidence": "high"
+        }
+      ],
+      "must_not_same_span": [
+        "SUP.BACK",
+        "SUP.PRESSURE_OFFLOAD",
+        "SUP.BELLY_LIFT"
+      ],
+      "optional_other": [],
+      "reason": "Only a generic support evaluation. No body part, no weight/load, no belly lift, so step 5 GENERAL. 'secure' is not STB: STB needs a slip/roll/move cue."
+    },
+    {
+      "canonical_id": "c-ce0000007",
+      "case_no": 7,
+      "scenario": "qualified_positive hedge",
+      "text": "Almost fully takes away the sciatica I've had since my second trimester.",
+      "expected_sup": [
+        {
+          "code": "SUP.PRESSURE_OFFLOAD",
+          "polarity": "qualified_positive",
+          "span": "Almost fully takes away the sciatica",
+          "confidence": "high"
+        }
+      ],
+      "must_not_same_span": [
+        "SUP.BACK",
+        "SUP.GENERAL"
+      ],
+      "optional_other": [
+        {
+          "code": "OUT.RELIEF",
+          "note": "sciatica taken away"
+        }
+      ],
+      "reason": "Step 4 'take away' + pain (sciatica), no back reference, so PRESSURE_OFFLOAD. 'Almost fully' is a quotable degree reservation on the same attribute, so the contract requires qualified_positive, not positive."
+    },
+    {
+      "canonical_id": "c-ce0000008",
+      "case_no": 8,
+      "scenario": "positive support plus negative stability",
+      "text": "It supports my back well, but it rolls down every time I sit.",
+      "expected_sup": [
+        {
+          "code": "SUP.BACK",
+          "polarity": "positive",
+          "span": "supports my back well",
+          "confidence": "high"
+        },
+        {
+          "code": "STB.STAY_IN_PLACE",
+          "polarity": "negative",
+          "span": "rolls down every time I sit",
+          "confidence": "high"
+        }
+      ],
+      "must_not_same_span": [],
+      "optional_other": [],
+      "reason": "Positive and negative are on different attributes; the contract says split into two aspects with their own spans. BACK stays positive, not mixed or qualified_positive. Risk: the encoder may collapse the contrast into one mixed BACK aspect."
+    }
+  ]
+}

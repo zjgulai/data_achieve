@@ -1,0 +1,32 @@
+{
+  "schema": "voc-product-match-overrides/1",
+  "contract": "artifacts/run-20261029/decisions/E-merge-experience-fields.md",
+  "section": "5.2",
+  "note": "One-time corrections for product_match. The generic classifier already returns these values; the ledger pins them so a future classifier change cannot silently re-admit the records. Every row carries the verbatim reason from the contract.",
+  "overrides": {
+    "c-1u7ofya": {
+      "product_match": "brand_other_product",
+      "reason": "Momcozy breast pump, not the support band; the old substring rule matched 'band' inside 'husband'."
+    },
+    "c-19rnylotzfmkh": {
+      "product_match": "brand_other_product",
+      "reason": "Gift-basket list mentioning Momcozy products; the evaluated items are not the support band."
+    },
+    "c-19rg8fid9ublx": {
+      "product_match": "brand_other_product",
+      "reason": "Momcozy nursing/pumping bra; 'band' is 'band extender', not a support band."
+    },
+    "c-ph09yrn": {
+      "product_match": "brand_other_product",
+      "reason": "Momcozy diaper pail; the old substring rule matched 'band' inside 'husband'."
+    },
+    "c-pdjzq5u": {
+      "product_match": "brand_other_product",
+      "reason": "Momcozy pregnancy ('mommy') pillow; 'band' came from 'husband'."
+    },
+    "c-pdp6hz8": {
+      "product_match": "category_adjacent",
+      "reason": "The author explicitly says 'not the Momcozy one' and names a generic single band; the brand does not attach to the family mention."
+    }
+  }
+}

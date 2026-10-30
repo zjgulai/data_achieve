@@ -1,0 +1,175 @@
+{
+ "schema_version": "voc_forbidden_conclusions_v1",
+ "count": 11,
+ "note": "11 类禁止结论。每条带机器检测规则；validate_report 在渲染后扫描正文与 claims.numbers，命中即 fail closed。成熟度是状态，不是评分。",
+ "items": [
+  {
+   "id": "FC-01",
+   "pattern": "用正负向占比或『X% 的用户满意 / 不满意』表示整体情绪，例如『67% 的用户不满意』。",
+   "why": "本轮是关键词召回的非概率样本，单编码且 pre-G7；任何情绪占比都没有合法分母，会把 annotation hits 伪装成人群比例。",
+   "detected_by": {
+    "text_regex": "(?:\\d{1,3}(?:\\.\\d+)?\\s*%[^。；\\n]{0,20}(?:用户|妈妈|孕妇|人|样本|记录)?[^。；\\n]{0,10}(?:满意|不满|正面|负面|正向|负向|情绪|推荐))|(?:(?:满意|不满|正面|负面|正向|负向|情绪)[^。；\\n]{0,20}\\d{1,3}(?:\\.\\d+)?\\s*%)",
+    "data_keys": [
+     "overall_sentiment_rate",
+     "sentiment_rate",
+     "positive_share",
+     "negative_share",
+     "satisfaction_rate"
+    ],
+    "note": "百分比必须紧邻情绪词才算命中，避免误伤等级阈值里的 70%。"
+   },
+   "ref_origin": "ref 附录「本报告不能说的话」· 总体情绪率（positive / negative share）"
+  },
+  {
+   "id": "FC-02",
+   "pattern": "用饼图、环形图或百分比构成图展示 Love vs Complaint / 情感构成。",
+   "why": "annotation 是多标签且可重叠的，各类合计不等于 100%；互斥构成图会制造一个不存在的整体。",
+   "detected_by": {
+    "text_regex": "(?:饼图|环形图|甜甜圈图|百分比分布|占比图)",
+    "data_keys": [],
+    "note": "只抓图表词；正文中的『不比较百分比』不会命中。"
+   },
+   "ref_origin": "ref 附录「本报告不能说的话」· 饼图与百分比构成（pie chart percentage）"
+  },
+  {
+   "id": "FC-03",
+   "pattern": "NPS、CSAT、满意度评分或净推荐值等量表分数。",
+   "why": "本轮没有量表题、样本框和应答率；任何评分都不是消费者调查的结果。",
+   "detected_by": {
+    "text_regex": "(?i)(?:\\bNPS\\b|\\bCSAT\\b|净推荐值|满意度(?:评分|得分|指数|调查)|满意率[^。；\\n]{0,8}\\d)",
+    "data_keys": [
+     "nps",
+     "nps_score",
+     "csat",
+     "csat_score",
+     "satisfaction_score"
+    ],
+    "note": ""
+   },
+   "ref_origin": "ref 附录「本报告不能说的话」· NPS / 满意度评分"
+  },
+  {
+   "id": "FC-04",
+   "pattern": "ROI、ROAS、转化率排名或投资回报排序。",
+   "why": "没有成本、曝光、点击与成交数据；把 VOC 频次映射成商业回报是编造因果。",
+   "detected_by": {
+    "text_regex": "(?i)(?:\\bROI\\b|\\bROAS\\b|投资回报率|(?:转化率|conversion rate)[^。；\\n]{0,8}(?:排名|排行|最高|最低|第一)|(?:排名|排行)[^。；\\n]{0,8}(?:转化率|ROI))",
+    "data_keys": [
+     "roi",
+     "roas",
+     "conversion_rate",
+     "roi_rank",
+     "conversion_rank"
+    ],
+    "note": ""
+   },
+   "ref_origin": "ref 附录「本报告不能说的话」· ROI / 转化率排名"
+  },
+  {
+   "id": "FC-05",
+   "pattern": "净推荐值、净情感值、净情绪分等正负相减后的单一得分。",
+   "why": "正负标注不是同一把尺子，相减会抵消多标签与条件性，净分把结构藏起来。",
+   "detected_by": {
+    "text_regex": "(?i)(?:净(?:推荐|情感|情绪)(?:值|分)|net sentiment|net score|净值打分)|(?:净分[^。；\\n]{0,6}[+\\-−]?\\d|\\d[^。；\\n]{0,6}净分)",
+    "data_keys": [
+     "net_score",
+     "net_sentiment",
+     "net_sentiment_score",
+     "net_promoter"
+    ],
+    "note": ""
+   },
+   "ref_origin": "ref 附录「本报告不能说的话」· 净值打分（net score）"
+  },
+  {
+   "id": "FC-06",
+   "pattern": "把 coverage 写成 conversion：覆盖数逐级变成漏斗率或『转化率』。",
+   "why": "raw→occurrence→canonical 是去重与身份收敛，不是用户旅程；各级不能相乘成漏斗。",
+   "detected_by": {
+    "text_regex": "(?i)(?:(?:覆盖|coverage)[^。；\\n]{0,12}(?:漏斗|funnel|转化率|conversion rate)|(?:漏斗|funnel|转化率|conversion rate)[^。；\\n]{0,12}(?:覆盖|coverage))",
+    "data_keys": [
+     "funnel_rate",
+     "coverage_conversion_rate"
+    ],
+    "note": "只抓『覆盖 + 漏斗/转化率』同句；『不把覆盖当成逐级转化』不命中。"
+   },
+   "ref_origin": "ref 附录「本报告不能说的话」· 把覆盖当漏斗（coverage as funnel）"
+  },
+  {
+   "id": "FC-07",
+   "pattern": "把 natural / diagnostic / qualitative_seed 的比例放在一起比较或排名。",
+   "why": "frame 是回答不同问题的镜头，diagnostic 还是内容派生子集；跨 frame 百分比没有共同分母。",
+   "detected_by": {
+    "text_regex": "(?i)(?:(?:natural|diagnostic|qualitative_seed|自然样本|诊断样本|定性种子)[^。；\\n]{0,24}(?:比较|对比|高于|低于|多于|少于)[^。；\\n]{0,24}\\d{1,3}(?:\\.\\d+)?\\s*%|\\d{1,3}(?:\\.\\d+)?\\s*%[^。；\\n]{0,24}(?:natural|diagnostic|自然样本|诊断样本)[^。；\\n]{0,12}(?:比较|对比|高于|低于))",
+    "data_keys": [
+     "cross_frame_pct",
+     "frame_comparison_pct",
+     "frame_rate_gap"
+    ],
+    "note": "必须同时出现 frame 名、比较动词与百分比。"
+   },
+   "ref_origin": "ref 附录「本报告不能说的话」· 跨 frame 比较百分比"
+  },
+  {
+   "id": "FC-08",
+   "pattern": "把单来源（Reddit / Amazon PDP / 单次抓取）的比例写成 prevalence、发生率或普遍率。",
+   "why": "没有概率抽样、抽样框与应答率；单源频次只能说明『在本样本中出现』。",
+   "detected_by": {
+    "text_regex": "(?i)(?:prevalence|普遍率|发生率|渗透率)[^。；\\n]{0,10}(?:为|达|是|约)\\s*\\d{1,3}(?:\\.\\d+)?\\s*%|(?:Reddit|单一来源|单源)[^。；\\n]{0,16}(?:prevalence|普遍率|渗透率|发生率)|\\d{1,3}(?:\\.\\d+)?\\s*%[^。；\\n]{0,8}(?:孕妇|妈妈|用户)[^。；\\n]{0,6}(?:都|普遍|大多)",
+    "data_keys": [
+     "prevalence",
+     "incidence_rate",
+     "penetration_rate"
+    ],
+    "note": "『不得估计发生率』这类规范性句子不命中，因为没有数字断言。"
+   },
+   "ref_origin": "ref 附录「本报告不能说的话」扩展 · 单源 prevalence；本语料对象为 Reddit 召回"
+  },
+  {
+   "id": "FC-09",
+   "pattern": "疗效、治愈率、安全率、诊断或临床验证类结论。",
+   "why": "self-report 不是临床证据；报告没有剂量、对照与随访，也没有医学 / 法务 review。",
+   "detected_by": {
+    "text_regex": "(?i)(?:(?:疗效|效果)[^。；\\n]{0,6}(?:显著|明显|确切|可靠)|(?:治愈|有效率|安全率|诊断准确率|缓解率)[^。；\\n]{0,10}(?:达|达到|高达|为|是)\\s*\\d|(?:治愈|有效率|安全率|诊断准确率|缓解率)[^。；\\n]{0,4}\\d{1,3}(?:\\.\\d+)?\\s*%|(?:可以|能够|已|被)(?:治愈|治疗|预防|根治)[^。；\\n]{0,10}(?:疾病|症状|疼痛|不适)|(?:临床|医学)(?:验证|证明|证实|试验)[^。；\\n]{0,6}(?:有效|安全|成功)|(?:无副作用|绝对安全|零风险)|\\b(?:efficacy|cure|clinically proven|safe and effective)\\b)",
+    "data_keys": [
+     "efficacy_rate",
+     "safety_rate",
+     "cure_rate"
+    ],
+    "note": "只抓断言形态；『不能变成疗效或安全结论』这类禁写句不命中。"
+   },
+   "ref_origin": "ref 附录「本报告不能说的话」扩展 · 医学 / 疗效 / 安全；本语料对象为 MED.* self-report"
+  },
+  {
+   "id": "FC-10",
+   "pattern": "把『有没有人用过 / Does anyone / 求推荐』这类求助帖说成本人使用体验或体验分布。",
+   "why": "求助帖表达的是需求与问题，不是使用结果；把提问计入体验会系统性放大未满足需求。",
+   "detected_by": {
+    "text_regex": "(?i)(?:(?:求助帖|提问帖|问句|求推荐)[^。；\\n]{0,16}(?:说明|证明|表明|反映|显示)[^。；\\n]{0,12}(?:体验|感受|不满|满意|效果)|(?:does anyone|has anyone|anyone else|有人用过|有没有人)[^。；\\n]{0,16}(?:说明|证明|可见|表明|反映))",
+    "data_keys": [],
+    "note": "文本层检测『求助 → 说明体验』的推断句式；数据层由 C11 的 experience 计数约束。"
+   },
+   "ref_origin": "本语料补充：Reddit 召回以求助与比较为主（C11），ref 未单列"
+  },
+  {
+   "id": "FC-11",
+   "pattern": "把 product_snapshot.is_estimated=true 的销量 / GMV / 销售额估算写成实测事实或据此排名。",
+   "why": "本轮没有销量一手数据；估算字段是第三方建模值，写成实测会把模型误差伪装成事实。",
+   "detected_by": {
+    "text_regex": "(?i)(?:(?:销量|销售额|营收|GMV)[^。；\\n]{0,10}(?:为|达|达到|约)\\s*[\\d,.]+\\s*(?:万|亿|件|台|美元|USD|美金))",
+    "data_keys": [
+     "sales_units",
+     "sales_volume",
+     "sales",
+     "gmv",
+     "gmv_usd",
+     "revenue",
+     "revenue_usd",
+     "monthly_sales"
+    ],
+    "note": "claims.numbers 里出现任何销量 / GMV 键即命中；带 is_estimated=true 时片段会标注。"
+   },
+   "ref_origin": "本语料补充：Amazon 仅有 PDP 身份证据（source-rights-matrix: amazon_pdp metric_eligible=false），无销量一手数据"
+  }
+ ]
+}

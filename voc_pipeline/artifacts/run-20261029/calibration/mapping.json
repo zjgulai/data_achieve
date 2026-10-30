@@ -1,0 +1,108 @@
+{
+  "schema": "voc-calibration-mapping-v1",
+  "sample_id": "voc-cal-20261030-ab58898b",
+  "seed": 20261030,
+  "warning": "Do not show this file to the annotator; it links opaque item ids to corpus ids.",
+  "items": [
+    {
+      "item_id": "B01",
+      "canonical_id": "c-1sn8eo1",
+      "source": "reddit"
+    },
+    {
+      "item_id": "B02",
+      "canonical_id": "c-7665166146806695694",
+      "source": "tiktok_shop"
+    },
+    {
+      "item_id": "B03",
+      "canonical_id": "c-7680768165969676046",
+      "source": "tiktok_shop"
+    },
+    {
+      "item_id": "B04",
+      "canonical_id": "c-7672850813873784590",
+      "source": "tiktok_shop"
+    },
+    {
+      "item_id": "B05",
+      "canonical_id": "c-1mdp0wu",
+      "source": "reddit"
+    },
+    {
+      "item_id": "B06",
+      "canonical_id": "c-1vztlvl",
+      "source": "reddit"
+    },
+    {
+      "item_id": "B07",
+      "canonical_id": "c-7692120308744128270",
+      "source": "tiktok_shop"
+    },
+    {
+      "item_id": "B08",
+      "canonical_id": "c-19rm4lmi0oa78",
+      "source": "reddit"
+    },
+    {
+      "item_id": "B09",
+      "canonical_id": "c-7694309204774782733",
+      "source": "tiktok_shop"
+    },
+    {
+      "item_id": "B10",
+      "canonical_id": "c-7696312642378385166",
+      "source": "tiktok_shop"
+    },
+    {
+      "item_id": "B11",
+      "canonical_id": "c-7672402718996334350",
+      "source": "tiktok_shop"
+    },
+    {
+      "item_id": "B12",
+      "canonical_id": "c-7684735391051695885",
+      "source": "tiktok_shop"
+    },
+    {
+      "item_id": "B13",
+      "canonical_id": "c-1tue1fz",
+      "source": "reddit"
+    },
+    {
+      "item_id": "B14",
+      "canonical_id": "c-19rjykcrivso1",
+      "source": "reddit"
+    },
+    {
+      "item_id": "B15",
+      "canonical_id": "c-7673125449366701838",
+      "source": "tiktok_shop"
+    },
+    {
+      "item_id": "B16",
+      "canonical_id": "c-7659258409535112974",
+      "source": "tiktok_shop"
+    },
+    {
+      "item_id": "B17",
+      "canonical_id": "c-1x65j91",
+      "source": "reddit"
+    },
+    {
+      "item_id": "B18",
+      "canonical_id": "c-1q2ir63",
+      "source": "reddit"
+    },
+    {
+      "item_id": "B19",
+      "canonical_id": "c-7670289594361071374",
+      "source": "tiktok_shop"
+    },
+    {
+      "item_id": "B20",
+      "canonical_id": "c-7688153432316954382",
+      "source": "tiktok_shop"
+    }
+  ]
+}

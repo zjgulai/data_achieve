@@ -1,0 +1,274 @@
+{
+ "provider": "arcticshift",
+ "generated_at": "2026-10-29T14:32:15.004331+00:00",
+ "summary": {
+  "requests": 13,
+  "success": 10,
+  "failed": 3,
+  "records": 250,
+  "zero_result_requests": 0,
+  "cost_usd": 0.0
+ },
+ "rows": [
+  {
+   "raw_id": "raw-001-cb3e96ac",
+   "provider": "arcticshift",
+   "endpoint": "posts",
+   "request_id": "001-cb3e96ac",
+   "request": {
+    "frame": "natural",
+    "kind": "posts",
+    "subreddit": "BabyBumps",
+    "query": "belly band",
+    "page": 0
+   },
+   "fetched_at": "2026-10-29T14:21:54.529385+00:00",
+   "path": "artifacts/run-20261029/raw/arcticshift/001-cb3e96ac.json",
+   "sha256": "f99cf267013a3b83c3d33b02e6eeab71879821bb40f9cdc1ce3afca1e0f62f05",
+   "record_count": 25,
+   "status": "success",
+   "error": null,
+   "cost_usd": 0.0
+  },
+  {
+   "raw_id": "raw-002-3da41791",
+   "provider": "arcticshift",
+   "endpoint": "posts",
+   "request_id": "002-3da41791",
+   "request": {
+    "frame": "natural",
+    "kind": "posts",
+    "subreddit": "BabyBumps",
+    "query": "belly band",
+    "page": 1
+   },
+   "fetched_at": "2026-10-29T14:22:05.551249+00:00",
+   "path": "artifacts/run-20261029/raw/arcticshift/002-3da41791.json",
+   "sha256": "5b2fa38548520ddec6ca1a1816854201b2bae72931285192843f30762731e254",
+   "record_count": 25,
+   "status": "success",
+   "error": null,
+   "cost_usd": 0.0
+  },
+  {
+   "raw_id": "raw-003-0cdf4756",
+   "provider": "arcticshift",
+   "endpoint": "posts",
+   "request_id": "003-0cdf4756",
+   "request": {
+    "frame": "natural",
+    "kind": "posts",
+    "subreddit": "BabyBumps",
+    "query": "belly band",
+    "page": 2
+   },
+   "fetched_at": "2026-10-29T14:22:35.696891+00:00",
+   "path": "artifacts/run-20261029/raw/arcticshift/003-0cdf4756.json",
+   "sha256": "a8aa1cda24cef631f830fd81ce021eeb31d81c1d105f9e81c315cb7c522abbed",
+   "record_count": 25,
+   "status": "success",
+   "error": null,
+   "cost_usd": 0.0
+  },
+  {
+   "raw_id": "raw-004-ca41ff70",
+   "provider": "arcticshift",
+   "endpoint": "posts",
+   "request_id": "004-ca41ff70",
+   "request": {
+    "frame": "natural",
+    "kind": "posts",
+    "subreddit": "pregnant",
+    "query": "belly band",
+    "page": 0
+   },
+   "fetched_at": "2026-10-29T14:24:37.847303+00:00",
+   "path": "artifacts/run-20261029/raw/arcticshift/004-ca41ff70.json",
+   "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+   "record_count": 0,
+   "status": "failed",
+   "error": "{\"data\":null,\"error\":\"Timeout. Maybe slow down a bit\"}",
+   "cost_usd": 0.0
+  },
+  {
+   "raw_id": "raw-005-18c3cc4d",
+   "provider": "arcticshift",
+   "endpoint": "posts",
+   "request_id": "005-18c3cc4d",
+   "request": {
+    "frame": "natural",
+    "kind": "posts",
+    "subreddit": "fitpregnancy",
+    "query": "belly band",
+    "page": 0
+   },
+   "fetched_at": "2026-10-29T14:24:56.735822+00:00",
+   "path": "artifacts/run-20261029/raw/arcticshift/005-18c3cc4d.json",
+   "sha256": "6fa6f5b9cf14ce5726939c6b8fca205afea5940ac5dbc807de98a8e7709c7f58",
+   "record_count": 25,
+   "status": "success",
+   "error": null,
+   "cost_usd": 0.0
+  },
+  {
+   "raw_id": "raw-006-931753d3",
+   "provider": "arcticshift",
+   "endpoint": "posts",
+   "request_id": "006-931753d3",
+   "request": {
+    "frame": "natural",
+    "kind": "posts",
+    "subreddit": "fitpregnancy",
+    "query": "belly band",
+    "page": 1
+   },
+   "fetched_at": "2026-10-29T14:26:07.228143+00:00",
+   "path": "artifacts/run-20261029/raw/arcticshift/006-931753d3.json",
+   "sha256": "d14411f4b07405bd3822b157dbfa616f23c1f4e89c690c8ba0093a80407dcb9f",
+   "record_count": 25,
+   "status": "success",
+   "error": null,
+   "cost_usd": 0.0
+  },
+  {
+   "raw_id": "raw-007-3184b814",
+   "provider": "arcticshift",
+   "endpoint": "comments",
+   "request_id": "007-3184b814",
+   "request": {
+    "frame": "natural",
+    "kind": "comments",
+    "subreddit": "BabyBumps",
+    "query": "belly band",
+    "page": 0
+   },
+   "fetched_at": "2026-10-29T14:28:20.050172+00:00",
+   "path": "artifacts/run-20261029/raw/arcticshift/007-3184b814.json",
+   "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+   "record_count": 0,
+   "status": "failed",
+   "error": "{\"data\":null,\"error\":\"Timeout. Maybe slow down a bit\"}",
+   "cost_usd": 0.0
+  },
+  {
+   "raw_id": "raw-008-98d85d74",
+   "provider": "arcticshift",
+   "endpoint": "comments",
+   "request_id": "008-98d85d74",
+   "request": {
+    "frame": "natural",
+    "kind": "comments",
+    "subreddit": "pregnant",
+    "query": "belly band",
+    "page": 0
+   },
+   "fetched_at": "2026-10-29T14:28:38.585437+00:00",
+   "path": "artifacts/run-20261029/raw/arcticshift/008-98d85d74.json",
+   "sha256": "35e65636f88cc807d23c4874ddbe339198557841c283c7936aaee94fb5c49950",
+   "record_count": 25,
+   "status": "success",
+   "error": null,
+   "cost_usd": 0.0
+  },
+  {
+   "raw_id": "raw-009-9db4384b",
+   "provider": "arcticshift",
+   "endpoint": "comments",
+   "request_id": "009-9db4384b",
+   "request": {
+    "frame": "natural",
+    "kind": "comments",
+    "subreddit": "pregnant",
+    "query": "belly band",
+    "page": 1
+   },
+   "fetched_at": "2026-10-29T14:31:07.814008+00:00",
+   "path": "artifacts/run-20261029/raw/arcticshift/009-9db4384b.json",
+   "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+   "record_count": 0,
+   "status": "failed",
+   "error": "{\"data\":null,\"error\":\"Timeout. Maybe slow down a bit\"}",
+   "cost_usd": 0.0
+  },
+  {
+   "raw_id": "raw-010-383c6a76",
+   "provider": "arcticshift",
+   "endpoint": "posts",
+   "request_id": "010-383c6a76",
+   "request": {
+    "frame": "qualitative_seed",
+    "kind": "posts",
+    "subreddit": "BabyBumps",
+    "query": "Momcozy",
+    "page": 0
+   },
+   "fetched_at": "2026-10-29T14:31:27.221760+00:00",
+   "path": "artifacts/run-20261029/raw/arcticshift/010-383c6a76.json",
+   "sha256": "209234045ead7276779c415c1b579db54d9dc25a7629247234acea1cd66f3f0e",
+   "record_count": 25,
+   "status": "success",
+   "error": null,
+   "cost_usd": 0.0
+  },
+  {
+   "raw_id": "raw-011-5e773bbe",
+   "provider": "arcticshift",
+   "endpoint": "posts",
+   "request_id": "011-5e773bbe",
+   "request": {
+    "frame": "qualitative_seed",
+    "kind": "posts",
+    "subreddit": "BabyBumps",
+    "query": "Momcozy",
+    "page": 1
+   },
+   "fetched_at": "2026-10-29T14:31:57.395819+00:00",
+   "path": "artifacts/run-20261029/raw/arcticshift/011-5e773bbe.json",
+   "sha256": "2ba8a45db1b214aa83f007776dafdcd43879a86d8c9edf977449fb5a1b5d2029",
+   "record_count": 25,
+   "status": "success",
+   "error": null,
+   "cost_usd": 0.0
+  },
+  {
+   "raw_id": "raw-012-d3898581",
+   "provider": "arcticshift",
+   "endpoint": "comments",
+   "request_id": "012-d3898581",
+   "request": {
+    "frame": "qualitative_seed",
+    "kind": "comments",
+    "subreddit": "BabyBumps",
+    "query": "Momcozy",
+    "page": 0
+   },
+   "fetched_at": "2026-10-29T14:32:07.473743+00:00",
+   "path": "artifacts/run-20261029/raw/arcticshift/012-d3898581.json",
+   "sha256": "302520d8ada2ddbdbbaf59611e7756f0e7de2ca52b2f14907d7d06a60dec9e7f",
+   "record_count": 25,
+   "status": "success",
+   "error": null,
+   "cost_usd": 0.0
+  },
+  {
+   "raw_id": "raw-013-7317fffa",
+   "provider": "arcticshift",
+   "endpoint": "comments",
+   "request_id": "013-7317fffa",
+   "request": {
+    "frame": "qualitative_seed",
+    "kind": "comments",
+    "subreddit": "BabyBumps",
+    "query": "Momcozy",
+    "page": 1
+   },
+   "fetched_at": "2026-10-29T14:32:15.004286+00:00",
+   "path": "artifacts/run-20261029/raw/arcticshift/013-7317fffa.json",
+   "sha256": "2b060280a29c4fae2a9486dc57443c05e4c47b6eea0d89efecee8a1e526e0999",
+   "record_count": 25,
+   "status": "success",
+   "error": null,
+   "cost_usd": 0.0
+  }
+ ]
+}

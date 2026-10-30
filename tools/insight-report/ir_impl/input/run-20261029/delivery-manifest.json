@@ -1,0 +1,160 @@
+{
+ "schema_version": "voc_delivery_manifest_v1",
+ "generated_at": "2026-10-29T15:36:45+00:00",
+ "run_id": "run-20261029",
+ "artifacts": [
+  {
+   "path": "amazon-identity-raw.json",
+   "bytes": 3964,
+   "sha256": "408ef3b25d79bdc345645cea0c733a96ab320c910c4570a5514aca16a16bcd89"
+  },
+  {
+   "path": "canonical-records.jsonl",
+   "bytes": 438215,
+   "sha256": "c2580e3d9fa9d3b1edb5bf835a31f18dd380489150c6ec589e84be8d7c28a2f4"
+  },
+  {
+   "path": "claims.json",
+   "bytes": 13384,
+   "sha256": "5f691133a9f632da3be7de16b96bbfdd58dbb47ebabb5f3c1471ac18435b7def"
+  },
+  {
+   "path": "coded-corpus.jsonl",
+   "bytes": 215205,
+   "sha256": "e5ddf275f083ad3df134b2487bf5a23ab102efe4fe094af9314223bceee9303a"
+  },
+  {
+   "path": "collect.log",
+   "bytes": 105,
+   "sha256": "588e9389584dbad4bbc3a1bec2e7708ad84de3017c490f606d65bd129155c44f"
+  },
+  {
+   "path": "collection-run-ledger.json",
+   "bytes": 7683,
+   "sha256": "f9cbd0b4a77e7fef6354f1b6b30281a35cd559d098c35f8fdb4af3a2b98ce7ee"
+  },
+  {
+   "path": "consumer-metric-view-contract.json",
+   "bytes": 774,
+   "sha256": "d990650535741f9e55d0db83739e560f35b03b36930ed85bec6fab10c647eb4f"
+  },
+  {
+   "path": "corpus-summary.json",
+   "bytes": 642,
+   "sha256": "0d7c6a9931eb4221e5839df325420006c1fb2ba68cd15b5bb59df17b69467475"
+  },
+  {
+   "path": "delivery-manifest.json",
+   "bytes": 4109,
+   "sha256": "d7626da46b091b52217ac8027ebfb52ae51170b059a200df6d8dfebbaa85c9e9"
+  },
+  {
+   "path": "evidence-grade-report.json",
+   "bytes": 794,
+   "sha256": "653c4d03014fe256abf8cb098e75f492a9bc6a9b3015a7dad9e721a5e26c7f6a"
+  },
+  {
+   "path": "forbidden-conclusions.json",
+   "bytes": 9296,
+   "sha256": "79559d8542a4ea2fc124a9f772f060a5c4af89038b4bc5fde9db595a2411ca10"
+  },
+  {
+   "path": "gate-ledger.json",
+   "bytes": 6493,
+   "sha256": "0524ca190e56f7d4b1afd288b256d577b3f79cb3afd2ac827cc0fec8b2915e5c"
+  },
+  {
+   "path": "metric-summary.json",
+   "bytes": 18093,
+   "sha256": "fd6e89147369dc478bd3f2ec5a40d5369de2014272c32efd4a2ad68a68f1f030"
+  },
+  {
+   "path": "occurrences.jsonl",
+   "bytes": 326438,
+   "sha256": "9eaa2a6fce02fb2e8de19c9d72bc21724174d13692cc3b0d8e81cafc99cc33da"
+  },
+  {
+   "path": "qa-decision.png",
+   "bytes": 167588,
+   "sha256": "8cc4127b949cec1bd596f04d4fe33198284c309409166792aa36fdc661d376db"
+  },
+  {
+   "path": "qa-ex02-mobile.png",
+   "bytes": 168194,
+   "sha256": "52b7b5774df8e6e2cfb350c7a39f079d5b60f0fa80691a6dfd0036381806143a"
+  },
+  {
+   "path": "qa-friction.png",
+   "bytes": 131857,
+   "sha256": "53e5aae909833af280a2844737b83082148f03ac8647f98b0bfa0ec8eb6023c0"
+  },
+  {
+   "path": "qa-limits.png",
+   "bytes": 163625,
+   "sha256": "e78010b8bb050f0ece87cace7c3f87d2dba111253102b5c2e64345d0593947ce"
+  },
+  {
+   "path": "qa-mobile.png",
+   "bytes": 178484,
+   "sha256": "a6ebce2aaf6033e40c47ef50acde9924b5d12efc2629b276fba77c0d3c239f34"
+  },
+  {
+   "path": "qa-top.png",
+   "bytes": 198076,
+   "sha256": "c0c4079df78ce88f3d8a7289e3b571c9c9e0f4a0c13d0a9896a2fd2988dbdcea"
+  },
+  {
+   "path": "report.html",
+   "bytes": 52661,
+   "sha256": "13b0be68d82a5d032be0a6dae9a5e7a393a77c20ffb071e80ff0e04ee29f5b11"
+  },
+  {
+   "path": "source-rights-matrix.json",
+   "bytes": 1273,
+   "sha256": "8c803b2aaf36b29919248d953a3c8ad1a0778387a920b2f6c0c1a8fbe284ef15"
+  },
+  {
+   "path": "taxonomy.json",
+   "bytes": 23311,
+   "sha256": "1ded3f085ac5922c5c5fd433f74bd7b7c52ca53cc07399d8bb69332714433445"
+  },
+  {
+   "path": "validation-result.json",
+   "bytes": 3581,
+   "sha256": "3d01c84ef75c4f6c320d257877674d88b2acc1647f5b93bd36072bfefbaad8fe"
+  },
+  {
+   "path": "voc-research-charter.json",
+   "bytes": 1728,
+   "sha256": "0df3daf5c24e44025c9d25ae0090d79b5b76ec84ed0f504309a35ddbc3c87174"
+  }
+ ],
+ "raw_artifact_count": 15,
+ "delivery_state": {
+  "local_only": true,
+  "committed": false,
+  "published": false,
+  "external_claims": false
+ },
+ "gates_executed": [
+  "G0",
+  "G1",
+  "G2",
+  "G3",
+  "G4",
+  "G5",
+  "G6"
+ ],
+ "gates_not_executed": [
+  "G7",
+  "G8",
+  "G9",
+  "G10"
+ ],
+ "not_executed": [
+  "G7 双盲编码与 agreement",
+  "G8 正式 metric rows",
+  "G9 实验审批与 owner 签名",
+  "G10 结果复盘"
+ ]
+}

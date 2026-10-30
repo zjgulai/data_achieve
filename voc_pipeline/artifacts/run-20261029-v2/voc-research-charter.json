@@ -1,0 +1,74 @@
+{
+ "schema_version": "voc_research_charter_v1",
+ "decision_question": "是否继续把“轻薄可穿”作为核心定位，还是先补支撑梯度与选码引导？",
+ "decision_owner": "UNASSIGNED — requires business sign-off",
+ "product": {
+  "brand": "Momcozy",
+  "name": "BumpEase / CozySupport 3D Ergonest Maternity Belly Band",
+  "parent_asin": "B0H8LVJ81X",
+  "target_child_asin": "B0HC2FG4QC",
+  "target_variant": "Oyster Pink / Small"
+ },
+ "market": "US",
+ "language": "en",
+ "window": {
+  "start": "2024-01-01",
+  "end": "2026-10-29"
+ },
+ "channels": [
+  "Reddit public archive",
+  "Amazon product detail page",
+  "TikTok Shop product reviews (TikHub, verified-purchase)"
+ ],
+ "frames": [
+  {
+   "frame": "natural",
+   "purpose": "方向性观察",
+   "denominator_rule": "关键词召回的 canonical consumer records；非概率样本"
+  },
+  {
+   "frame": "diagnostic",
+   "purpose": "失败模式发现",
+   "denominator_rule": "自然 frame 中含产品失败措辞的子集；不得估计发生率"
+  },
+  {
+   "frame": "qualitative_seed",
+   "purpose": "假设与品牌级线索",
+   "denominator_rule": "品牌提及；不进入 consumer metric"
+  },
+  {
+   "frame": "tiktok_shop_verified",
+   "purpose": "购买者方向验证",
+   "denominator_rule": "product_id=1729474995478630680、verified_purchase=true、窗口 2026-07-01..2026-10-29 且通过 SKU 身份隔离的评论；掩码 reviewer 名，非账号 id；不得跨 frame 比较"
+  }
+ ],
+ "qa_thresholds": {
+  "semantic_core_cohen_kappa_min": 0.8,
+  "identity_governance_cohen_kappa_min": 0.9,
+  "risk_case_review_coverage": 1.0
+ },
+ "budget": {
+  "provider_cost_usd_cap": 0.0,
+  "paid_api": false,
+  "note": "仅公开归档与公开 PDP"
+ },
+ "publication_boundary": "internal_only; no external claims, no full-text republication",
+ "stop_conditions": [
+  "任一来源 rights 状态变为 denied",
+  "产品身份出现无法裁决的 child ASIN 冲突",
+  "G7 agreement 未达阈值"
+ ],
+ "gate_plan": [
+  "G0",
+  "G1",
+  "G2",
+  "G3",
+  "G4",
+  "G5",
+  "G6",
+  "G7",
+  "G8",
+  "G9",
+  "G10"
+ ]
+}

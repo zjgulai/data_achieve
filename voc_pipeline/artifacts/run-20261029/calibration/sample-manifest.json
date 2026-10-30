@@ -1,0 +1,74 @@
+{
+  "schema": "voc-calibration-sample-v1",
+  "sample_id": "voc-cal-20261030-ab58898b",
+  "created_at": "2026-10-30T04:54:48.904877+00:00",
+  "seed": 20261030,
+  "sampling": {
+    "method": "uniform random within source among records with at least one high-confidence LLM aspect",
+    "per_source_rng": "random.Random(f'{seed}:{source}') after sorting by canonical_id",
+    "presentation_order_rng": "random.Random(f'{seed}:order')",
+    "per_source": {
+      "tiktok_shop": 12,
+      "reddit": 8
+    }
+  },
+  "population": {
+    "high_aspect_records": {
+      "tiktok_shop": 69,
+      "reddit": 22
+    },
+    "total_high_aspect_records": 91
+  },
+  "sample": {
+    "total": 20,
+    "by_source": {
+      "tiktok_shop": 12,
+      "reddit": 8
+    },
+    "display_counts": {
+      "TikTok Shop": 12,
+      "Reddit": 8
+    }
+  },
+  "blind_contract": {
+    "visible_fields": [
+      "item_id",
+      "rating",
+      "source",
+      "text",
+      "title"
+    ],
+    "forbidden_fields": [
+      "aspects",
+      "canonical_id",
+      "confidence",
+      "evidence",
+      "evidence_span",
+      "experience_reason",
+      "is_product_experience",
+      "notes",
+      "polarity"
+    ],
+    "llm_labels_in_blind_sample": false,
+    "llm_labels_in_label_html": false
+  },
+  "reference_llm": {
+    "file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/llm-coding/coded/ALL.jsonl",
+    "confidence_gate": "high",
+    "note": "Used only by compute-kappa.py; never embedded in the blind sample or label.html."
+  },
+  "files": {
+    "blind_sample": {
+      "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/calibration/blind-sample.jsonl",
+      "sha256": "4d2bae284a62519958f445384708e097c79e3f7674a21f757f1812a0f61880a4"
+    },
+    "mapping": {
+      "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/calibration/mapping.json",
+      "sha256": "940c58dc1b69f62b5919d3bf171c68ac74c7cd4469275530a0f608142853cf2b"
+    },
+    "label_html": {
+      "path": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/calibration/label.html",
+      "sha256": "58d0895e237b1a784fed38bd54b894289a82e5d386935cfc13016b92c901e9b1"
+    }
+  }
+}

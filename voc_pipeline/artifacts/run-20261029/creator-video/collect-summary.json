@@ -1,0 +1,236 @@
+{
+  "schema_version": "voc_creator_video_collection_summary_v1",
+  "generated_at": "2026-10-30T16:30:18+00:00",
+  "target": {
+    "product_id": "1729474995478630680",
+    "product_name": "Momcozy Pregnancy Belly Band YB001 / CozySupport Ergonest",
+    "region": "US"
+  },
+  "calls": {
+    "total": 124,
+    "success": 121,
+    "failed": 3,
+    "by_endpoint": {
+      "tikhub_tiktok_video_search": {
+        "calls": 12,
+        "success": 12,
+        "failed": 0
+      },
+      "tikhub_tiktok_video_detail": {
+        "calls": 60,
+        "success": 59,
+        "failed": 1
+      },
+      "tikhub_tiktok_user_profile_web": {
+        "calls": 50,
+        "success": 50,
+        "failed": 0
+      },
+      "tikhub_tiktok_product_related_videos": {
+        "calls": 1,
+        "success": 0,
+        "failed": 1
+      },
+      "tikhub_tiktok_video_products": {
+        "calls": 1,
+        "success": 0,
+        "failed": 1
+      }
+    },
+    "audited_success": 120,
+    "audited_failed": 4,
+    "audit_note": "raw payload shape audit; HTTP 200 with provider error is counted as failed",
+    "audited_failures": [
+      {
+        "raw_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/fetch-post-detail-7675284750004702494.json",
+        "endpoint_type": "tikhub_tiktok_video_detail",
+        "status": "provider_error",
+        "provider_code": 400,
+        "provider_message": "Request failed. Please retry. Check the docs below to verify your parameters, test with the default demo parameters, and send the response JSON to support. You won't be charged for this request.",
+        "charged_note": "provider says not charged"
+      },
+      {
+        "raw_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/fetch-user-profile-ashmashpotato7.json",
+        "endpoint_type": "tikhub_tiktok_user_profile_web",
+        "status": "provider_error",
+        "provider_code": 10221,
+        "provider_message": "",
+        "charged_note": null
+      },
+      {
+        "raw_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/get-product-related-videos-no-cookie-probe.json",
+        "endpoint_type": "tikhub_tiktok_product_related_videos",
+        "status": "provider_error",
+        "provider_code": 98001002,
+        "provider_message": "no login",
+        "charged_note": null
+      },
+      {
+        "raw_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/get-video-associated-product-list-no-cookie-probe.json",
+        "endpoint_type": "tikhub_tiktok_video_products",
+        "status": "provider_error",
+        "provider_code": 98001002,
+        "provider_message": "no login",
+        "charged_note": null
+      }
+    ]
+  },
+  "counts": {
+    "search_queries": 12,
+    "unique_videos_seen": 141,
+    "relevant_videos": 119,
+    "exact_target_product_videos": 10,
+    "exact_other_product_videos": 34,
+    "videos_with_detail": 59,
+    "unique_creators_from_details": 52,
+    "creators_with_profile": 49,
+    "videos_with_snapshot": 59,
+    "videos_with_derived_engagement": 59,
+    "creators_rows": 52,
+    "videos_with_search_snapshot": 141,
+    "videos_with_detail_snapshot": 59,
+    "unique_authors_in_search_sample": 124,
+    "anchor_verified_videos": 37,
+    "anchor_verified_authors": 30,
+    "exact_other_product_category_videos": 27,
+    "exact_other_product_unrelated_videos": 7,
+    "anchor_verified_any_product_videos": 44
+  },
+  "cost": {
+    "session_start_balance_usd": 37.446,
+    "collection_assumed_usd": 0.124,
+    "collection_measured_usd": 0.123,
+    "session_total_measured_usd": 0.13,
+    "assumption": "0.001 USD per paid call; measured is the sum of per-call balance deltas and may be 0 when the balance display lags",
+    "hard_budget_usd": 10.0,
+    "soft_budget_usd": 2.0,
+    "pre_collection_probe_calls": 7,
+    "pre_collection_probe_cost_measured_usd": 0.007,
+    "pre_collection_probe_note": "balance 37.446 -> 37.439 after 5 shape probes and 2 no-cookie endpoint probes",
+    "audited_assumed_usd": 0.123,
+    "audited_note": "one detail call returned detail.code=400 and the provider says it was not charged; audited_assumed_usd subtracts that one 0.001 assumption"
+  },
+  "stop_reason": "completed",
+  "blocked_endpoints": [
+    {
+      "endpoint": "/api/v1/tiktok/creator/get_product_related_videos",
+      "endpoint_type": "tikhub_tiktok_product_related_videos",
+      "label": "get_product_related_videos",
+      "http_status": 200,
+      "provider_code": 98001002,
+      "provider_message": "no login",
+      "raw_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/get-product-related-videos-no-cookie-probe.json",
+      "paid": true,
+      "reason": "TIKHUB_TIKTOK_CREATOR_COOKIE absent"
+    },
+    {
+      "endpoint": "/api/v1/tiktok/creator/get_video_associated_product_list",
+      "endpoint_type": "tikhub_tiktok_video_products",
+      "label": "get_video_associated_product_list",
+      "http_status": 200,
+      "provider_code": 98001002,
+      "provider_message": "no login",
+      "raw_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/get-video-associated-product-list-no-cookie-probe.json",
+      "paid": true,
+      "reason": "TIKHUB_TIKTOK_CREATOR_COOKIE absent"
+    }
+  ],
+  "evidence_gaps": [
+    "product_id -> video list endpoint: not available without TIKHUB_TIKTOK_CREATOR_COOKIE (provider code 98001002 no login)",
+    "get_product_related_videos play_count: endpoint does not return play_count; per-video fetch_post_detail is required",
+    "product review -> video link: no video_id/aweme_id/item_id in 175 canonical reviews or 180 raw reviews; 0% joinable",
+    "video GMV / orders / conversion: only available to the logged-in creator via get_video_to_product_stats; not available for third-party videos",
+    "creator audience demographics (gender/age/region): only available to the logged-in creator via get_video_audience_stats",
+    "video captions/transcripts: TikHub has no subtitle endpoint; only Apify",
+    "18 SKU count and 22,140 sales: not present in current review raw; needs a product-detail source",
+    "exhaustive product video list: keyword search pagination is broken (cursor repeats page 1), so the product video index is a sample",
+    "creator follower_count in fetch_post_detail: null; fetch_user_profile is required",
+    "duplicate product listings: multiple product IDs share the same Momcozy YB001 / CozySupport Ergonest title; target-product video coverage may be undercounted because IDs are not merged"
+  ],
+  "search_pagination": {
+    "has_more_field": "present",
+    "cursor_behavior": "cursor=20 returned the same items as cursor=0 for 'momcozy belly band'",
+    "conclusion": "pagination not usable; multiple keywords/sort orders were used instead"
+  },
+  "files": {
+    "collect_log": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/collect-log.jsonl",
+    "raw_dir": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw",
+    "video_details": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/video-details.json",
+    "creators": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/creators.json",
+    "video_snapshots": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/video-snapshots.json",
+    "product_videos": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/product-videos-page-1.json",
+    "video_products": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/raw/video-products.json",
+    "baseline": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/baseline.json"
+  },
+  "derived_outputs": {
+    "video_products_rows": 54,
+    "product_index_target_videos": 10,
+    "product_index_category_other_videos": 27,
+    "product_index_unrelated_videos": 7,
+    "creators_rows": 52,
+    "video_snapshot_rows": 141,
+    "baseline_cohorts": {
+      "product_exact_baseline": 10,
+      "category_anchor_verified_baseline": 36,
+      "category_anchor_verified_organic_only": 9
+    },
+    "note": "baseline is directional only; see baseline.json caveats"
+  },
+  "coverage": {
+    "search_videos": 141,
+    "relevant_videos": 119,
+    "detail_call_cap": 60,
+    "videos_with_detail": 59,
+    "videos_without_detail": 82,
+    "detail_selection_rule": "exact anchor matches first, then text matches by search play_count",
+    "profile_call_cap": 50,
+    "profiles_collected": 49,
+    "note": "detail and profile caps are per-run limits, not provider limits"
+  },
+  "product_id_ambiguity": {
+    "target_product_id": "1729474995478630680",
+    "anchor_video_counts_by_product_id": {
+      "1729625924185592807": 17,
+      "1729474995478630680": 10,
+      "1732502417927016968": 2,
+      "1729418521614390247": 2,
+      "1731535129224909799": 2,
+      "1732374724804449255": 2,
+      "1731173719897772478": 1,
+      "1732541448039927904": 1,
+      "1729495174330226663": 1,
+      "1732700748265132654": 1,
+      "1732590553081221683": 1,
+      "1732432287841292426": 1,
+      "1731287236556526567": 1,
+      "1729388676811101159": 1,
+      "1731284198265361383": 1,
+      "1729598425179198439": 1,
+      "1732296883027350503": 1,
+      "1732678550099760103": 1,
+      "1732563449694819303": 1,
+      "1732303350013662183": 1,
+      "1732314434771588071": 1,
+      "1732305003233711079": 1,
+      "1731936198233068519": 1,
+      "1731313842477830424": 1,
+      "1732380923767001368": 1
+    },
+    "anchor_video_counts_note": "unique videos per product ID, not row counts",
+    "note": "Several product IDs carry similar Momcozy YB001-series titles. They are kept as separate IDs and are not merged into the target-product baseline.",
+    "same_series_other_product_ids": [
+      "1729495174330226663",
+      "1729625924185592807",
+      "1731287236556526567"
+    ]
+  },
+  "association_tiers": {
+    "exact_target_product": "anchor product_id == target; product and category baseline eligible",
+    "exact_other_product_category": "anchor product_id is not target but the anchor title matches the belly-band category; category baseline eligible",
+    "exact_other_product_unrelated": "anchor product_id is not target and the title is not belly-band; excluded from both baselines",
+    "text_match_brand_and_category": "no anchor; brand and category words in caption/hashtags; excluded from baselines",
+    "text_match_category_only": "no anchor; category words only; excluded from baselines",
+    "text_match_brand_only": "no anchor; brand words only; excluded from baselines",
+    "none": "no brand, category or anchor match; excluded"
+  }
+}

@@ -1,0 +1,332 @@
+{
+ "frame_inventory": {
+  "counts": {
+   "natural": 149,
+   "diagnostic": 8,
+   "qualitative_seed": 100,
+   "tiktok_shop_verified": 175
+  },
+  "overlap": {
+   "natural+diagnostic": 8,
+   "natural+qualitative_seed": 1
+  },
+  "distinct_records": 423
+ },
+ "aspect_polarity_counts": {
+  "ACT.COMPATIBILITY": {
+   "positive": 6
+  },
+  "ADJ.DONNING": {
+   "positive": 3,
+   "negative": 1
+  },
+  "ADJ.RANGE_TENSION": {
+   "negative": 1,
+   "positive": 1
+  },
+  "ADJ.STRAP_DESIGN": {
+   "positive": 3,
+   "negative": 2
+  },
+  "APP.LOW_PROFILE": {
+   "positive": 1
+  },
+  "APP.UNDER_CLOTHING": {
+   "positive": 2,
+   "negative": 1
+  },
+  "COM.BREATHABILITY_HEAT": {
+   "negative": 1,
+   "positive": 1
+  },
+  "COM.GENERAL": {
+   "negative": 3,
+   "positive": 12
+  },
+  "COM.PRESSURE_DIGGING": {
+   "positive": 1,
+   "negative": 1
+  },
+  "COM.SKIN_CHAFE": {
+   "negative": 1
+  },
+  "COM.SOFTNESS": {
+   "positive": 7,
+   "negative": 1
+  },
+  "COM.WEAR_TOLERANCE": {
+   "positive": 1
+  },
+  "CX.RETURN_EXCHANGE": {
+   "negative": 1
+  },
+  "FIT.BODY_SHAPE": {
+   "negative": 1
+  },
+  "FIT.COVERAGE": {
+   "negative": 1
+  },
+  "FIT.GROWTH_RANGE": {
+   "positive": 2
+  },
+  "FIT.SIZE_ACCURACY": {
+   "positive": 5,
+   "negative": 4
+  },
+  "FUL.PRODUCT_CONDITION": {
+   "negative": 1,
+   "positive": 1
+  },
+  "GEN.OVERALL_EVALUATION": {
+   "positive": 32,
+   "negative": 4
+  },
+  "STB.STAY_IN_PLACE": {
+   "positive": 4,
+   "negative": 6
+  },
+  "STB.STRAP_POSITION": {
+   "negative": 1
+  },
+  "SUP.BACK": {
+   "negative": 4,
+   "positive": 15
+  },
+  "SUP.BELLY_LIFT": {
+   "positive": 4
+  },
+  "SUP.GENERAL": {
+   "positive": 13,
+   "negative": 2
+  },
+  "SUP.PRESSURE_OFFLOAD": {
+   "negative": 1,
+   "positive": 10
+  },
+  "VAL.PRICE_VALUE": {
+   "negative": 2,
+   "positive": 2
+  }
+ },
+ "annotation_totals": {
+  "context": 208,
+  "medical": 102,
+  "aspect": 166,
+  "journey": 84,
+  "outcome": 33
+ },
+ "eligible_records": 303,
+ "eligible_by_frame": {
+  "natural": 127,
+  "diagnostic": 6,
+  "qualitative_seed": 2,
+  "tiktok_shop_verified": 175
+ },
+ "contracts": [
+  {
+   "metric_id": "natural_support_negative_share",
+   "frame": "natural",
+   "numerator_rule": "records with >=1 SUP/FIT/STB negative annotation",
+   "denominator_rule": "eligible natural canonical consumer records with >=1 aspect annotation",
+   "filters": {
+    "product_match": [
+     "exact_current_family",
+     "category_adjacent"
+    ],
+    "commerciality": [
+     "no_signal_observed"
+    ],
+    "content_role": [
+     "consumer_experience"
+    ]
+   },
+   "qa_state": "blocked_g7_not_executed"
+  },
+  {
+   "metric_id": "natural_comfort_positive_share",
+   "frame": "natural",
+   "numerator_rule": "records with >=1 COM/APP positive annotation",
+   "denominator_rule": "eligible natural canonical consumer records with >=1 aspect annotation",
+   "filters": {
+    "product_match": [
+     "exact_current_family",
+     "category_adjacent"
+    ]
+   },
+   "qa_state": "blocked_g7_not_executed"
+  },
+  {
+   "metric_id": "tiktok_support_direction_share",
+   "frame": "tiktok_shop_verified",
+   "numerator_rule": "verified-purchase records whose support-family annotations agree on one direction",
+   "denominator_rule": "verified-purchase records with >=1 decisive SUP.* annotation in the review window; one record contributes at most one direction",
+   "filters": {
+    "verified_purchase": [
+     true
+    ],
+    "identity_noise": [
+     "excluded"
+    ],
+    "window": [
+     "2026-07-01",
+     "2026-10-29"
+    ]
+   },
+   "qa_state": "blocked_g7_not_executed"
+  }
+ ],
+ "metric_rows": [],
+ "g7_status": "BLOCKED",
+ "zero_metric_row_reason": "G7 未执行：没有第二编码员与逐字段 agreement，正式指标行按 fail-closed 记为 0。",
+ "cooccurrence": {
+  "comfort_positive_records": 3,
+  "comfort_positive_with_friction": 1,
+  "friction_negative_records": 2,
+  "both_records": 1,
+  "total_annotated_records": 4,
+  "full": {
+   "comfort_positive_records": 2,
+   "comfort_positive_with_friction": 1,
+   "friction_negative_records": 1,
+   "both_records": 1,
+   "total_annotated_records": 2
+  },
+  "partial": {
+   "comfort_positive_records": 1,
+   "comfort_positive_with_friction": 0,
+   "friction_negative_records": 1,
+   "both_records": 0,
+   "total_annotated_records": 2
+  },
+  "pooled": {
+   "comfort_positive_records": 3,
+   "comfort_positive_with_friction": 1,
+   "friction_negative_records": 2,
+   "both_records": 1,
+   "total_annotated_records": 4
+  },
+  "rows": [
+   {
+    "canonical_id": "c-1opsx7o",
+    "comfort_positive": [
+     "COM.SOFTNESS"
+    ],
+    "friction_negative": [
+     "SUP.BACK"
+    ],
+    "both": true,
+    "cross_product": false,
+    "product_labels": [
+     "frida",
+     "keababies",
+     "momcozy"
+    ],
+    "experience_scope": "full",
+    "text": "I started having noticeable lower back pain around 26 weeks of pregnancy, and my midwife suggested trying a pregnancy belly band. There are so many options out there, it can be really overwhelming. Every mom’s body and pregnancy are differe",
+    "subreddit": "BabyBumps"
+   },
+   {
+    "canonical_id": "c-19rm4lmi0oa78",
+    "comfort_positive": [
+     "APP.UNDER_CLOTHING"
+    ],
+    "friction_negative": [],
+    "both": false,
+    "cross_product": false,
+    "product_labels": [],
+    "experience_scope": "partial",
+    "text": "I loved wearing clothes that showed off my belly. I thought crop tops were so cute. Even a cute Lil sweater over a bodysuit/romper was sooo cute. I could wear my belly band and no one could tell.",
+    "subreddit": "pregnant"
+   },
+   {
+    "canonical_id": "c-1rqq680",
+    "comfort_positive": [
+     "COM.GENERAL"
+    ],
+    "friction_negative": [],
+    "both": false,
+    "cross_product": false,
+    "product_labels": [],
+    "experience_scope": "full",
+    "text": "A friend of mine recently had her baby and gave me the maternity belly band she used during her pregnancy since she thought I might need it soon. Just what I needed! Before that though, I had already picked up a couple of belly bands myself",
+    "subreddit": "fitpregnancy"
+   },
+   {
+    "canonical_id": "c-1sn9hb1",
+    "comfort_positive": [],
+    "friction_negative": [
+     "SUP.BACK"
+    ],
+    "both": false,
+    "cross_product": false,
+    "product_labels": [],
+    "experience_scope": "partial",
+    "text": "I have no idea if what I’m feeling is just normal or if I really am having those early signs of going into labor soon that I keep hearing people talk about\n\nAll week I’ve been experiencing on and off contractions, especially at night when I",
+    "subreddit": "BabyBumps"
+   }
+  ]
+ },
+ "aspect_polarity_counts_natural": {
+  "ACT.COMPATIBILITY": {
+   "positive": 1
+  },
+  "ADJ.STRAP_DESIGN": {
+   "positive": 1
+  },
+  "APP.UNDER_CLOTHING": {
+   "positive": 1
+  },
+  "COM.BREATHABILITY_HEAT": {
+   "negative": 1
+  },
+  "COM.GENERAL": {
+   "negative": 1,
+   "positive": 1
+  },
+  "COM.SOFTNESS": {
+   "positive": 1,
+   "negative": 1
+  },
+  "GEN.OVERALL_EVALUATION": {
+   "positive": 3
+  },
+  "STB.STAY_IN_PLACE": {
+   "positive": 2
+  },
+  "SUP.BACK": {
+   "negative": 2,
+   "positive": 4
+  },
+  "SUP.GENERAL": {
+   "positive": 3
+  },
+  "SUP.PRESSURE_OFFLOAD": {
+   "negative": 1,
+   "positive": 2
+  }
+ },
+ "diversity": {
+  "distinct_authors": 404,
+  "distinct_subreddits": 4,
+  "distinct_records": 423,
+  "subreddit_counts": {
+   "": 175,
+   "BabyBumps": 173,
+   "fitpregnancy": 50,
+   "pregnant": 25
+  }
+ },
+ "product_match_counts": {
+  "irrelevant": 19,
+  "category_adjacent": 121,
+  "exact_current_family": 185,
+  "brand_other_product": 98
+ },
+ "eligibility_counts": {
+  "excluded_irrelevant": 19,
+  "natural_sample_candidate": 126,
+  "qualitative_seed_only": 100,
+  "excluded_low_information": 3,
+  "tiktok_verified_candidate": 175
+ }
+}

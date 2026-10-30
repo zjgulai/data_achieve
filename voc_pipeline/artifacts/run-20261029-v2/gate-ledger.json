@@ -1,0 +1,260 @@
+{
+ "schema_version": "voc_gate_ledger_v1",
+ "generated_at": "2026-10-30T14:38:56+00:00",
+ "gates": [
+  {
+   "gate_id": "G0",
+   "name": "Decision Charter",
+   "status": "CONDITIONAL",
+   "accept": [
+    "唯一 decision owner 与唯一决策问题被命名",
+    "每个 frame 有 purpose 与 denominator rule",
+    "exact-variant metric 声明需要 verified review-variant 证据",
+    "QA 阈值是数值且按字段区分",
+    "外部调用与发布边界显式",
+    "stop condition 可机器检查"
+   ],
+   "rollback": "产品范围、决策 owner、市场、发布边界或预算变化时回到 G0。",
+   "fail_closed": [
+    "任何采集",
+    "任何对外发布"
+   ],
+   "owner": "business decision owner"
+  },
+  {
+   "gate_id": "G1",
+   "name": "Product Identity",
+   "status": "PASS",
+   "accept": [
+    "target SKU 与 variant 显式",
+    "marketplace parent / child 角色分离",
+    "legacy 与 adjacent 被隔离",
+    "每个 mapping 带证据、时间戳、confidence 与 review status"
+   ],
+   "rollback": "出现新 child ASIN、SKU、bundle、颜色、尺码或 legacy 映射变化时回到 G1。",
+   "fail_closed": [
+    "exact-variant metric",
+    "variant-specific 结论"
+   ],
+   "owner": "research lead + catalog owner"
+  },
+  {
+   "gate_id": "G2",
+   "name": "Source and Rights Audit",
+   "status": "CONDITIONAL",
+   "accept": [
+    "每个来源有 rights 与 privacy 状态",
+    "商业与创作者内容被隔离出 organic consumer metric",
+    "allowed / forbidden use 显式",
+    "blocked source 不能进入下游分母"
+   ],
+   "rollback": "endpoint、权利状态、披露、访问路径或发布用途变化时回到 G2。",
+   "fail_closed": [
+    "blocked source 的记录进入 metric row"
+   ],
+   "owner": "legal / privacy owner"
+  },
+  {
+   "gate_id": "G3",
+   "name": "Source Pilot",
+   "status": "PASS",
+   "accept": [
+    "run 之前已有 inspect 记录",
+    "成本在 G0 上限内",
+    "raw 响应不可变且与 ledger 关联",
+    "conditional source 有显式 limitation 与 next action"
+   ],
+   "rollback": "权利/角色问题回 G2；产品不匹配回 G1；预算或范围变化回 G0。",
+   "fail_closed": [
+    "扩量采集"
+   ],
+   "owner": "research lead"
+  },
+  {
+   "gate_id": "G4",
+   "name": "Taxonomy Freeze",
+   "status": "PASS",
+   "accept": [
+    "定义与 include / exclude 完整",
+    "unknown 与 negative / absent 分开",
+    "mixed 保留正负两个 component",
+    "machine contract 定义合法枚举与 exact-variant 谓词",
+    "G7 plan 读取 G0 阈值并把风险建模为 coverage",
+    "pilot migration 与 source inventory 对账"
+   ],
+   "rollback": "反复不可编码证据或 code collision 超过阈值时，带新 taxonomy 版本回到 G4。",
+   "fail_closed": [
+    "G5 扩量",
+    "任何 prevalence"
+   ],
+   "owner": "taxonomy owner + research lead"
+  },
+  {
+   "gate_id": "G5",
+   "name": "Stratified Collection",
+   "status": "PASS",
+   "accept": [
+    "每个 raw object 可追溯到一个批准请求",
+    "missing 与 zero-result cell 保持可见",
+    "frame membership 显式且可重叠不重复计数",
+    "成本与记录总数对账"
+   ],
+   "rollback": "endpoint 漂移回 G3；权利漂移回 G2；产品匹配恶化回 G1。",
+   "fail_closed": [
+    "G6"
+   ],
+   "owner": "collection operator"
+  },
+  {
+   "gate_id": "G6",
+   "name": "Canonicalize and Deduplicate",
+   "status": "PASS",
+   "accept": [
+    "raw / occurrence / canonical / membership 数互不混用",
+    "每个 canonical 至少链接一个 occurrence",
+    "每条记录满足 canonical schema 与 G4 enum",
+    "每个 duplicate group 恰好一个代表",
+    "metric eligibility 与 exclusion 机器可读",
+    "代表选择确定性可复现"
+   ],
+   "rollback": "新来源暴露新重复组或规范化规则变化时回到 G6，并保留旧版本。",
+   "fail_closed": [
+    "G7",
+    "任何以 canonical 数当消费者数的表述"
+   ],
+   "owner": "data engineer"
+  },
+  {
+   "gate_id": "G7",
+   "name": "Coding Calibration",
+   "status": "BLOCKED",
+   "accept": [
+    "core semantic agreement 达到 charter 阈值",
+    "identity / governance 达到更高阈值",
+    "risk 与 boundary case 100% review",
+    "未达标字段阻断 metric view"
+   ],
+   "rollback": "定义失败回 G4；血缘失败回 G6；codebook 有界修订后重跑 G7。",
+   "fail_closed": [
+    "G8",
+    "任何 formal metric row"
+   ],
+   "owner": "coding lead + independent second coder"
+  },
+  {
+   "gate_id": "G8",
+   "name": "Insight Analysis",
+   "status": "BLOCKED",
+   "accept": [
+    "所有指标可从命名记录复现",
+    "sample-frame 分母不静默混合",
+    "diagnostic sample 不产生 prevalence claim",
+    "每个 headline insight 含反证与 confidence"
+   ],
+   "rollback": "编码可靠性回 G7；重复回 G6；缺失 cell 回 G5；决策变化回 G0。",
+   "fail_closed": [
+    "G9"
+   ],
+   "owner": "analyst"
+  },
+  {
+   "gate_id": "G9",
+   "name": "Strategy Activation",
+   "status": "BLOCKED",
+   "accept": [
+    "每个行动追溯到一条或多条洞察",
+    "每个实验有 owner、KPI、guardrail、stop",
+    "医学与安全边界已 review",
+    "approval 状态显式"
+   ],
+   "rollback": "证据解释变化回 G8；业务决策变化回 G0。",
+   "fail_closed": [
+    "G10"
+   ],
+   "owner": "product / growth owner"
+  },
+  {
+   "gate_id": "G10",
+   "name": "Measurement Review",
+   "status": "NOT_STARTED",
+   "accept": [
+    "outcome 与 guardrail 数据对账",
+    "因果措辞与设计匹配",
+    "decision 与 rollback 被记录",
+    "refresh trigger 有 owner 与到期日"
+   ],
+   "rollback": "使用最早受影响 gate；不得在上游漂移后补丁式修改下游指标。",
+   "fail_closed": [
+    "对外结果声明"
+   ],
+   "owner": "experiment owner"
+  }
+ ],
+ "stage_boundary": {
+  "G6_complete": true,
+  "G7_executed": false,
+  "G8_authorized": false,
+  "consumer_metric_rows": 0
+ },
+ "does_not_authorize": [
+  "overall consumer sentiment rates",
+  "Love versus Complaint prevalence",
+  "cross-frame percentage comparison",
+  "annotation hits as people",
+  "Amazon star distribution as consumer sentiment",
+  "medical efficacy, safety, diagnosis or causality",
+  "formal strategy prioritization without G9 approval"
+ ],
+ "evidence_summary": {
+  "variant_count_live": 18,
+  "raw_objects": 430,
+  "occurrences": 430,
+  "canonical_records": 423,
+  "frame_memberships": 432,
+  "annotations": 593,
+  "metric_rows": 0,
+  "tiktok_shop_verified": {
+   "frame": "tiktok_shop_verified",
+   "raw_object": {
+    "count": 180,
+    "note": "成功响应里的 provider rows"
+   },
+   "occurrence": {
+    "count": 180,
+    "deductions": {
+     "duplicate_external_id": 0
+    }
+   },
+   "canonical": {
+    "count": 175,
+    "deductions": {
+     "product_mismatch": 1,
+     "out_of_window": 4
+    }
+   },
+   "frame_membership": {
+    "count": 175,
+    "deductions": {},
+    "note": "单 frame 记录；跨 frame 重叠不计入本 frame"
+   },
+   "annotation": {
+    "count": 242,
+    "unit": "annotation hits（多标签）",
+    "record_deductions": {
+     "no_text_low_information": 93,
+     "language_uncodable": 1,
+     "no_decisive_aspect": 12
+    },
+    "records_with_decisive_aspect": 69
+   },
+   "metric_row": {
+    "count": 0,
+    "reason": "G7 BLOCKED：没有第二编码员与逐字段 agreement"
+   },
+   "balance": {
+    "occurrence_to_canonical": true,
+    "annotation_records": true
+   }
+  }
+ }
+}

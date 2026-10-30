@@ -1,0 +1,75 @@
+{
+ "grades": {
+  "Confirmed": 8,
+  "Evidence gap": 4,
+  "Blocked": 2,
+  "Not authorized": 1,
+  "Directional": 1
+ },
+ "claims": [
+  {
+   "claim_id": "C01",
+   "grade": "Confirmed"
+  },
+  {
+   "claim_id": "C02",
+   "grade": "Confirmed"
+  },
+  {
+   "claim_id": "C03",
+   "grade": "Evidence gap"
+  },
+  {
+   "claim_id": "C11",
+   "grade": "Confirmed"
+  },
+  {
+   "claim_id": "C04",
+   "grade": "Confirmed"
+  },
+  {
+   "claim_id": "C05",
+   "grade": "Evidence gap"
+  },
+  {
+   "claim_id": "C07",
+   "grade": "Blocked"
+  },
+  {
+   "claim_id": "C08",
+   "grade": "Not authorized"
+  },
+  {
+   "claim_id": "C10",
+   "grade": "Blocked"
+  },
+  {
+   "claim_id": "C12",
+   "grade": "Confirmed"
+  },
+  {
+   "claim_id": "C13",
+   "grade": "Directional"
+  },
+  {
+   "claim_id": "C14",
+   "grade": "Confirmed"
+  },
+  {
+   "claim_id": "C15",
+   "grade": "Confirmed"
+  },
+  {
+   "claim_id": "C16",
+   "grade": "Evidence gap"
+  },
+  {
+   "claim_id": "C17",
+   "grade": "Confirmed"
+  },
+  {
+   "claim_id": "C18",
+   "grade": "Evidence gap"
+  }
+ ]
+}

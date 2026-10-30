@@ -1,0 +1,365 @@
+[
+ {
+  "claim_id": "C01",
+  "section": "identity",
+  "headline": "线上商品页当前列出 18 个在售 ASIN 变体，商品身份本身是清楚的，但变体集合已经需要重新冻结。",
+  "grade": "Confirmed",
+  "grade_reason": "规则4 命中：直接事实 + sha256[0:12]=f510c2ff685c + exact_identity=True + inference=False。",
+  "counts": {
+   "n_records": 18,
+   "n_authors": 0,
+   "agreement_pct": 100.0
+  },
+  "observed": "抓取 Amazon PDP：父 ASIN B0H8LVJ81X，子 ASIN B0HC2FG4QC，标题包含 CozySupport 3D Ergonest；页面解析出 18 个 ASIN → 颜色/尺码组合。",
+  "interpretation": "商品身份字段可核对，但变体数与 2026-09-23 归档中的 12 个 family children 不一致；归档不是当前事实。",
+  "counterevidence": "PDP 会随会话、地区和库存变化；单次抓取不能证明所有变体在任何时点都可售。",
+  "decision": "在任何 variant-specific 结论之前重跑 G1，并把变体矩阵版本化。",
+  "basis": "amazon-identity-raw.json + PDP HTML sha256",
+  "unit": "ASIN / 变体组合",
+  "limit": "单时点、单地区（US）、未登录会话",
+  "status": "Confirmed · fetched 2026-10-29T14:20:36.096076+00:00",
+  "records": [],
+  "numbers": {
+   "live_variants": 18,
+   "prior_archived_children": 12
+  }
+ },
+ {
+  "claim_id": "C02",
+  "section": "corpus",
+  "headline": "本轮把 430 条 provider 记录收敛为 430 条 occurrence 和 423 条 canonical，扣减全部带理由。",
+  "grade": "Confirmed",
+  "grade_reason": "规则4 命中：直接事实 + sha256[0:12]=c11f459cd859 + exact_identity=True + inference=False。",
+  "counts": {
+   "n_records": 423,
+   "n_authors": 404,
+   "agreement_pct": 100.0
+  },
+  "observed": "raw objects 430；occurrence 去重扣除 0 条同 frame 重复；canonical 合并 7 条重复内容。",
+  "interpretation": "四层计数各不相同，不能把任何一个数当成消费者人数。",
+  "counterevidence": "样本来自关键词检索而非概率抽样，缺席记录不代表不存在。",
+  "decision": "报告只使用 canonical 与 frame 数，不把覆盖当成逐级转化。",
+  "basis": "collection-run-ledger.json + occurrences + canonical-records",
+  "unit": "条 / 记录",
+  "limit": "关键词与 subreddit 选择决定召回；未做全站抽样",
+  "status": "Confirmed · 自建 ledger 可复算",
+  "records": [],
+  "numbers": {
+   "raw_objects": 430,
+   "occurrences_raw": 430,
+   "occurrences_deduplicated": 430,
+   "canonical_records": 423,
+   "frame_memberships": 432
+  }
+ },
+ {
+  "claim_id": "C03",
+  "section": "coverage",
+  "headline": "提到 Momcozy 的记录有 109 条，其中与支撑带相关的 10 条，提到 Ergonest / CozySupport 型号的有 1 条，其中属于本人使用体验的 0 条。",
+  "grade": "Evidence gap",
+  "grade_reason": "规则3 命中：required_cell_count=0、required_field_missing_rate=0.00；该格没有记录。",
+  "counts": {
+   "n_records": 0,
+   "n_authors": 0,
+   "agreement_pct": null
+  },
+  "observed": "关键词 momcozy 命中 109 条 canonical；product_match=exact_current_family 的 10 条；直接讨论 belly band 的 11 条。",
+  "interpretation": "品牌被提及不等于型号被评价；不能把品牌级讨论转移到具体 SKU。",
+  "counterevidence": "Reddit 不是 Amazon 评论的替代品，购买者更可能在商品页留言。",
+  "decision": "补 exact-variant 评论层，或在报告中保持型号级空白。",
+  "basis": "canonical-records.jsonl（product_match / brand_mention）",
+  "unit": "canonical records",
+  "limit": "仅 Reddit；Amazon 评论正文本轮不可得",
+  "status": "Evidence gap · 缺 exact-variant 评论层",
+  "records": [
+   "c-1x3t1a8",
+   "c-1svdohq",
+   "c-1sg2gon",
+   "c-1opsx7o",
+   "c-1ok0mye"
+  ],
+  "numbers": {
+   "momcozy_records": 109,
+   "momcozy_band_records": 10,
+   "exact_like": 11,
+   "exact_model_mentions": 1,
+   "exact_model_experience": 0
+  }
+ },
+ {
+  "claim_id": "C11",
+  "section": "coverage",
+  "headline": "131 条与支撑带相关的记录里，journey/outcome 标注可判为本人使用或效果相关的有 34 条；这是单编码覆盖计数，不是人工确认的使用人数，其余 97 条没有这类标注。",
+  "grade": "Confirmed",
+  "grade_reason": "规则4 命中：直接事实 + sha256[0:12]=c11f459cd859 + exact_identity=True + inference=False。",
+  "counts": {
+   "n_records": 34,
+   "n_authors": 34,
+   "agreement_pct": null
+  },
+  "observed": "与支撑带相关的 canonical 131 条；其中 journey 为使用/首次穿戴/护理/退换/推荐，或 outcome 非 unknown 的 34 条。该计数是单编码标注命中，不等于人工确认的购买者。",
+  "interpretation": "关键词检索召回的是提问者多于购买者；这 34 条只能用于 coverage 与补采设计，不能估计体验分布，也不能当作购买者人数。",
+  "counterevidence": "提问帖仍包含场景、孕周与需求信息，对下一轮采集设计有价值。",
+  "decision": "补评论层或购买者社区；在此之前报告只输出计数事实、证据缺口与建议。",
+  "basis": "coded-corpus.jsonl（journey / outcome 单值 rollup；单编码判定）",
+  "unit": "canonical records",
+  "limit": "journey/outcome 为单编码判定，未人工复核；不是购买者身份",
+  "status": "Confirmed · 计数事实",
+  "records": [],
+  "numbers": {
+   "relevant_records": 131,
+   "journey_or_outcome_records": 34,
+   "journey_or_outcome_share": 0.26
+  }
+ },
+ {
+  "claim_id": "C04",
+  "section": "friction",
+  "headline": "自然样本的本人使用体验里（full 7 / partial 30），支撑负向 pooled 3 次（full 1、partial 2）、尺码/适配 0 次、稳定性 0 次、价格价值 0 次；含四类摩擦的记录 pooled 3 条（full 1、partial 2）。",
+  "grade": "Confirmed",
+  "grade_reason": "规则4 命中：直接事实 + sha256[0:12]=c11f459cd859 + exact_identity=True + inference=False。",
+  "counts": {
+   "n_records": 3,
+   "n_authors": 3,
+   "agreement_pct": null
+  },
+  "observed": "四类摩擦的负向标注（pooled）：支撑 3（full 1、partial 2）、尺码/适配 0、稳定性 0、价格价值 0；合计 3。natural frame 共 149 条记录，其中本人使用体验 37 条（full 7 / partial 30）、含四类摩擦负向标注的 pooled 3 条（full 1 / partial 2）。pooled 不是分布。",
+  "interpretation": "支撑类是当前自然体验语料里出现最多的摩擦面（3 次），尺码/适配类其次（0 次）；annotation hit 不是人数，也不是发生率。",
+  "counterevidence": "正向标注同时存在：舒适类正向 3 次；说明产品并非整体失败，而是条件性兑现。",
+  "decision": "把资源先放在与领先摩擦对应的可逆实验，而不是全面改款。",
+  "basis": "aspect_polarity_counts（in_experience_cohort，按 experience_scope 分层，多标签，一条记录可贡献多个标注）",
+  "unit": "aspect annotation hits / canonical records",
+  "limit": "单编码、pre-G7；不能读作 prevalence；pooled 不是分布",
+  "status": "Confirmed · 计数事实",
+  "records": [
+   "c-1opsx7o",
+   "c-1sg6gqr",
+   "c-1sn9hb1"
+  ],
+  "numbers": {
+   "support_negative": 3,
+   "support_negative_full": 1,
+   "support_negative_partial": 2,
+   "fit_negative": 0,
+   "stability_negative": 0,
+   "value_negative": 0,
+   "friction_negative_annotations": 3,
+   "all_negative_annotations": 6,
+   "friction_records": 3,
+   "friction_records_full": 1,
+   "friction_records_partial": 2,
+   "experience_natural_records": 37,
+   "experience_full_records": 7,
+   "experience_partial_records": 30,
+   "natural_records": 149,
+   "experience_dropped": 112
+  }
+ },
+ {
+  "claim_id": "C05",
+  "section": "tension",
+  "headline": "full 层共现记录：full 层（7 条本人体验）舒适正向 2 条、共现 1 条；partial 层（30 条）舒适正向 1 条、共现 0 条；pooled 3 条舒适正向、1 条共现（pooled 不是分布）（n=1，单作者）。",
+  "grade": "Confirmed",
+  "grade_reason": "规则4 命中：直接事实 + sha256[0:12]=c11f459cd859 + exact_identity=True + inference=False。",
+  "counts": {
+   "n_records": 1,
+   "n_authors": 1,
+   "agreement_pct": null
+  },
+  "observed": "full 层（7 条本人体验）舒适正向 2 条、共现 1 条；partial 层（30 条）舒适正向 1 条、共现 0 条；pooled 3 条舒适正向、1 条共现（pooled 不是分布）。",
+  "interpretation": "共现是记录级计数事实，不是普遍模式，也不是因果；本轮 full 层只有 1 条记录、1 位作者，不能写成总体共现率，也不能推断因果；把 full 与 partial 压成一个“总体情绪”会同时丢掉正向资产与条件性失败。",
+  "counterevidence": "full 层还有 1 条舒适正向记录没有出现核心摩擦；共现也不是因果，不能断言舒适设计导致支撑不足。",
+  "decision": "用 Support ladder 与 Fit chooser 分开验证，而不是改一处结构；partial 层只作语境参考。",
+  "basis": "record-level co-occurrence（in_experience_cohort，按 experience_scope 分层；COM/APP positive × SUP/FIT/STB negative；同产品守卫）",
+  "unit": "canonical records",
+  "limit": "共现为描述性；样本非概率抽样；同产品守卫；零结果不等于不存在；pooled 不是分布",
+  "status": "Confirmed · 计数事实（full 层）",
+  "records": [
+   "c-1opsx7o"
+  ],
+  "numbers": {
+   "comfort_positive_records": 3,
+   "with_friction": 1,
+   "share": 0.333,
+   "full_comfort_positive_records": 2,
+   "full_with_friction": 1,
+   "full_cooccurrence_authors": 1,
+   "partial_comfort_positive_records": 1,
+   "partial_with_friction": 0,
+   "experience_full_records": 7,
+   "experience_partial_records": 30,
+   "experience_dropped": 112
+  }
+ },
+ {
+  "claim_id": "C07",
+  "section": "gate",
+  "headline": "G7 没有执行，所以正式指标行是 0，任何比例都只能标为 Blocked。",
+  "grade": "Blocked",
+  "grade_reason": "规则2 命中：required_gate=G7 status=BLOCKED != PASS；n_records=0、n_authors=0 不能替代 gate。",
+  "counts": {
+   "n_records": 0,
+   "n_authors": 0,
+   "agreement_pct": null
+  },
+  "observed": "eligible records 303 条，但 metric rows = 0；G7 状态 BLOCKED。",
+  "interpretation": "有语料不等于有指标；准入条件缺一项就不能生成比率。",
+  "counterevidence": "若把 annotation hits 当分母，会得到看似精确但不可复现的比例。",
+  "decision": "先完成双盲编码与 agreement，再谈任何 share。",
+  "basis": "consumer-metric-view-contract + g7 gate status",
+  "unit": "metric rows",
+  "limit": "fail-closed：缺第二编码员即阻断",
+  "status": "Blocked · G7 not executed",
+  "records": [],
+  "numbers": {
+   "eligible_records": 303,
+   "metric_rows": 0
+  }
+ },
+ {
+  "claim_id": "C08",
+  "section": "medical",
+  "headline": "102 条记录含疼痛、病史或受力安全自述，这些只能进入 review queue，不能变成疗效或安全结论。",
+  "grade": "Not authorized",
+  "grade_reason": "规则1 命中：topic=medical_efficacy 属于医学/安全/因果/诊断，任何计数都不能把它降级成可发布的结论。",
+  "counts": {
+   "n_records": 102,
+   "n_authors": 97,
+   "agreement_pct": null
+  },
+  "observed": "medical self-report 命中 102 条 canonical；claim relation 仅记录 review_required。",
+  "interpretation": "自我报告描述的是体验，不是诊断、疗效或安全率。",
+  "counterevidence": "缺少临床上下文、剂量、对照与随访。",
+  "decision": "转医疗/法务 review；报告只保留描述层。",
+  "basis": "medical annotations（MED.*）",
+  "unit": "canonical records",
+  "limit": "无临床验证；不得外推",
+  "status": "Not authorized · medical/legal review required",
+  "records": [],
+  "numbers": {
+   "medical_records": 102
+  }
+ },
+ {
+  "claim_id": "C10",
+  "section": "limits",
+  "headline": "这份报告能支持方向判断，不能支持任何比率、排名或医学结论。",
+  "grade": "Blocked",
+  "grade_reason": "规则2 命中：required_gate=G7 status=BLOCKED != PASS；n_records=0、n_authors=0 不能替代 gate。",
+  "counts": {
+   "n_records": 0,
+   "n_authors": 0,
+   "agreement_pct": null
+  },
+  "observed": "G7 = BLOCKED；metric rows = 0；各结论的等级见本节下表。",
+  "interpretation": "证据成熟度是状态，不是绩效评分；升级必须先过门禁。",
+  "counterevidence": "语料规模、作者数与标注数都不能替代 agreement。",
+  "decision": "对外只发布方向与实验计划；比率、排名与医学措辞一律不发布。",
+  "basis": "gate-ledger.json + claims.json",
+  "unit": "report-level constraint",
+  "limit": "适用于本 run 的全部结论",
+  "status": "Blocked · report-level",
+  "records": [],
+  "numbers": {
+   "metric_rows": 0,
+   "g7_status": "BLOCKED"
+  }
+ },
+ {
+  "claim_id": "C12",
+  "section": "tiktok",
+  "headline": "TikTok Shop 抓取 180 条评论记录，收敛为 175 条 canonical，其中 82 条有文本、81 条可编码。",
+  "grade": "Confirmed",
+  "grade_reason": "规则4 命中：直接事实 + sha256[0:12]=c11f459cd859 + exact_identity=True + inference=False。",
+  "counts": {
+   "n_records": 175,
+   "n_authors": 168,
+   "agreement_pct": 100.0
+  },
+  "observed": "9 页成功响应，0 条重复 review_id；4 条超出窗口、1 条身份噪声被隔离后，canonical 为 175 条；verified_purchase=true 的 175 条，incentivized=true 的 0 条；评分计数 1★13 / 2★8 / 3★14 / 4★18 / 5★122。",
+  "interpretation": "评论是购买者自述，不是概率样本；星级与文本分开计数，不能合成一个总体分数。",
+  "counterevidence": "平台按 20 条/页返回掩码 reviewer 名；listing 总评论数 1137，本次只取窗口内 9 页。",
+  "decision": "把该 frame 作为第二来源接入，不替代 Reddit natural frame，也不跨 frame 比较比例。",
+  "basis": "tiktok-shop-ledger.json + tiktok-shop-reviews.jsonl",
+  "unit": "canonical records（review_id 去重后）",
+  "limit": "单商品、单地区（US）、窗口 2026-07-01 至 2026-10-29；掩码 reviewer 名",
+  "status": "Confirmed · 计数事实",
+  "records": [],
+  "numbers": {
+   "raw_rows": 180,
+   "canonical_records": 175,
+   "text_bearing": 82,
+   "text_codable_en": 81,
+   "verified_purchase_true": 175,
+   "out_of_window": 4,
+   "quarantined": 1
+  }
+ },
+ {
+  "claim_id": "C13",
+  "section": "tiktok",
+  "headline": "在 31 条对支撑方向有明确判断的 verified-purchase 评论里，27 条同向、4 条反向，方向一致度 87%，达到 Directional 门槛。",
+  "grade": "Directional",
+  "grade_reason": "规则5 命中：n_records=31（≥8）、n_authors=30（≥2）、agreement=87%（≥70%）、single_coded=True。",
+  "counts": {
+   "n_records": 31,
+   "n_authors": 30,
+   "agreement_pct": 87.1
+  },
+  "observed": "175 条 canonical 中 82 条有文本；SUP.* 的 aspect 注解命中 37 次，落在 27 条只有同向、4 条只有反向、0 条同时出现两向的记录上；51 条文本没有可判定的支撑方向。这 31 条均为 TikTok verified-purchase，不来自求助帖，全部属于 full 层。",
+  "interpretation": "方向一致度衡量同一 frame 内的编码方向，不是消费者满意程度，也不能外推为人群比例或 prevalence。",
+  "counterevidence": "0 条记录同时出现同向与反向表述，4 条只有反向；reviewer 名是平台掩码显示名，不是账号 id，作者数按掩码名去重。",
+  "decision": "把支撑方向作为可逆实验的输入；在 G7 双盲之前不写成总体比例，也不跨 frame 比较。",
+  "basis": "coded-corpus.jsonl（SUP.* aspect × polarity，单编码）",
+  "unit": "canonical records（一条记录最多计一个方向）",
+  "limit": "单编码、pre-G7；掩码作者名",
+  "status": "Directional · single-coded, pre-G7",
+  "records": [
+   "c-7701363030302459661",
+   "c-7698978357326268173",
+   "c-7696725841958553358",
+   "c-7696312642378385166",
+   "c-7695833892217997070",
+   "c-7694309204774782733",
+   "c-7692120308744128270",
+   "c-7690266633513518861"
+  ],
+  "numbers": {
+   "support_scope": "full",
+   "support_excluded_partial": 0,
+   "support_excluded_none": 0,
+   "support_same_direction": 27,
+   "support_opposite_direction": 4,
+   "support_mixed": 0,
+   "support_decisive": 31,
+   "support_no_direction": 51,
+   "support_annotation_hits": 37,
+   "direction_share": 0.871
+  }
+ },
+ {
+  "claim_id": "C14",
+  "section": "tiktok",
+  "headline": "1 条 YB003 Oyster Pink 评论被隔离在 YB001 语料之外，原因记录为 SKU 变体不匹配。",
+  "grade": "Confirmed",
+  "grade_reason": "规则4 命中：直接事实 + sha256[0:12]=14d2a68cd0eb + exact_identity=True + inference=False。",
+  "counts": {
+   "n_records": 1,
+   "n_authors": 1,
+   "agreement_pct": 100.0
+  },
+  "observed": "review_id 7700760562598151950，variant=YB003 Oyster Pink, 3XL-PRO，rating=2；该记录写入 tiktok-shop-quarantine.jsonl，未进入 canonical，也未进入任何方向计数。",
+  "interpretation": "同一 listing 的评论流会混入同店其他型号；按 SKU 规格隔离能防止身份噪声进入目标产品结论。",
+  "counterevidence": "隔离规则依赖 sku_specification / product_name 文本；若平台把型号写进其他字段，规则会漏。",
+  "decision": "保持隔离，并在每次采集后复核 quarantine 计数。",
+  "basis": "tiktok-shop-quarantine.jsonl",
+  "unit": "quarantined review records",
+  "limit": "规则判定；无人工复核",
+  "status": "Confirmed · 计数事实",
+  "records": [],
+  "numbers": {
+   "quarantined_records": 1,
+   "quarantined_in_canonical": 0
+  }
+ }
+]

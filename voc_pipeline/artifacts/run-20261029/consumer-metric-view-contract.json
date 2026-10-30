@@ -1,0 +1,34 @@
+{
+ "schema_version": "voc_consumer_metric_view_contract_v1",
+ "taxonomy_id": "VOC-BAND-v1.1",
+ "eligible_predicate": [
+  "duplicate_representative == true",
+  "data_layer == consumer_observation_fact",
+  "product_match in {exact_current_family, category_adjacent}",
+  "content_role == consumer_experience",
+  "commerciality == no_signal_observed",
+  "metric_eligibility in {natural_sample_candidate, diagnostic_sample_only, qualitative_seed_only, tiktok_verified_candidate}",
+  "organic_confidence in {high, medium}",
+  "for tiktok_shop_verified: verified_purchase == true AND identity_noise == none"
+ ],
+ "experience_cohort": {
+  "predicate": "product_match in {exact_current_family, category_adjacent} AND experience_scope in {full, partial} AND text non-empty",
+  "contract_version": "E-merge/1",
+  "note": "Consumers must not filter on experience_scope alone; off-target evaluations exist and never enter a product claim."
+ },
+ "frame_denominators": {
+  "natural": "eligible natural consumer records",
+  "diagnostic": "never used as prevalence denominator",
+  "qualitative_seed": "never used as consumer denominator",
+  "tiktok_shop_verified": "eligible verified-purchase canonical reviews in the 2026-07-01..2026-10-29 window; one direction per record; never compared with natural or diagnostic percentages"
+ },
+ "video_layer": {
+  "population": "unique videos from keyword search with a high/medium product relation",
+  "denominator": "48 baseline-eligible videos; not a probability sample",
+  "unit": "video_id; one row per video",
+  "not_mergeable_with": "tiktok_shop_verified reviews: review_id is the unit and no video join key exists",
+  "support_gate": "layer n>=8 AND bootstrap 95% CI excludes 1 AND sensitivity group n>=8"
+ },
+ "qa_state": "blocked_g7_not_executed",
+ "metric_rows_authorized": 0
+}

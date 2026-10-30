@@ -1,0 +1,78 @@
+{
+  "schema_version": "voc_creator_video_relations_v2",
+  "relation": "comment_video",
+  "status": "not_available",
+  "relation_count": 0,
+  "coverage_rate": 0.0,
+  "generated_at": "2026-10-30T18:23:43+00:00",
+  "judgment": "comment -> video relation does not exist in the current corpus; 0% of product reviews can be tied to a video_id",
+  "reason": "The 175 canonical tiktok_shop records are product reviews fetched from /api/v1/tiktok/shop/web/fetch_product_reviews_v2. Their external_id is the review_id (it matches raw review_id 175/175), not a video/aweme id. Neither the canonical source_meta nor the 180 raw review rows expose video_id/aweme_id/item_id. The reviewer_id in the raw payload is the review author's user id, not a video author id. Therefore a comment->video relation cannot be built from this corpus. This is a product-review layer, not a video-comment layer.",
+  "evidence": {
+    "canonical_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/canonical-records.jsonl",
+    "canonical_tiktok_shop_rows": 175,
+    "canonical_rows_with_video_key": 0,
+    "canonical_video_key_hits": {
+      "author_id": 0,
+      "aweme_id": 0,
+      "creator_id": 0,
+      "item_id": 0,
+      "sec_uid": 0,
+      "video_id": 0
+    },
+    "canonical_source_meta_fields": [
+      "helpful_count",
+      "incentivized",
+      "product_id",
+      "product_name",
+      "quarantine_reason",
+      "rating",
+      "region",
+      "review_time",
+      "reviewer_masked",
+      "sku_id",
+      "text_language",
+      "variant",
+      "verified_purchase"
+    ],
+    "canonical_external_id_is_review_id": true,
+    "canonical_external_id_shape": "19-digit numeric string; matches raw review_id 175/175 and does not collide with any of the 141 video IDs",
+    "canonical_external_ids_matching_raw_review_ids": 175,
+    "raw_review_files": 9,
+    "raw_review_rows": 180,
+    "raw_rows_with_video_key": 0,
+    "raw_video_key_hits": {
+      "author_id": 0,
+      "aweme_id": 0,
+      "creator_id": 0,
+      "item_id": 0,
+      "sec_uid": 0,
+      "video_id": 0
+    },
+    "raw_reviewer_id_present": 167,
+    "reviewer_id_role": "review author user id; not a video id, aweme id, or video creator id",
+    "raw_review_ids_matching_canonical_external_ids": 175,
+    "review_id_video_id_collisions": 0,
+    "source_endpoint": "/api/v1/tiktok/shop/web/fetch_product_reviews_v2",
+    "collector_endpoint_id": "tikhub_tiktok_shop_reviews_v2",
+    "canonical_url_field_example": "https://www.tiktok.com/shop/pdp/1729474995478630680",
+    "canonical_author_field": "masked reviewer name, not a TikTok creator unique_id"
+  },
+  "why_the_layer_is_different": {
+    "product_review": "a review of a product, keyed by review_id + product_id + sku_id",
+    "video_comment": "a comment under a video, keyed by comment_id + aweme_id",
+    "current_source": "product review",
+    "population_mismatch": "the review layer and the video/comment layer have different populations and different denominators; do not merge them"
+  },
+  "what_would_be_needed": [
+    "A product-review payload that includes video_id/aweme_id/item_id (the current TikTok Shop review endpoint does not expose it).",
+    "Or an affiliate/order attribution export that maps review_id or order_id to the promoting video.",
+    "Or switch to fetch_video_comments, which returns comments keyed by aweme_id, and treat them as a separate video-comment population.",
+    "A product->video enumeration source (creator cookie endpoint or a verified product-video index) to connect the review product to videos."
+  ],
+  "what_was_not_done": [
+    "No comment->video rows were fabricated.",
+    "No reviewer_id was treated as a creator_id or video_id.",
+    "No canonical-records.jsonl or gold-set-50.jsonl content was changed."
+  ],
+  "output_file": "/Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/creator-video/relations/comment-video.jsonl"
+}

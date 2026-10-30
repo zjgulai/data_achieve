@@ -1,0 +1,682 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "voc-report-v1.0.0",
+  "title": "VOC Report Data Contract (machine-readable)",
+  "description": "Machine-readable encoding of ref/extract/DATA-CONTRACT.md. The renderer reads only this object. Counts are CountBlock objects, reasoning text is TextProvenance, and every exhibit carries the seven-piece shell.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "report_id",
+    "as_of",
+    "generated_at",
+    "report_mode",
+    "language",
+    "evidence",
+    "report",
+    "artifacts"
+  ],
+  "properties": {
+    "schema_version": {"const": "voc-report-v1.0.0"},
+    "report_id": {"type": "string", "minLength": 3},
+    "as_of": {"type": "string", "minLength": 10},
+    "generated_at": {"type": "string", "minLength": 10},
+    "report_mode": {"enum": ["progress_snapshot", "insight_report", "strategy_report"]},
+    "language": {"type": "string", "minLength": 2},
+    "evidence": {"$ref": "#/$defs/evidence"},
+    "report": {"$ref": "#/$defs/report"},
+    "artifacts": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/artifact_ref"}},
+    "validation": {"type": "object"}
+  },
+
+  "$defs": {
+    "text_provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "authored_by", "claim_id", "data_refs"],
+      "properties": {
+        "text": {"type": "string", "minLength": 1},
+        "authored_by": {"enum": ["human", "llm_assisted", "template"]},
+        "claim_id": {"type": ["string", "null"]},
+        "data_refs": {"type": "array", "items": {"type": "string"}},
+        "reviewed_by": {"type": "string"}
+      }
+    },
+    "text_or_ref": {
+      "anyOf": [
+        {"type": "string", "minLength": 1},
+        {"$ref": "#/$defs/text_provenance"}
+      ]
+    },
+    "count_block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unit", "basis", "denominator", "multi_label", "partition", "as_of", "source_path"],
+      "properties": {
+        "value": {"type": "number", "minimum": 0},
+        "unit": {"enum": ["raw_object", "occurrence", "canonical_record", "frame_membership", "annotation", "metric_row", "variant", "author", "claim", "currency_usd"]},
+        "basis": {"type": "string", "minLength": 8},
+        "denominator": {"type": ["integer", "null"], "minimum": 1},
+        "multi_label": {"type": "boolean"},
+        "partition": {"type": "boolean"},
+        "as_of": {"type": "string", "minLength": 8},
+        "source_path": {"type": "string", "minLength": 3}
+      }
+    },
+    "source_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {"enum": ["endpoint", "table", "artifact", "derived", "human", "blocked"]},
+        "provider": {"type": ["string", "null"]},
+        "endpoint": {"type": ["string", "null"]},
+        "table": {"type": ["string", "null"]},
+        "columns": {"type": ["array", "null"], "items": {"type": "string"}},
+        "path": {"type": ["string", "null"]},
+        "sha256": {"type": ["string", "null"]},
+        "blocked_reason": {"type": ["string", "null"]}
+      }
+    },
+    "evidence_status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "badge", "reason_code", "inputs"],
+      "properties": {
+        "status": {"enum": ["confirmed", "directional", "hypothesis", "evidence_gap", "blocked", "not_authorized"]},
+        "badge": {"type": "string", "minLength": 5},
+        "reason_code": {"type": "string", "minLength": 5},
+        "inputs": {"type": "object"},
+        "gate": {"type": ["string", "null"]}
+      }
+    },
+    "number_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "value", "unit", "basis", "denominator", "source_path"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "value": {"type": "number"},
+        "unit": {"enum": ["raw_object", "occurrence", "canonical_record", "frame_membership", "annotation", "metric_row", "variant", "author", "claim", "currency_usd"]},
+        "basis": {"type": "string", "minLength": 8},
+        "denominator": {"type": ["integer", "null"], "minimum": 1},
+        "source_path": {"type": "string", "minLength": 3}
+      }
+    },
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end", "days"],
+      "properties": {
+        "start": {"type": "string", "minLength": 10},
+        "end": {"type": "string", "minLength": 10},
+        "days": {"type": "integer", "minimum": 1}
+      }
+    },
+    "artifact_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_id", "path", "sha256", "bytes", "kind", "generated_at"],
+      "properties": {
+        "artifact_id": {"type": "string", "minLength": 1},
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "bytes": {"type": "integer", "minimum": 0},
+        "kind": {"type": "string", "minLength": 1},
+        "generated_at": {"type": "string", "minLength": 10}
+      }
+    },
+    "readout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observed", "interpretation", "counterevidence", "decision_implication"],
+      "properties": {
+        "observed": {"$ref": "#/$defs/text_or_ref"},
+        "interpretation": {"$ref": "#/$defs/text_or_ref"},
+        "counterevidence": {"$ref": "#/$defs/text_or_ref"},
+        "decision_implication": {"$ref": "#/$defs/text_or_ref"}
+      }
+    },
+    "source_foot": {
+      "type": "object",
+      "required": ["basis", "unit", "limit", "status"],
+      "properties": {
+        "basis": {"type": "string", "minLength": 8},
+        "unit": {"type": "string", "minLength": 3},
+        "limit": {"type": "string", "minLength": 8},
+        "status": {"type": "string", "minLength": 3}
+      },
+      "additionalProperties": true
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claim_id", "section", "headline", "grade", "grade_inputs", "observed", "interpretation", "counterevidence", "decision_implication", "basis", "unit", "limit", "status", "records", "numbers"],
+      "properties": {
+        "claim_id": {"type": "string", "pattern": "^C[0-9]{2}$"},
+        "section": {"enum": ["answer", "experience", "aspects", "frames", "mixed", "contexts", "journey", "social", "variant", "agenda", "evidence"]},
+        "headline": {"type": "string", "minLength": 12},
+        "grade": {"enum": ["confirmed", "directional", "hypothesis", "evidence_gap", "blocked", "not_authorized"]},
+        "grade_inputs": {"type": "object"},
+        "observed": {"$ref": "#/$defs/text_or_ref"},
+        "interpretation": {"$ref": "#/$defs/text_or_ref"},
+        "counterevidence": {"$ref": "#/$defs/text_or_ref"},
+        "decision_implication": {"$ref": "#/$defs/text_or_ref"},
+        "basis": {"type": "string", "minLength": 8},
+        "unit": {"type": "string", "minLength": 2},
+        "limit": {"type": "string", "minLength": 6},
+        "status": {"type": "string", "minLength": 4},
+        "records": {"type": "array", "items": {"type": "string"}},
+        "numbers": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/number_ref"}}
+      }
+    },
+    "chart": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["type", "unit", "encoding", "basis", "denominator", "frame_scope", "notes"],
+      "properties": {
+        "type": {"enum": ["nested_bar", "diverging_bar", "frame_grid", "co_occurrence_matrix", "quadrant_2x2", "coverage_bars", "social_flow", "variant_grid", "maturity_matrix", "lineage_waterfall"]},
+        "unit": {"enum": ["raw_object", "occurrence", "canonical_record", "frame_membership", "annotation", "metric_row", "variant", "author", "claim", "currency_usd"]},
+        "encoding": {"enum": ["absolute_count", "max_relative", "share_with_denominator"]},
+        "basis": {"type": "string", "minLength": 8},
+        "denominator": {"type": ["integer", "null"]},
+        "frame_scope": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "axis": {"type": ["object", "null"]},
+        "series": {"type": "array"},
+        "matrix": {"type": "object"},
+        "notes": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 4}},
+        "limit": {"type": "string"},
+        "status": {"type": "string"}
+      }
+    },
+    "exhibit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "number", "title", "scope", "evidence_status", "chart", "readout", "source_foot", "drawer", "data_table", "definitions"],
+      "properties": {
+        "type": {"const": "exhibit"},
+        "number": {"type": "string", "pattern": "^(0[1-9]|10)$"},
+        "title": {"$ref": "#/$defs/text_or_ref"},
+        "scope": {"type": "string", "minLength": 8},
+        "evidence_status": {"$ref": "#/$defs/evidence_status"},
+        "chart": {"$ref": "#/$defs/chart"},
+        "readout": {"$ref": "#/$defs/readout"},
+        "source_foot": {"$ref": "#/$defs/source_foot"},
+        "drawer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["summary", "content"],
+          "properties": {
+            "summary": {"type": "string", "minLength": 4},
+            "content": {"type": "string", "minLength": 8}
+          }
+        },
+        "data_table": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["label", "value", "unit"],
+            "properties": {
+              "label": {"type": "string"},
+              "value": {"type": ["number", "string"]},
+              "unit": {"type": "string"}
+            },
+            "additionalProperties": true
+          }
+        },
+        "definitions": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 4}}
+      }
+    },
+    "gap_block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "reason", "readout", "source_foot"],
+      "properties": {
+        "type": {"const": "gap"},
+        "reason": {"type": "string", "minLength": 4},
+        "title": {"type": "string"},
+        "readout": {"$ref": "#/$defs/readout"},
+        "source_foot": {"$ref": "#/$defs/source_foot"}
+      }
+    },
+    "claim_block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "claim_id"],
+      "properties": {
+        "type": {"const": "claim"},
+        "claim_id": {"type": "string", "pattern": "^C[0-9]{2}$"}
+      }
+    },
+    "answer_stack_block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "claim_ids"],
+      "properties": {
+        "type": {"const": "answer_stack"},
+        "claim_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+      }
+    },
+    "experiment_sequence_block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "experiment_ids"],
+      "properties": {
+        "type": {"const": "experiment_sequence"},
+        "experiment_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+      }
+    },
+    "status_legend_block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "statuses"],
+      "properties": {
+        "type": {"const": "status_legend"},
+        "title": {"type": "string"},
+        "statuses": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "items": {
+            "type": "object",
+            "required": ["status", "label", "rule", "may_use", "may_not_use"],
+            "properties": {
+              "status": {"enum": ["confirmed", "directional", "hypothesis", "evidence_gap", "blocked", "not_authorized"]},
+              "label": {"type": "string"},
+              "rule": {"type": "string"},
+              "may_use": {"type": "string"},
+              "may_not_use": {"type": "string"}
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    "prose_block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "text"],
+      "properties": {
+        "type": {"const": "prose"},
+        "text": {"$ref": "#/$defs/text_or_ref"}
+      }
+    },
+    "block": {
+      "anyOf": [
+        {"$ref": "#/$defs/exhibit"},
+        {"$ref": "#/$defs/gap_block"},
+        {"$ref": "#/$defs/claim_block"},
+        {"$ref": "#/$defs/answer_stack_block"},
+        {"$ref": "#/$defs/experiment_sequence_block"},
+        {"$ref": "#/$defs/status_legend_block"},
+        {"$ref": "#/$defs/prose_block"}
+      ]
+    },
+    "section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "id", "kicker", "title", "status", "blocks"],
+      "properties": {
+        "index": {"enum": ["00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10"]},
+        "id": {"enum": ["answer", "experience", "aspects", "frames", "mixed", "contexts", "journey", "social", "variant", "agenda", "evidence"]},
+        "kicker": {"type": "string"},
+        "title": {"$ref": "#/$defs/text_or_ref"},
+        "deck": {"$ref": "#/$defs/text_or_ref"},
+        "status": {"enum": ["ok", "partial", "evidence_gap", "blocked", "not_authorized"]},
+        "blocks": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/block"}}
+      }
+    },
+    "experiment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "lane", "name", "trigger_evidence_refs", "minimum_test", "kpi", "guardrail", "decision", "stop", "status"],
+      "properties": {
+        "id": {"type": "string", "minLength": 2},
+        "lane": {"enum": ["Now · Reversible", "Next · Validate first", "Parallel · Evidence system"]},
+        "name": {"type": "string", "minLength": 2},
+        "trigger_evidence_refs": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "minimum_test": {"type": "string", "minLength": 8},
+        "kpi": {"type": "string", "minLength": 6},
+        "guardrail": {"type": "string", "minLength": 8},
+        "decision": {"type": "string", "minLength": 8},
+        "stop": {"type": "string", "minLength": 6},
+        "status": {"enum": ["proposed", "approved", "running", "stopped"]}
+      }
+    },
+    "claim_maturity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claim_id", "label", "status", "reason", "gate", "current"],
+      "properties": {
+        "claim_id": {"type": "string", "pattern": "^C[0-9]{2}$"},
+        "label": {"type": "string", "minLength": 2},
+        "status": {"enum": ["confirmed", "directional", "hypothesis", "evidence_gap", "blocked", "not_authorized"]},
+        "reason": {"type": "string", "minLength": 4},
+        "gate": {"type": ["string", "null"]},
+        "current": {"type": "boolean"}
+      }
+    },
+    "prohibited_output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "reason", "gate", "severity", "applies_to_sections"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^PO[0-9]+$"},
+        "label": {"type": "string", "minLength": 4},
+        "reason": {"type": "string", "minLength": 4},
+        "gate": {"type": "string", "minLength": 1},
+        "severity": {"enum": ["hard", "soft"]},
+        "applies_to_sections": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+      }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["product", "brand", "model", "variant_id", "sku", "color", "size", "parent_asin", "child_asin", "mapping_confidence", "family_children", "market", "language", "window", "identity_quality", "source"],
+      "properties": {
+        "product": {"type": "string", "minLength": 3},
+        "brand": {"type": "string", "minLength": 1},
+        "model": {"type": ["string", "null"]},
+        "variant_id": {"type": ["string", "null"]},
+        "sku": {"type": ["string", "null"]},
+        "color": {"type": ["string", "null"]},
+        "size": {"type": ["string", "null"]},
+        "parent_asin": {"type": ["string", "null"]},
+        "child_asin": {"type": ["string", "null"]},
+        "mapping_confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "family_children": {"type": "integer", "minimum": 0},
+        "market": {"type": "string", "minLength": 2},
+        "language": {"type": "string", "minLength": 2},
+        "window": {"$ref": "#/$defs/window"},
+        "identity_quality": {"enum": ["exact", "probable", "unknown"]},
+        "source": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/source_ref"}}
+      }
+    },
+    "gate": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["schema_version", "gates", "decision_scope", "review_statuses", "evidence_summary", "stage_boundary", "does_not_authorize", "artifact_sha256"],
+      "properties": {
+        "schema_version": {"const": "voc_gate_ledger_v1"},
+        "gates": {"type": "array", "minItems": 11, "maxItems": 11, "items": {"type": "object", "required": ["gate_id", "status"], "properties": {"gate_id": {"type": "string"}, "status": {"enum": ["PASS", "CONDITIONAL", "BLOCKED", "NOT_STARTED"]}}, "additionalProperties": true}},
+        "decision_scope": {"type": "string", "minLength": 8},
+        "review_statuses": {"type": "object"},
+        "evidence_summary": {"type": "object"},
+        "stage_boundary": {"type": "object"},
+        "does_not_authorize": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "artifact_sha256": {"type": "object"}
+      }
+    },
+    "corpus": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["raw_objects", "occurrences", "canonical_records", "frame_memberships", "annotations", "metric_rows", "reconciliation"],
+      "properties": {
+        "raw_objects": {"$ref": "#/$defs/count_block"},
+        "occurrences": {"$ref": "#/$defs/count_block"},
+        "canonical_records": {"$ref": "#/$defs/count_block"},
+        "frame_memberships": {"$ref": "#/$defs/count_block"},
+        "annotations": {"$ref": "#/$defs/count_block"},
+        "metric_rows": {"$ref": "#/$defs/count_block"},
+        "reconciliation": {"type": "array", "minItems": 1, "items": {"type": "object", "required": ["from", "to", "input_count", "deducted", "output_count", "reasons"], "properties": {"from": {"type": "string"}, "to": {"type": "string"}, "input_count": {"type": "integer"}, "deducted": {"type": "integer"}, "output_count": {"type": "integer"}, "reasons": {"type": "object"}}, "additionalProperties": false}}
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["record_occurrences", "independent_content_units", "source_family_counts", "source_platform_counts", "sample_frame_counts", "metric_eligibility_counts", "data_layer_counts", "dedup_status_counts", "product_match_counts", "aspect_annotation_count", "aspect_code_counts", "aspect_polarity_counts", "evidence_inventory_reconciliation", "interpretation_limit", "basis"],
+      "properties": {
+        "record_occurrences": {"$ref": "#/$defs/count_block"},
+        "independent_content_units": {"$ref": "#/$defs/count_block"},
+        "source_family_counts": {"type": "object", "additionalProperties": {"$ref": "#/$defs/count_block"}},
+        "source_platform_counts": {"type": "object", "additionalProperties": {"$ref": "#/$defs/count_block"}},
+        "sample_frame_counts": {"type": "object", "additionalProperties": {"$ref": "#/$defs/count_block"}},
+        "metric_eligibility_counts": {"type": "object", "additionalProperties": {"$ref": "#/$defs/count_block"}},
+        "data_layer_counts": {"type": "object", "additionalProperties": {"$ref": "#/$defs/count_block"}},
+        "dedup_status_counts": {"type": "object", "additionalProperties": {"$ref": "#/$defs/count_block"}},
+        "product_match_counts": {"type": "object", "additionalProperties": {"$ref": "#/$defs/count_block"}},
+        "aspect_annotation_count": {"$ref": "#/$defs/count_block"},
+        "aspect_code_counts": {"type": "object", "additionalProperties": {"$ref": "#/$defs/count_block"}},
+        "aspect_polarity_counts": {"type": "object", "additionalProperties": {"$ref": "#/$defs/count_block"}},
+        "context_code_counts": {"type": "object", "additionalProperties": {"$ref": "#/$defs/count_block"}},
+        "journey_stage_counts": {"type": "object", "additionalProperties": {"$ref": "#/$defs/count_block"}},
+        "outcome_counts": {"type": "object", "additionalProperties": {"$ref": "#/$defs/count_block"}},
+        "expectation_gap_counts": {"type": "object", "additionalProperties": {"$ref": "#/$defs/count_block"}},
+        "nonunknown_expectation_gap_records": {"$ref": "#/$defs/count_block"},
+        "mixed_experience_records": {"$ref": "#/$defs/count_block"},
+        "medical_self_report_code_counts": {"type": "object", "additionalProperties": {"$ref": "#/$defs/count_block"}},
+        "mandatory_medical_review_records": {"$ref": "#/$defs/count_block"},
+        "quality_flag_counts": {"type": "object", "additionalProperties": {"$ref": "#/$defs/count_block"}},
+        "evidence_inventory_reconciliation": {"type": "object", "minProperties": 3},
+        "interpretation_limit": {"type": "string", "minLength": 8},
+        "basis": {"type": "string", "minLength": 3}
+      }
+    },
+    "taxonomy": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["taxonomy_id", "frozen_at", "axes", "code_count", "codes", "source"],
+      "properties": {
+        "taxonomy_id": {"type": "string", "minLength": 2},
+        "frozen_at": {"type": "string", "minLength": 8},
+        "axes": {"type": "array", "minItems": 5, "items": {"type": "string"}},
+        "code_count": {"type": "integer", "minimum": 1},
+        "codes": {"type": "array", "minItems": 1, "items": {"type": "object", "required": ["code", "axis", "label", "definition", "include", "exclude"], "properties": {"code": {"type": "string"}, "axis": {"type": "string"}, "label": {"type": "string"}, "definition": {"type": "string"}, "include": {"type": "string"}, "exclude": {"type": "string"}}, "additionalProperties": true}},
+        "source": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/source_ref"}}
+      }
+    },
+    "key_aspect": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["code", "label", "family", "positive", "negative", "derived_from", "basis"],
+      "properties": {
+        "code": {"type": "string", "minLength": 3},
+        "label": {"type": "string", "minLength": 1},
+        "family": {"enum": ["support", "fit", "wearability", "value"]},
+        "positive": {"$ref": "#/$defs/count_block"},
+        "negative": {"$ref": "#/$defs/count_block"},
+        "derived_from": {"type": "string", "minLength": 3},
+        "basis": {"type": "string", "minLength": 8}
+      }
+    },
+    "cluster_lens": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "name", "n", "note", "love", "complaint", "basis"],
+      "properties": {
+        "id": {"enum": ["natural", "diagnostic", "qualitative_seed"]},
+        "name": {"type": "string", "minLength": 2},
+        "n": {"$ref": "#/$defs/count_block"},
+        "note": {"type": "string", "minLength": 8},
+        "love": {"type": "array", "items": {"type": "object", "required": ["label", "count", "codes"], "properties": {"label": {"type": "string"}, "count": {"type": "integer"}, "codes": {"type": "array", "items": {"type": "string"}}}, "additionalProperties": false}},
+        "complaint": {"type": "array", "items": {"type": "object", "required": ["label", "count", "codes"], "properties": {"label": {"type": "string"}, "count": {"type": "integer"}, "codes": {"type": "array", "items": {"type": "string"}}}, "additionalProperties": false}},
+        "basis": {"type": "string", "minLength": 8}
+      }
+    },
+    "need_state": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "quadrant", "name", "summary", "signal", "success", "failure", "test", "limit", "axes", "evidence_status", "basis"],
+      "properties": {
+        "id": {"type": "string", "minLength": 2},
+        "quadrant": {"type": "string", "pattern": "^Q[1-4] · "},
+        "name": {"type": "string", "minLength": 2},
+        "summary": {"$ref": "#/$defs/text_or_ref"},
+        "signal": {"$ref": "#/$defs/text_or_ref"},
+        "success": {"$ref": "#/$defs/text_or_ref"},
+        "failure": {"$ref": "#/$defs/text_or_ref"},
+        "test": {"$ref": "#/$defs/text_or_ref"},
+        "limit": {"$ref": "#/$defs/text_or_ref"},
+        "axes": {"type": "object"},
+        "evidence_status": {"$ref": "#/$defs/evidence_status"},
+        "basis": {"type": "string", "minLength": 8}
+      }
+    },
+    "variant_item": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["variant_key", "sku_id", "asin", "color", "size", "mapping_confidence", "status", "is_target", "review_count", "rating", "verified_count", "low_star_count", "recent_count"],
+      "properties": {
+        "variant_key": {"type": "string", "minLength": 1},
+        "sku_id": {"type": ["string", "null"]},
+        "asin": {"type": ["string", "null"]},
+        "color": {"type": ["string", "null"]},
+        "size": {"type": ["string", "null"]},
+        "mapping_confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "status": {"enum": ["exact", "probable", "unknown"]},
+        "is_target": {"type": "boolean"},
+        "review_count": {"anyOf": [{"$ref": "#/$defs/count_block"}, {"type": "null"}]},
+        "rating": {"anyOf": [{"$ref": "#/$defs/count_block"}, {"type": "null"}]},
+        "verified_count": {"anyOf": [{"$ref": "#/$defs/count_block"}, {"type": "null"}]},
+        "low_star_count": {"anyOf": [{"$ref": "#/$defs/count_block"}, {"type": "null"}]},
+        "recent_count": {"anyOf": [{"$ref": "#/$defs/count_block"}, {"type": "null"}]}
+      }
+    },
+    "variants": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["items", "target_key", "basis", "source"],
+      "properties": {
+        "items": {"type": "array", "items": {"$ref": "#/$defs/variant_item"}},
+        "target_key": {"type": ["string", "null"]},
+        "basis": {"type": "string", "minLength": 8},
+        "source": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/source_ref"}}
+      }
+    },
+    "journey": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["stage_counts", "stage_labels", "expectation_gap_counts", "independent_unit_counts", "basis"],
+      "properties": {
+        "stage_counts": {"type": "object", "additionalProperties": {"$ref": "#/$defs/count_block"}},
+        "stage_labels": {"type": "object", "additionalProperties": {"type": "string"}},
+        "expectation_gap_counts": {"type": "object", "additionalProperties": {"$ref": "#/$defs/count_block"}},
+        "independent_unit_counts": {"type": "object", "additionalProperties": {"$ref": "#/$defs/count_block"}},
+        "occurrence_counts": {"type": ["object", "null"], "additionalProperties": {"$ref": "#/$defs/count_block"}},
+        "basis": {"type": "string", "minLength": 3},
+        "drift_note": {"type": ["string", "null"]}
+      }
+    },
+    "mixed": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["mixed_records", "matrix", "pairs", "basis", "limit"],
+      "properties": {
+        "mixed_records": {"$ref": "#/$defs/count_block"},
+        "matrix": {"type": "object", "additionalProperties": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}}},
+        "pairs": {"type": "array", "items": {"type": "object", "required": ["canonical_id", "positive_codes", "negative_codes"], "properties": {"canonical_id": {"type": "string"}, "positive_codes": {"type": "array", "items": {"type": "string"}}, "negative_codes": {"type": "array", "items": {"type": "string"}}}, "additionalProperties": false}},
+        "basis": {"type": "string", "minLength": 8},
+        "limit": {"type": "string", "minLength": 8}
+      }
+    },
+    "social": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["records", "content_role_counts", "commerciality_counts", "origin_counts", "metric_eligibility_counts", "consumer_metric_rows", "basis", "source"],
+      "properties": {
+        "records": {"$ref": "#/$defs/count_block"},
+        "content_role_counts": {"type": "object"},
+        "commerciality_counts": {"type": "object"},
+        "origin_counts": {"type": "object"},
+        "metric_eligibility_counts": {"type": "object"},
+        "consumer_metric_rows": {"$ref": "#/$defs/count_block"},
+        "basis": {"type": "string", "minLength": 8},
+        "source": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/source_ref"}}
+      }
+    },
+    "quote": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["quote_id", "canonical_id", "text", "is_verbatim", "source", "language", "redaction_status", "permission"],
+      "properties": {
+        "quote_id": {"type": "string", "minLength": 2},
+        "canonical_id": {"type": "string", "minLength": 3},
+        "text": {"type": "string", "minLength": 4},
+        "is_verbatim": {"type": "boolean"},
+        "source": {"$ref": "#/$defs/source_ref"},
+        "language": {"type": "string", "minLength": 2},
+        "redaction_status": {"enum": ["none", "masked", "removed"]},
+        "permission": {"enum": ["internal", "external_ok", "denied"]}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "gate", "corpus", "coverage", "taxonomy"],
+      "properties": {
+        "identity": {"$ref": "#/$defs/identity"},
+        "gate": {"$ref": "#/$defs/gate"},
+        "corpus": {"$ref": "#/$defs/corpus"},
+        "coverage": {"$ref": "#/$defs/coverage"},
+        "taxonomy": {"$ref": "#/$defs/taxonomy"},
+        "key_aspects": {"type": ["array", "null"], "items": {"$ref": "#/$defs/key_aspect"}},
+        "cluster_lenses": {"type": ["array", "null"], "items": {"$ref": "#/$defs/cluster_lens"}},
+        "need_states": {"type": ["array", "null"], "items": {"$ref": "#/$defs/need_state"}},
+        "variants": {"anyOf": [{"$ref": "#/$defs/variants"}, {"type": "null"}]},
+        "journey": {"anyOf": [{"$ref": "#/$defs/journey"}, {"type": "null"}]},
+        "mixed": {"anyOf": [{"$ref": "#/$defs/mixed"}, {"type": "null"}]},
+        "social": {"anyOf": [{"$ref": "#/$defs/social"}, {"type": "null"}]},
+        "quotes": {"type": ["array", "null"], "items": {"$ref": "#/$defs/quote"}},
+        "monid": {"type": ["object", "null"]},
+        "skills": {"type": ["array", "null"]},
+        "skill_validation": {"type": ["object", "null"]}
+      }
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "description", "brand_wordmark", "report_type", "lang"],
+      "properties": {
+        "title": {"type": "string", "minLength": 4},
+        "description": {"type": "string", "minLength": 4},
+        "brand_wordmark": {"type": "string", "minLength": 1},
+        "report_type": {"type": "string", "minLength": 2},
+        "lang": {"type": "string", "minLength": 2}
+      }
+    },
+    "hero": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["eyebrow", "h1", "h1_accent", "lead", "actions", "compass", "truth_ribbon", "proofs"],
+      "properties": {
+        "eyebrow": {"type": "string", "minLength": 4},
+        "h1": {"$ref": "#/$defs/text_or_ref"},
+        "h1_accent": {"type": "string", "minLength": 1},
+        "lead": {"$ref": "#/$defs/text_or_ref"},
+        "actions": {"type": "array", "minItems": 2, "maxItems": 3, "items": {"type": "object", "required": ["label", "href", "primary"], "properties": {"label": {"type": "string"}, "href": {"type": "string"}, "primary": {"type": "boolean"}}, "additionalProperties": false}},
+        "compass": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "object", "required": ["label", "title", "note"], "properties": {"label": {"type": "string"}, "title": {"type": "string"}, "note": {"type": "string"}}, "additionalProperties": false}},
+        "truth_ribbon": {"type": "object", "required": ["label", "cells"], "properties": {"label": {"type": "string"}, "cells": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "object", "required": ["value", "note"], "properties": {"value": {"type": "string"}, "note": {"type": "string"}}, "additionalProperties": false}}}, "additionalProperties": false},
+        "proofs": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "object", "required": ["value", "label", "note"], "properties": {"value": {"type": "string"}, "label": {"type": "string"}, "note": {"type": "string"}}, "additionalProperties": false}}
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision_question", "answer", "protect", "resolve", "prove"],
+      "properties": {
+        "decision_question": {"type": "string", "minLength": 8},
+        "answer": {"$ref": "#/$defs/text_or_ref"},
+        "protect": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "resolve": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "prove": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+      }
+    },
+    "report": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["meta", "hero", "decision", "sections", "claims", "prohibited_outputs", "unknowns"],
+      "properties": {
+        "meta": {"$ref": "#/$defs/meta"},
+        "hero": {"$ref": "#/$defs/hero"},
+        "decision": {"$ref": "#/$defs/decision"},
+        "sections": {"type": "array", "minItems": 1, "maxItems": 11, "items": {"$ref": "#/$defs/section"}},
+        "claims": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/claim"}},
+        "experiments": {"type": "array", "items": {"$ref": "#/$defs/experiment"}},
+        "claim_maturity": {"type": "array", "items": {"$ref": "#/$defs/claim_maturity"}},
+        "prohibited_outputs": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/prohibited_output"}},
+        "unknowns": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 8}},
+        "omissions": {"type": "array", "items": {"type": "object"}}
+      }
+    }
+  }
+}

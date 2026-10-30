@@ -1,0 +1,67 @@
+--- /Users/lute/Project/data_scrapy/voc_pipeline/artifacts/run-20261029/llm-coding/taxonomy.json	2026-10-30 13:03:35
++++ taxonomy-v1.2-proposed.json	2026-10-30 16:51:11
+@@ -1,8 +1,8 @@
+ {
+-  "taxonomy_id": "VOC-BAND-v1.1",
+-  "supersedes": "VOC-BAND-v1.0",
++  "taxonomy_id": "VOC-BAND-v1.2-proposed",
++  "supersedes": "VOC-BAND-v1.1",
+   "frozen_at": "2026-10-30T12:00:00+08:00",
+-  "revision_note": "裁决 B（support 族）：四个 SUP code 全部保留，include/exclude 重写为互斥规则，并增加强制优先级：BELLY_LIFT > weight PRESSURE_OFFLOAD > BACK > relief PRESSURE_OFFLOAD > GENERAL。code 集合不变；现有 coded/ALL.jsonl 是 v1.0 产物，未重新编码。",
++  "revision_note": "裁决 B（support 族）：四个 SUP code 全部保留，include/exclude 重写为互斥规则，并增加强制优先级：BELLY_LIFT > weight PRESSURE_OFFLOAD > BACK > relief PRESSURE_OFFLOAD > GENERAL。code 集合不变；现有 coded/ALL.jsonl 是 v1.0 产物，未重新编码。 提案 v1.2（未冻结、未应用）：补齐 BELLY_LIFT 的 \"holds my belly up\" 语序，并给 step 4 的 relief/ease/take away 增加 pain/pressure 目标词约束。",
+   "resolution_rules": [
+     {
+       "step": 1,
+@@ -12,7 +12,8 @@
+         "lift(?:s|ing|ed)?(?: and support)? (?:that |my |your |the )?(?:big )?(?:belly|bump|bundle|baby)",
+         "hold(?:s|ing)? up (?:my |the |her )?(?:little )?(?:bump|belly|bundle|baby)",
+         "belly lift",
+-        "托起肚子"
++        "托起肚子",
++        "(?:hold(?:s|ing)?|held) (?:my |the |her )?(?:little )?(?:bump|belly|bundle|baby) up"
+       ]
+     },
+     {
+@@ -41,12 +42,10 @@
+     {
+       "step": 4,
+       "code": "SUP.PRESSURE_OFFLOAD",
+-      "condition": "relief / ease / take away + pain or pressure, and no back reference",
++      "condition": "relief / ease / take away + pain or pressure in the same span, and no back reference",
+       "lexicon": [
+-        "reliev(?:e|es|ed|ing)",
+-        "relief",
+-        "eas(?:e|es|ed|ing)",
+-        "take(?:s|n)? away"
++        "(?:reliev(?:e|es|ed|ing)|relief|eas(?:e|es|ed|ing)|take(?:s|n)? away)[^.;!?]{0,40}(?:pain|pressure|ache|aching|soreness|discomfort|sciatica)",
++        "(?:pain|pressure|ache|aching|soreness|discomfort|sciatica)[^.;!?]{0,40}(?:reliev(?:e|es|ed|ing)|relief|eas(?:e|es|ed|ing))"
+       ]
+     },
+     {
+@@ -59,7 +58,7 @@
+       ]
+     }
+   ],
+-  "resolution_note": "SUP 族按 step 升序判断；第一个命中的 code 是该 evidence span 的唯一 SUP code。step 2（weight/load）优先于 step 3（BACK），因此 'the weight off my pelvis and lower back' 归 SUP.PRESSURE_OFFLOAD。",
++  "resolution_note": "SUP 族按 step 升序判断；第一个命中的 code 是该 evidence span 的唯一 SUP code。step 2（weight/load）优先于 step 3（BACK），因此 'the weight off my pelvis and lower back' 归 SUP.PRESSURE_OFFLOAD。 并列谓语（例如 \"It lifts my bump nicely, and my lower back pain has eased\"）按谓语切成独立 span，各自走优先级；不得用整句 span 只取 step 1。",
+   "source_file": "voc/taxonomy.py",
+   "source_sha256": "914028b2876611470e73c42c75de19ac6ab7488074236d87c2687f4ec6c30df1",
+   "generated_at": "2026-10-30T05:03:35.440765+00:00",
+@@ -102,7 +101,7 @@
+       "family": "SUP",
+       "definition": "对下背、腰部支撑或该部位疼痛缓解的评价。",
+       "positive_example": "[derived] The back support is firm and my lower back pain has eased.",
+-      "negative_example": "[derived] I do prenatal yoga to keep my back flexible.",
++      "negative_example": "[derived] The weight off my lower back is unreal.",
+       "include": "back pain, backache, lower back, back support, my back",
+       "exclude": "weight off / take the weight / weight is lifted（即使同句有 lower back）→ PRESSURE；无背部指向的 support → GENERAL；姿势/运动"
+     },
+@@ -123,7 +122,7 @@
+       "definition": "明确描述把肚子托起来、兜住或托举。",
+       "positive_example": "[derived] It lifts my belly and holds up my bump nicely.",
+       "negative_example": "[derived] It gives good overall support.",
+-      "include": "lift my belly, lift your belly, hold up bump, holding up her little bundle, 托起肚子",
++      "include": "lift my belly, lift your belly, hold up bump, holding up her little bundle, 托起肚子, hold my belly up, holding her bump up",
+       "exclude": "仅说 support → GENERAL；仅说 weightless → PRESSURE/COM.*"
+     },
+     {

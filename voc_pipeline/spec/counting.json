@@ -1,0 +1,255 @@
+{
+ "levels": [
+  {
+   "level": "raw_object",
+   "definition": "一次 provider 响应中的一条原始记录，只追加、不改写。",
+   "identity": "provider + endpoint + request_id + response_index",
+   "required_fields": [
+    "provider",
+    "endpoint",
+    "request_id",
+    "fetched_at",
+    "payload_sha256"
+   ],
+   "may_be_counted_as": "采集量与成本，不是样本量",
+   "must_not_be_used_for": [
+    "sample size",
+    "sentiment denominator"
+   ],
+   "judgement_rule": "每保存一条 payload 计 1；同一 payload 重跑产生新 raw object，但 request_id 不同。"
+  },
+  {
+   "level": "occurrence",
+   "definition": "同一内容在一个 source / URL / frame 中的一次出现。",
+   "identity": "source + external_id + frame",
+   "required_fields": [
+    "source",
+    "external_id",
+    "url",
+    "frame",
+    "content_hash",
+    "created_at"
+   ],
+   "may_be_counted_as": "frame 内观察次数",
+   "must_not_be_used_for": [
+    "independent consumer count",
+    "prevalence denominator"
+   ],
+   "judgement_rule": "同一 external_id 在同一 frame 只算 1 个 occurrence；跨 frame 各自计 1，因为回答的问题不同。"
+  },
+  {
+   "level": "canonical_record",
+   "definition": "跨 source 与 frame 去重后的独立内容单元。",
+   "identity": "duplicate_group_id + representative_id",
+   "required_fields": [
+    "canonical_id",
+    "representative_occurrence",
+    "duplicate_group_id",
+    "normalized_text_hash"
+   ],
+   "may_be_counted_as": "独立内容单元数",
+   "must_not_be_used_for": [
+    "独立消费者数（同一作者可多条）",
+    "总体情绪率"
+   ],
+   "judgement_rule": "exact normalized-hash 相同即同组；fuzzy Jaccard ≥ 0.90 进入 review，未裁决前不合并。每组恰好一个代表。"
+  },
+  {
+   "level": "frame_membership",
+   "definition": "canonical record 与一个 sample frame 的关系，可重叠。",
+   "identity": "canonical_id + frame",
+   "required_fields": [
+    "canonical_id",
+    "frame",
+    "purpose",
+    "denominator_rule"
+   ],
+   "may_be_counted_as": "各 frame 的可用记录数",
+   "must_not_be_used_for": [
+    "把多个 frame 相加当总体",
+    "跨 frame 百分比比较"
+   ],
+   "judgement_rule": "natural / diagnostic / qualitative_seed / claim / discovery 各自独立；一个 canonical 可同时属于多个 frame，但同一 frame 内只算 1 次。"
+  },
+  {
+   "level": "annotation",
+   "definition": "对一条 canonical record 的一个 aspect / polarity / context / journey / outcome / gap 标签。",
+   "identity": "canonical_id + axis + code + polarity + taxonomy_version",
+   "required_fields": [
+    "canonical_id",
+    "axis",
+    "code",
+    "polarity",
+    "taxonomy_version",
+    "coder_id"
+   ],
+   "may_be_counted_as": "annotation hits（多标签）",
+   "must_not_be_used_for": [
+    "人数",
+    "记录数",
+    "比率分母"
+   ],
+   "judgement_rule": "一条记录可贡献多个 annotation；mixed 记录保留正负两个 component；unknown 不计入任何 polarity 分子。"
+  },
+  {
+   "level": "metric_row",
+   "definition": "通过 G7 且满足 metric contract 的正式指标行。",
+   "identity": "metric_id + frame + denominator_contract + taxonomy_version + qa_state",
+   "required_fields": [
+    "metric_id",
+    "numerator",
+    "denominator",
+    "filters",
+    "frame",
+    "date_range",
+    "source_coverage",
+    "missingness",
+    "taxonomy_version",
+    "qa_state"
+   ],
+   "may_be_counted_as": "正式比率 / 指标",
+   "must_not_be_used_for": [
+    "未通过 G7 时的任何比率",
+    "诊断样本的 prevalence"
+   ],
+   "judgement_rule": "只有 G7 = PASS、duplicate_representative = true、frame = natural、data_layer = consumer_observation_fact 且 denominator > 0 时才能生成。"
+  }
+ ],
+ "deduction_rules": [
+  {
+   "code": "within_frame_overlap",
+   "from": "frame_membership",
+   "to": "occurrence",
+   "condition": "同一 external_id 在同一 frame 被多次写入 membership。",
+   "detect": "group by (frame, external_id) having count > 1",
+   "action": "保留 1 个 occurrence，其余计入 within_frame_overlap。"
+  },
+  {
+   "code": "cross_frame_overlap",
+   "from": "frame_membership",
+   "to": "occurrence",
+   "condition": "同一 external_id 出现在多个 frame。",
+   "detect": "group by external_id having count(distinct frame) > 1",
+   "action": "occurrence 按 frame 各计一次；只在把 memberships 朴素相加时才扣。不得把扣减后的数当作总体样本。"
+  },
+  {
+   "code": "cross_source_syndicated_duplicate",
+   "from": "occurrence",
+   "to": "canonical_record",
+   "condition": "同一内容在两个 source 同步发布（转载、联合发布、同文多站）。",
+   "detect": "exact normalized hash equal across distinct sources",
+   "action": "合并为 1 个 canonical，代表取最早发布且在允许来源内的一条。"
+  },
+  {
+   "code": "crosspost_same_author",
+   "from": "occurrence",
+   "to": "canonical_record",
+   "condition": "同一作者把同一内容转发到多个 subreddit / 社区。",
+   "detect": "same author + Jaccard(title+body) ≥ 0.90",
+   "action": "合并；代表取最早 created_utc。"
+  },
+  {
+   "code": "known_duplicate_nonrepresentative",
+   "from": "canonical_record",
+   "to": "canonical_record",
+   "condition": "duplicate group 中非代表记录被误计入编码语料。",
+   "detect": "record.duplicate_representative == false",
+   "action": "从编码语料扣 1，保留 lineage edge。"
+  },
+  {
+   "code": "low_information",
+   "from": "canonical_record",
+   "to": "canonical_record",
+   "condition": "内容没有可编码的体验信息（仅链接、仅表情、仅问题无描述）。",
+   "detect": "normalized_text token count < 8 or no aspect lexicon hit",
+   "action": "进入 exclusion_quarantine，reason=low_information；不计入编码语料。"
+  },
+  {
+   "code": "product_mismatch",
+   "from": "canonical_record",
+   "to": "canonical_record",
+   "condition": "产品不是目标产品、家族或声明的 adjacent。",
+   "detect": "product_match ∈ {irrelevant, other_product}",
+   "action": "excluded_lineage；不得进入任何 denominator。"
+  },
+  {
+   "code": "non_consumer_role",
+   "from": "canonical_record",
+   "to": "canonical_record",
+   "condition": "作者是品牌、零售商、自动化账号或创作者 commercial 内容。",
+   "detect": "content_role ∈ {brand_claim, retailer_message, creator_testimonial, automation} and commerciality != none",
+   "action": "进入 claim_asset_fact 或 market_signal_fact，隔离出 consumer metric。"
+  },
+  {
+   "code": "commercial_disclosure",
+   "from": "canonical_record",
+   "to": "canonical_record",
+   "condition": "文本含 affiliate / sponsored / paid 披露。",
+   "detect": "lexicon match (affiliate, sponsored, paid partnership, #ad)",
+   "action": "标记 commerciality=explicit，禁止进入 organic consumer denominator。"
+  },
+  {
+   "code": "out_of_window",
+   "from": "occurrence",
+   "to": "occurrence",
+   "condition": "created_at 在 G0 研究窗口之外。",
+   "detect": "created_at < window_start or > window_end",
+   "action": "保留 raw 与 occurrence 以便审计，但不进入 canonical 语料。"
+  },
+  {
+   "code": "language_uncodable",
+   "from": "canonical_record",
+   "to": "canonical_record",
+   "condition": "语言不在 taxonomy 支持列表，且无批准翻译。",
+   "detect": "language not in taxonomy.languages",
+   "action": "exclusion_quarantine；不得用机器翻译直接补齐。"
+  },
+  {
+   "code": "deleted_or_removed",
+   "from": "occurrence",
+   "to": "occurrence",
+   "condition": "provider 标记 deleted / removed / [removed]。",
+   "detect": "body in {[deleted], [removed]}",
+   "action": "保留 occurrence 计数，canonical 排除并记录原因。"
+  },
+  {
+   "code": "quoted_repost",
+   "from": "occurrence",
+   "to": "canonical_record",
+   "condition": "内容主体是引用另一条记录，未新增体验。",
+   "detect": "quoted block ratio > 0.6",
+   "action": "合并到被引用记录，保留 lineage edge。"
+  },
+  {
+   "code": "translation_duplicate",
+   "from": "canonical_record",
+   "to": "canonical_record",
+   "condition": "同一内容的多语言版本由同一作者发布。",
+   "detect": "same author + cross-lingual embedding similarity ≥ 0.90 (review)",
+   "action": "合并；代表取原语言版本。"
+  }
+ ],
+ "deduction_labels": {
+  "within_frame_overlap": "同 frame 内重复成员关系",
+  "cross_frame_overlap": "跨 frame 重叠（不扣 canonical，只影响朴素求和）",
+  "cross_source_syndicated_duplicate": "跨源转载 / 联合发布",
+  "crosspost_same_author": "同一作者跨版转发",
+  "known_duplicate_nonrepresentative": "已知重复的非代表记录",
+  "low_information": "低信息量（无体验内容）",
+  "product_mismatch": "产品不匹配",
+  "non_consumer_role": "非消费者角色（品牌 / 创作者 / 自动化）",
+  "commercial_disclosure": "商业披露内容",
+  "out_of_window": "超出研究窗口",
+  "language_uncodable": "语言不可编码",
+  "deleted_or_removed": "已删除 / 已移除",
+  "quoted_repost": "引用式转发",
+  "translation_duplicate": "翻译副本"
+ },
+ "invariants": [
+  "level counts are never interchangeable",
+  "memberships are not a funnel",
+  "annotations are not people",
+  "metric rows require G7 PASS and a non-empty denominator",
+  "every deduction carries one reason code"
+ ]
+}

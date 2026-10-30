@@ -1,0 +1,145 @@
+{
+ "schema_version": "voc_delivery_manifest_v1",
+ "generated_at": "2026-10-30T15:00:40+00:00",
+ "run_id": "run-20261029-v2",
+ "artifacts": [
+  {
+   "path": "canonical-records.jsonl",
+   "bytes": 747844,
+   "sha256": "88ee4402c4055bf113984dd849c2af3ae35c6c3f4b13be2532286f289582cfae"
+  },
+  {
+   "path": "claims.json",
+   "bytes": 17744,
+   "sha256": "b689ccec7db4dfdb90a95cc273e4a223c033e50e19d1353a2fdca4cc8444df90"
+  },
+  {
+   "path": "coded-corpus.jsonl",
+   "bytes": 387719,
+   "sha256": "c80e94c0e42227667b835068ef351446f9cdcd77baee344004c997e3561f9e00"
+  },
+  {
+   "path": "comparison-v1-v2.json",
+   "bytes": 17690,
+   "sha256": "f506862131d9c66816eb4eb3b34aecf5e35cbc6552ba334154ed04337cbe246d"
+  },
+  {
+   "path": "compat-experience-diff.json",
+   "bytes": 833,
+   "sha256": "7f10356f609280622bbca2b27da2baaabb6ecbbb0d38490207751155c083f4a4"
+  },
+  {
+   "path": "confidence-dropped.jsonl",
+   "bytes": 16311,
+   "sha256": "4b844e00eb92a969a6169c29be7f22fc56af61c3884229cea20ade47e976a3b5"
+  },
+  {
+   "path": "consumer-metric-view-contract.json",
+   "bytes": 1387,
+   "sha256": "03ffcd7bc4872ec65fca3574c025acac4cbcb764032b94edac29603e4758c024"
+  },
+  {
+   "path": "corpus-summary.json",
+   "bytes": 3201,
+   "sha256": "6f52edd008cfeeb58a6fc527ad172aba445e4fa41abe643216d6fc2e1edd2af4"
+  },
+  {
+   "path": "delivery-manifest.json",
+   "bytes": 3716,
+   "sha256": "48f8f0b4e39fef6813829c66e18d7ca005fece7f9d967ce77a3c28a8fc80a975"
+  },
+  {
+   "path": "evidence-grade-report.json",
+   "bytes": 798,
+   "sha256": "550911dafa8ee52610e2fd8604f35ca54b876f653a9eaeaf6e32cccee106582d"
+  },
+  {
+   "path": "forbidden-conclusions.json",
+   "bytes": 9296,
+   "sha256": "79559d8542a4ea2fc124a9f772f060a5c4af89038b4bc5fde9db595a2411ca10"
+  },
+  {
+   "path": "frame-chains.json",
+   "bytes": 939,
+   "sha256": "b709e433831996fc3a5f9691ab977a4581800b0b52745ae91bda633cc9aac76a"
+  },
+  {
+   "path": "gate-ledger.json",
+   "bytes": 7473,
+   "sha256": "b78b5d4c91c7af35b01c2e9da6c13db11ad25aacdc246ca689a2ab3d75e2dc21"
+  },
+  {
+   "path": "metric-summary.json",
+   "bytes": 7708,
+   "sha256": "f28a6520053e9cd70080ace8fea43394512a701de8e6c684fb5740279ec92b92"
+  },
+  {
+   "path": "occurrences.jsonl",
+   "bytes": 518956,
+   "sha256": "2916eb6f1f74e4556a2f48785ab004e069a9882f6fa99c40b86ee499336aee55"
+  },
+  {
+   "path": "recommendations.json",
+   "bytes": 1323,
+   "sha256": "46bba0ed59de38ee0df83012f75d6655d2b2e6a34cb918039db7447bc7d0622f"
+  },
+  {
+   "path": "report.html",
+   "bytes": 81781,
+   "sha256": "2228c03e524193fa1e6ca28079865ab025ae1fb84d6cf8d6e746de363d4f9bfc"
+  },
+  {
+   "path": "scope-audit.json",
+   "bytes": 34674,
+   "sha256": "37faa9ef7fabe03f74eab0828e9dd14f448bd5398d839e53df23bec44f4a4700"
+  },
+  {
+   "path": "source-rights-matrix.json",
+   "bytes": 1942,
+   "sha256": "af841342c52e3106a550c28b0d7de57cdc0489765b1a07592c7baf8efabda518"
+  },
+  {
+   "path": "taxonomy.json",
+   "bytes": 26756,
+   "sha256": "3f7346fdba16b7f9682ae64a9fa9bb0d5c9b050901a0bcd5c916b805c86d2123"
+  },
+  {
+   "path": "validation-result.json",
+   "bytes": 4387,
+   "sha256": "2077098e87ce9013eaea552a8f80fc817630d2aeb4d3a64da14f4d54ccdc76bc"
+  },
+  {
+   "path": "voc-research-charter.json",
+   "bytes": 2084,
+   "sha256": "5e802196b4555a4804cc8187160c8979ea390ac1b57662a802d4b126ffc197a4"
+  }
+ ],
+ "raw_artifact_count": 0,
+ "delivery_state": {
+  "local_only": true,
+  "committed": false,
+  "published": false,
+  "external_claims": false
+ },
+ "gates_executed": [
+  "G0",
+  "G1",
+  "G2",
+  "G3",
+  "G4",
+  "G5",
+  "G6"
+ ],
+ "gates_not_executed": [
+  "G7",
+  "G8",
+  "G9",
+  "G10"
+ ],
+ "not_executed": [
+  "G7 双盲编码与 agreement",
+  "G8 正式 metric rows",
+  "G9 实验审批与 owner 签名",
+  "G10 结果复盘"
+ ]
+}

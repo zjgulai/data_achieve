@@ -1,0 +1,1073 @@
+{
+ "taxonomy_id": "VOC-BAND-v1.0",
+ "frozen_at": "2026-10-29T22:30:00+08:00",
+ "languages": [
+  "en"
+ ],
+ "axes": {
+  "aspect": [
+   "SUP.GENERAL",
+   "SUP.BACK",
+   "SUP.PRESSURE_OFFLOAD",
+   "SUP.BELLY_LIFT",
+   "FIT.SIZE_ACCURACY",
+   "FIT.BODY_SHAPE",
+   "FIT.GROWTH_RANGE",
+   "FIT.COVERAGE",
+   "ADJ.STRAP_DESIGN",
+   "ADJ.DONNING",
+   "ADJ.RANGE_TENSION",
+   "STB.STAY_IN_PLACE",
+   "STB.STRAP_POSITION",
+   "COM.SOFTNESS",
+   "COM.BREATHABILITY_HEAT",
+   "COM.SKIN_CHAFE",
+   "COM.PRESSURE_DIGGING",
+   "COM.WEAR_TOLERANCE",
+   "COM.GENERAL",
+   "APP.UNDER_CLOTHING",
+   "APP.LOW_PROFILE",
+   "APP.COLOR_AESTHETIC",
+   "MAT.FABRIC",
+   "MAT.DURABILITY",
+   "MAT.ELASTICITY_RETENTION",
+   "MAT.THICKNESS",
+   "MAT.CARE",
+   "VAL.PRICE_VALUE",
+   "CX.RETURN_EXCHANGE",
+   "FUL.PRODUCT_CONDITION",
+   "GEN.OVERALL_EVALUATION",
+   "USE.LAYERING",
+   "ACT.COMPATIBILITY",
+   "SAF.PRESSURE_PLACEMENT"
+  ],
+  "context": [
+   "CTX.PREGNANCY_T2",
+   "CTX.PREGNANCY_T3",
+   "CTX.BODY_PLUS_SIZE",
+   "CTX.BODY_TALL_LONG_TORSO",
+   "CTX.BODY_SHORT_TORSO",
+   "CTX.MULTIPLES",
+   "CTX.ACTIVITY_WORK",
+   "CTX.ACTIVITY_EXERCISE",
+   "CTX.DURATION_ALL_DAY",
+   "CTX.PURCHASE_GIFT",
+   "CTX.SENSITIVE_SKIN",
+   "CTX.POSTPARTUM"
+  ],
+  "journey": [
+   "JNY.CONSIDERATION",
+   "JNY.SIZE_SELECTION",
+   "JNY.FIRST_FITTING",
+   "JNY.USE",
+   "JNY.CARE",
+   "JNY.RETURN",
+   "JNY.RECOMMEND"
+  ],
+  "outcome": [
+   "OUT.RELIEF",
+   "OUT.ACTIVITY_ENABLED",
+   "OUT.NO_BENEFIT",
+   "OUT.LIMITED_USE",
+   "OUT.RETURN_INTENT",
+   "OUT.RECOMMEND",
+   "OUT.REGRET",
+   "OUT.CONTINUED_USE"
+  ],
+  "gap": [
+   "GAP.FIT_MISMATCH",
+   "GAP.SUPPORT_MISMATCH",
+   "GAP.VALUE_MISMATCH",
+   "GAP.MATCHED"
+  ],
+  "medical": [
+   "MED.PAIN_SELF_REPORT",
+   "MED.MEDICAL_HISTORY",
+   "MED.PRESSURE_SAFETY"
+  ]
+ },
+ "codes": [
+  {
+   "code": "SUP.GENERAL",
+   "axis": "aspect",
+   "label": "总体支撑",
+   "definition": "对承托力、托举感或支撑效果的评价。",
+   "include": "support, supportive, hold the belly, lift, 托举",
+   "exclude": "只描述穿着感受而无支撑语义",
+   "lexicon": [
+    "support",
+    "supportive",
+    "holds? (?:my |the )?belly",
+    "belly support",
+    "lift"
+   ]
+  },
+  {
+   "code": "SUP.BACK",
+   "axis": "aspect",
+   "label": "背部支撑",
+   "definition": "对下背、腰部支撑的评价。",
+   "include": "back pain, lower back, back support",
+   "exclude": "泛指姿势或运动",
+   "lexicon": [
+    "back pain",
+    "lower back",
+    "back support",
+    "my back"
+   ]
+  },
+  {
+   "code": "SUP.PRESSURE_OFFLOAD",
+   "axis": "aspect",
+   "label": "压力卸载",
+   "definition": "把腹部/骨盆重量转移出去的主观感受。",
+   "include": "pressure off, take weight off, relieve",
+   "exclude": "仅描述松紧",
+   "lexicon": [
+    "pressure off",
+    "off my (?:back|hips|pelvis)",
+    "take (?:the )?weight",
+    "relieve pressure",
+    "relief"
+   ]
+  },
+  {
+   "code": "SUP.BELLY_LIFT",
+   "axis": "aspect",
+   "label": "腹部托举",
+   "definition": "明确描述把肚子托起来。",
+   "include": "lift my belly, hold up bump",
+   "exclude": "仅说 support",
+   "lexicon": [
+    "lift (?:my |the )?belly",
+    "hold (?:up )?(?:my |the )?bump",
+    "belly lift"
+   ]
+  },
+  {
+   "code": "FIT.SIZE_ACCURACY",
+   "axis": "aspect",
+   "label": "尺码准确",
+   "definition": "尺码是否与标注/预期一致。",
+   "include": "true to size, runs small/large, size up/down",
+   "exclude": "只问该买哪个码",
+   "lexicon": [
+    "true to size",
+    "runs? (?:small|large|big)",
+    "size up",
+    "size down",
+    "sizing",
+    "size chart",
+    "my size",
+    "medium",
+    "large",
+    "small"
+   ]
+  },
+  {
+   "code": "FIT.BODY_SHAPE",
+   "axis": "aspect",
+   "label": "体型适配",
+   "definition": "腹型、躯干、身高、plus size 对适配的影响。",
+   "include": "short/long torso, plus size, body shape",
+   "exclude": "泛指尺码",
+   "lexicon": [
+    "body shape",
+    "torso",
+    "plus size",
+    "curvy",
+    "petite",
+    "tall"
+   ]
+  },
+  {
+   "code": "FIT.GROWTH_RANGE",
+   "axis": "aspect",
+   "label": "孕期增长区间",
+   "definition": "随孕周/肚子增长是否仍可用。",
+   "include": "as bump grows, later pregnancy, third trimester",
+   "exclude": "单次静态穿着",
+   "lexicon": [
+    "as (?:my )?bump grows",
+    "grow(?:s|ing)?",
+    "later (?:in )?pregnancy",
+    "third trimester",
+    "weeks? (?:3[0-9]|4[0-2])"
+   ]
+  },
+  {
+   "code": "FIT.COVERAGE",
+   "axis": "aspect",
+   "label": "覆盖范围",
+   "definition": "支撑带覆盖面积是否足够。",
+   "include": "coverage, wide enough, covers",
+   "exclude": "颜色覆盖",
+   "lexicon": [
+    "coverage",
+    "covers?",
+    "wide enough",
+    "too narrow"
+   ]
+  },
+  {
+   "code": "ADJ.STRAP_DESIGN",
+   "axis": "aspect",
+   "label": "带体/绑带设计",
+   "definition": "绑带、魔术贴、扣件等结构。",
+   "include": "strap, band, velcro, hook",
+   "exclude": "整体支撑评价",
+   "lexicon": [
+    "strap",
+    "velcro",
+    "hook",
+    "band design",
+    "waistband"
+   ]
+  },
+  {
+   "code": "ADJ.DONNING",
+   "axis": "aspect",
+   "label": "穿脱难度",
+   "definition": "穿上、脱下、调整的难易。",
+   "include": "put on, take off, get on",
+   "exclude": "首次购买",
+   "lexicon": [
+    "put(?:ting)? (?:it )?on",
+    "take (?:it )?off",
+    "get it on",
+    "on and off"
+   ]
+  },
+  {
+   "code": "ADJ.RANGE_TENSION",
+   "axis": "aspect",
+   "label": "松紧调节",
+   "definition": "可调节范围与张力是否合适。",
+   "include": "adjust, tighten, loosen, tension",
+   "exclude": "不可调结构",
+   "lexicon": [
+    "adjust",
+    "tighten",
+    "loosen",
+    "tension",
+    "too tight",
+    "too loose"
+   ]
+  },
+  {
+   "code": "STB.STAY_IN_PLACE",
+   "axis": "aspect",
+   "label": "保持位置",
+   "definition": "是否下滑、卷边、移位。",
+   "include": "slip, slide, roll down, bunch",
+   "exclude": "支撑不足",
+   "lexicon": [
+    "slip",
+    "slides?",
+    "roll(?:s|ed)? down",
+    "roll(?:s|ed)? up",
+    "bunch",
+    "stay in place",
+    "move around",
+    "shift"
+   ]
+  },
+  {
+   "code": "STB.STRAP_POSITION",
+   "axis": "aspect",
+   "label": "绑带位置",
+   "definition": "绑带是否压到不合适的位置。",
+   "include": "dig into, strap position",
+   "exclude": "单纯紧",
+   "lexicon": [
+    "dig(?:s|ging)? into",
+    "strap position",
+    "rides up"
+   ]
+  },
+  {
+   "code": "COM.SOFTNESS",
+   "axis": "aspect",
+   "label": "柔软触感",
+   "definition": "面料柔软、亲肤。",
+   "include": "soft, cozy, gentle",
+   "exclude": "支撑",
+   "lexicon": [
+    "soft",
+    "cozy",
+    "gentle",
+    "comfortable fabric"
+   ]
+  },
+  {
+   "code": "COM.BREATHABILITY_HEAT",
+   "axis": "aspect",
+   "label": "透气与发热",
+   "definition": "闷热、出汗、透气性。",
+   "include": "breathable, hot, sweat",
+   "exclude": "环境温度",
+   "lexicon": [
+    "breathable",
+    "air flow",
+    "ventilat",
+    "sweat",
+    "sweaty",
+    "too hot",
+    "warm"
+   ]
+  },
+  {
+   "code": "COM.SKIN_CHAFE",
+   "axis": "aspect",
+   "label": "皮肤摩擦",
+   "definition": "摩擦、红印、瘙痒、皮疹。",
+   "include": "chafe, rub, rash, itch",
+   "exclude": "压力痛",
+   "lexicon": [
+    "chafe",
+    "chafing",
+    "rub(?:s|bing)?",
+    "rash",
+    "itch",
+    "red marks?"
+   ]
+  },
+  {
+   "code": "COM.PRESSURE_DIGGING",
+   "axis": "aspect",
+   "label": "局部压迫",
+   "definition": "局部压痛、勒痕、digging。",
+   "include": "dig, cut into, pressure point",
+   "exclude": "皮肤摩擦",
+   "lexicon": [
+    "dig(?:s|ging)?",
+    "cut(?:s|ting)? into",
+    "pressure point",
+    "leave marks"
+   ]
+  },
+  {
+   "code": "COM.WEAR_TOLERANCE",
+   "axis": "aspect",
+   "label": "长时间穿着",
+   "definition": "能否全天或长时间穿着。",
+   "include": "all day, for hours, long wear",
+   "exclude": "单次短时",
+   "lexicon": [
+    "all day",
+    "for hours",
+    "long(?:er)? wear",
+    "every day"
+   ]
+  },
+  {
+   "code": "COM.GENERAL",
+   "axis": "aspect",
+   "label": "总体舒适",
+   "definition": "整体舒适度评价。",
+   "include": "comfortable, comfort",
+   "exclude": "具体部位",
+   "lexicon": [
+    "comfortable",
+    "comfort",
+    "uncomfortable"
+   ]
+  },
+  {
+   "code": "APP.UNDER_CLOTHING",
+   "axis": "aspect",
+   "label": "衣下表现",
+   "definition": "穿在衣服下是否可见、是否臃肿。",
+   "include": "under clothes, invisible, not visible",
+   "exclude": "外穿",
+   "lexicon": [
+    "under (?:my )?clothes",
+    "under clothing",
+    "invisible",
+    "not visible",
+    "show through",
+    "under a shirt"
+   ]
+  },
+  {
+   "code": "APP.LOW_PROFILE",
+   "axis": "aspect",
+   "label": "轻薄低体积",
+   "definition": "体积小、不臃肿、低调。",
+   "include": "low profile, slim, thin, discreet",
+   "exclude": "面料厚薄本身",
+   "lexicon": [
+    "low profile",
+    "slim",
+    "thin",
+    "discreet",
+    "bulky",
+    "bulk"
+   ]
+  },
+  {
+   "code": "APP.COLOR_AESTHETIC",
+   "axis": "aspect",
+   "label": "颜色外观",
+   "definition": "颜色、外观是否喜欢。",
+   "include": "color, cute, looks",
+   "exclude": "功能",
+   "lexicon": [
+    "color",
+    "cute",
+    "looks",
+    "aesthetic"
+   ]
+  },
+  {
+   "code": "MAT.FABRIC",
+   "axis": "aspect",
+   "label": "面料",
+   "definition": "面料材质本身。",
+   "include": "fabric, material",
+   "exclude": "舒适评价",
+   "lexicon": [
+    "fabric",
+    "material"
+   ]
+  },
+  {
+   "code": "MAT.DURABILITY",
+   "axis": "aspect",
+   "label": "耐用性",
+   "definition": "洗后/长期使用是否损坏。",
+   "include": "durable, fell apart, after washes",
+   "exclude": "单次",
+   "lexicon": [
+    "durable",
+    "fell apart",
+    "wore out",
+    "after (?:a few )?wash",
+    "falling apart"
+   ]
+  },
+  {
+   "code": "MAT.ELASTICITY_RETENTION",
+   "axis": "aspect",
+   "label": "弹性保持",
+   "definition": "是否被撑松、失去弹性。",
+   "include": "stretched out, lost elasticity",
+   "exclude": "初始弹性",
+   "lexicon": [
+    "stretch(?:ed)? out",
+    "lost (?:its )?elasticity",
+    "elastic"
+   ]
+  },
+  {
+   "code": "MAT.THICKNESS",
+   "axis": "aspect",
+   "label": "厚薄",
+   "definition": "厚薄程度。",
+   "include": "thick, thin",
+   "exclude": "体积",
+   "lexicon": [
+    "thick",
+    "thin"
+   ]
+  },
+  {
+   "code": "MAT.CARE",
+   "axis": "aspect",
+   "label": "清洗护理",
+   "definition": "清洗、晾干、护理要求。",
+   "include": "wash, dryer, care",
+   "exclude": "耐用性",
+   "lexicon": [
+    "wash",
+    "washing",
+    "dryer",
+    "laundry"
+   ]
+  },
+  {
+   "code": "VAL.PRICE_VALUE",
+   "axis": "aspect",
+   "label": "价格价值",
+   "definition": "价格是否值、性价比。",
+   "include": "price, expensive, worth, cheap",
+   "exclude": "赠品",
+   "lexicon": [
+    "price",
+    "expensive",
+    "cheap",
+    "worth",
+    "money",
+    "cost",
+    "overpriced"
+   ]
+  },
+  {
+   "code": "CX.RETURN_EXCHANGE",
+   "axis": "aspect",
+   "label": "退换",
+   "definition": "退货、换货、退款体验。",
+   "include": "return, exchange, refund",
+   "exclude": "犹豫是否买",
+   "lexicon": [
+    "return",
+    "returned",
+    "exchange",
+    "refund"
+   ]
+  },
+  {
+   "code": "FUL.PRODUCT_CONDITION",
+   "axis": "aspect",
+   "label": "到货状态",
+   "definition": "包装、到货、二手痕迹。",
+   "include": "arrived, package, damaged",
+   "exclude": "物流时效",
+   "lexicon": [
+    "arrived",
+    "package",
+    "damaged",
+    "used"
+   ]
+  },
+  {
+   "code": "GEN.OVERALL_EVALUATION",
+   "axis": "aspect",
+   "label": "总体评价",
+   "definition": "对产品的整体好恶。",
+   "include": "overall, love it, hate it, recommend",
+   "exclude": "单一属性",
+   "lexicon": [
+    "overall",
+    "love it",
+    "hate it",
+    "would recommend",
+    "recommend"
+   ]
+  },
+  {
+   "code": "USE.LAYERING",
+   "axis": "aspect",
+   "label": "穿着方式",
+   "definition": "内穿/外穿/叠穿方式。",
+   "include": "over clothes, under shirt, layering",
+   "exclude": "衣下可见性",
+   "lexicon": [
+    "over (?:my )?clothes",
+    "under (?:a )?shirt",
+    "layering",
+    "over a dress"
+   ]
+  },
+  {
+   "code": "ACT.COMPATIBILITY",
+   "axis": "aspect",
+   "label": "活动兼容",
+   "definition": "走路、跑步、工作、站立、坐着、睡觉时的可用性。",
+   "include": "walking, running, work, standing, sitting, sleeping",
+   "exclude": "静态合身",
+   "lexicon": [
+    "walking",
+    "walk",
+    "running",
+    "run",
+    "work",
+    "standing",
+    "sit(?:ting)?",
+    "sleep",
+    "exercise",
+    "chase"
+   ]
+  },
+  {
+   "code": "SAF.PRESSURE_PLACEMENT",
+   "axis": "aspect",
+   "label": "受力位置安全",
+   "definition": "对腹部受力位置的安全担忧。",
+   "include": "pressure on belly, too much pressure",
+   "exclude": "一般不适",
+   "lexicon": [
+    "pressure on (?:my )?belly",
+    "too much pressure",
+    "unsafe"
+   ]
+  },
+  {
+   "code": "CTX.PREGNANCY_T2",
+   "axis": "context",
+   "label": "孕中期",
+   "definition": "孕 13–27 周。",
+   "include": "second trimester, week 14-27",
+   "exclude": "产后",
+   "lexicon": [
+    "second trimester",
+    "trimester 2",
+    "weeks? 1[3-9]",
+    "weeks? 2[0-7]"
+   ]
+  },
+  {
+   "code": "CTX.PREGNANCY_T3",
+   "axis": "context",
+   "label": "孕晚期",
+   "definition": "孕 28 周以后。",
+   "include": "third trimester, week 28+",
+   "exclude": "孕中期",
+   "lexicon": [
+    "third trimester",
+    "trimester 3",
+    "weeks? (?:2[8-9]|3[0-9]|4[0-2])"
+   ]
+  },
+  {
+   "code": "CTX.BODY_PLUS_SIZE",
+   "axis": "context",
+   "label": "plus size",
+   "definition": "自述 plus size 或大码需求。",
+   "include": "plus size, curvy, 2x",
+   "exclude": "一般体型",
+   "lexicon": [
+    "plus size",
+    "curvy",
+    "2x",
+    "3x",
+    "bigger body"
+   ]
+  },
+  {
+   "code": "CTX.BODY_TALL_LONG_TORSO",
+   "axis": "context",
+   "label": "高个/长躯干",
+   "definition": "自述高个或长躯干。",
+   "include": "tall, long torso",
+   "exclude": "短躯干",
+   "lexicon": [
+    "tall",
+    "long torso"
+   ]
+  },
+  {
+   "code": "CTX.BODY_SHORT_TORSO",
+   "axis": "context",
+   "label": "矮个/短躯干",
+   "definition": "自述矮个或短躯干。",
+   "include": "short torso, petite",
+   "exclude": "长躯干",
+   "lexicon": [
+    "short torso",
+    "petite"
+   ]
+  },
+  {
+   "code": "CTX.MULTIPLES",
+   "axis": "context",
+   "label": "多胎",
+   "definition": "双胞胎/多胎。",
+   "include": "twins, multiples",
+   "exclude": "单胎",
+   "lexicon": [
+    "twins",
+    "multiples"
+   ]
+  },
+  {
+   "code": "CTX.ACTIVITY_WORK",
+   "axis": "context",
+   "label": "工作场景",
+   "definition": "上班/职业场景。",
+   "include": "at work, desk, nurse, teacher",
+   "exclude": "休闲",
+   "lexicon": [
+    "at work",
+    "desk job",
+    "nurse",
+    "teacher",
+    "on my feet"
+   ]
+  },
+  {
+   "code": "CTX.ACTIVITY_EXERCISE",
+   "axis": "context",
+   "label": "运动场景",
+   "definition": "跑步、健身、瑜伽等。",
+   "include": "running, gym, yoga, exercise",
+   "exclude": "日常走路",
+   "lexicon": [
+    "running",
+    "gym",
+    "yoga",
+    "exercise",
+    "workout"
+   ]
+  },
+  {
+   "code": "CTX.DURATION_ALL_DAY",
+   "axis": "context",
+   "label": "全天佩戴",
+   "definition": "全天或接近全天。",
+   "include": "all day, 8 hours",
+   "exclude": "短时",
+   "lexicon": [
+    "all day",
+    "8 hours",
+    "whole day"
+   ]
+  },
+  {
+   "code": "CTX.PURCHASE_GIFT",
+   "axis": "context",
+   "label": "他人购买",
+   "definition": "作为礼物或替他人买。",
+   "include": "gift, for my wife, bought for",
+   "exclude": "自购",
+   "lexicon": [
+    "gift",
+    "for my wife",
+    "for my daughter",
+    "bought for"
+   ]
+  },
+  {
+   "code": "CTX.SENSITIVE_SKIN",
+   "axis": "context",
+   "label": "敏感肌",
+   "definition": "自述皮肤敏感。",
+   "include": "sensitive skin, eczema",
+   "exclude": "普通皮肤",
+   "lexicon": [
+    "sensitive skin",
+    "eczema"
+   ]
+  },
+  {
+   "code": "CTX.POSTPARTUM",
+   "axis": "context",
+   "label": "产后",
+   "definition": "产后使用。",
+   "include": "postpartum, after birth",
+   "exclude": "孕期",
+   "lexicon": [
+    "postpartum",
+    "after birth",
+    "post partum"
+   ]
+  },
+  {
+   "code": "JNY.CONSIDERATION",
+   "axis": "journey",
+   "label": "考虑比较",
+   "definition": "选购前的比较与求推荐。",
+   "include": "looking for, recommend, which one, vs",
+   "exclude": "已购买",
+   "lexicon": [
+    "looking for",
+    "recommend",
+    "which one",
+    "vs",
+    "any suggestions"
+   ]
+  },
+  {
+   "code": "JNY.SIZE_SELECTION",
+   "axis": "journey",
+   "label": "选码",
+   "definition": "选码阶段的疑问或失误。",
+   "include": "what size, size chart",
+   "exclude": "使用后",
+   "lexicon": [
+    "what size",
+    "which size",
+    "size chart",
+    "size up"
+   ]
+  },
+  {
+   "code": "JNY.FIRST_FITTING",
+   "axis": "journey",
+   "label": "首次穿戴",
+   "definition": "刚收到、第一次试穿。",
+   "include": "just got, first time, tried on",
+   "exclude": "长期使用",
+   "lexicon": [
+    "just got",
+    "first time",
+    "tried (?:it )?on",
+    "arrived today"
+   ]
+  },
+  {
+   "code": "JNY.USE",
+   "axis": "journey",
+   "label": "使用体验",
+   "definition": "日常使用中的体验。",
+   "include": "wearing, used it",
+   "exclude": "选购",
+   "lexicon": [
+    "wearing",
+    "wore",
+    "used it",
+    "using it"
+   ]
+  },
+  {
+   "code": "JNY.CARE",
+   "axis": "journey",
+   "label": "护理耐用",
+   "definition": "清洗与长期耐用。",
+   "include": "washed, after weeks",
+   "exclude": "首次",
+   "lexicon": [
+    "washed",
+    "after (?:a few )?weeks",
+    "laundry"
+   ]
+  },
+  {
+   "code": "JNY.RETURN",
+   "axis": "journey",
+   "label": "退换",
+   "definition": "退货换货阶段。",
+   "include": "returned, refund",
+   "exclude": "使用中",
+   "lexicon": [
+    "returned",
+    "refund",
+    "exchange"
+   ]
+  },
+  {
+   "code": "JNY.RECOMMEND",
+   "axis": "journey",
+   "label": "推荐复购",
+   "definition": "推荐他人或复购。",
+   "include": "recommend, buy again",
+   "exclude": "首次购买",
+   "lexicon": [
+    "recommend",
+    "buy again",
+    "repurchase"
+   ]
+  },
+  {
+   "code": "OUT.RELIEF",
+   "axis": "outcome",
+   "label": "缓解",
+   "definition": "疼痛或不适得到缓解。",
+   "include": "relief, helped",
+   "exclude": "无变化",
+   "lexicon": [
+    "relief",
+    "relieved",
+    "helped",
+    "helps"
+   ]
+  },
+  {
+   "code": "OUT.ACTIVITY_ENABLED",
+   "axis": "outcome",
+   "label": "恢复活动",
+   "definition": "能继续走路/工作/运动。",
+   "include": "able to walk, can move",
+   "exclude": "仍受限",
+   "lexicon": [
+    "able to (?:walk|move|work)",
+    "can walk",
+    "kept walking"
+   ]
+  },
+  {
+   "code": "OUT.NO_BENEFIT",
+   "axis": "outcome",
+   "label": "无感",
+   "definition": "没有感觉到帮助。",
+   "include": "didn't help, no difference, useless",
+   "exclude": "轻微帮助",
+   "lexicon": [
+    "didn'?t help",
+    "no difference",
+    "useless",
+    "did nothing",
+    "no relief"
+   ]
+  },
+  {
+   "code": "OUT.LIMITED_USE",
+   "axis": "outcome",
+   "label": "受限使用",
+   "definition": "只能短时或特定场景使用。",
+   "include": "only wear, can't wear all day",
+   "exclude": "全天可用",
+   "lexicon": [
+    "only (?:wear|use)",
+    "can'?t wear",
+    "couldn'?t wear",
+    "too uncomfortable to wear"
+   ]
+  },
+  {
+   "code": "OUT.RETURN_INTENT",
+   "axis": "outcome",
+   "label": "退货意向",
+   "definition": "打算或已经退货。",
+   "include": "returning, sent back",
+   "exclude": "继续使用",
+   "lexicon": [
+    "returning",
+    "sent it back",
+    "send it back"
+   ]
+  },
+  {
+   "code": "OUT.RECOMMEND",
+   "axis": "outcome",
+   "label": "推荐",
+   "definition": "愿意推荐给他人。",
+   "include": "recommend, told my friend",
+   "exclude": "不推荐",
+   "lexicon": [
+    "recommend",
+    "told my",
+    "recommended"
+   ]
+  },
+  {
+   "code": "OUT.REGRET",
+   "axis": "outcome",
+   "label": "后悔",
+   "definition": "后悔购买。",
+   "include": "regret, waste of money",
+   "exclude": "满意",
+   "lexicon": [
+    "regret",
+    "waste of money",
+    "wish I"
+   ]
+  },
+  {
+   "code": "OUT.CONTINUED_USE",
+   "axis": "outcome",
+   "label": "继续使用",
+   "definition": "仍在使用/每天使用。",
+   "include": "still wearing, every day",
+   "exclude": "已弃用",
+   "lexicon": [
+    "still wear",
+    "still using",
+    "every day"
+   ]
+  },
+  {
+   "code": "GAP.FIT_MISMATCH",
+   "axis": "gap",
+   "label": "适配落差",
+   "definition": "预期合身但实际不合身。",
+   "include": "didn't fit, too small/large",
+   "exclude": "无预期",
+   "lexicon": [
+    "didn'?t fit",
+    "doesn'?t fit",
+    "too small",
+    "too big",
+    "too tight",
+    "too loose"
+   ]
+  },
+  {
+   "code": "GAP.SUPPORT_MISMATCH",
+   "axis": "gap",
+   "label": "支撑落差",
+   "definition": "预期更强支撑但未兑现。",
+   "include": "not supportive enough, expected more support",
+   "exclude": "无预期",
+   "lexicon": [
+    "not supportive enough",
+    "expected more support",
+    "not enough support",
+    "support was lacking"
+   ]
+  },
+  {
+   "code": "GAP.VALUE_MISMATCH",
+   "axis": "gap",
+   "label": "价值落差",
+   "definition": "价格与体验不匹配。",
+   "include": "not worth, overpriced",
+   "exclude": "无价格提及",
+   "lexicon": [
+    "not worth",
+    "overpriced",
+    "waste of money"
+   ]
+  },
+  {
+   "code": "GAP.MATCHED",
+   "axis": "gap",
+   "label": "符合预期",
+   "definition": "明确说符合或超出预期。",
+   "include": "exactly what I needed, as expected",
+   "exclude": "无预期",
+   "lexicon": [
+    "exactly what i needed",
+    "as expected",
+    "lived up to"
+   ]
+  },
+  {
+   "code": "MED.PAIN_SELF_REPORT",
+   "axis": "medical",
+   "label": "疼痛自述",
+   "definition": "自述疼痛或不适（只记录，不判断）。",
+   "include": "pain, hurt, ache, sciatica",
+   "exclude": "一般不适",
+   "lexicon": [
+    "pain",
+    "hurt",
+    "ache",
+    "sciatica",
+    "pelvic pain"
+   ]
+  },
+  {
+   "code": "MED.MEDICAL_HISTORY",
+   "axis": "medical",
+   "label": "病史自述",
+   "definition": "自述疾病或状况。",
+   "include": "SPD, PGP, pubic symphysis, polyhydramnios",
+   "exclude": "无",
+   "lexicon": [
+    "spd",
+    "pgp",
+    "pubic symphysis",
+    "polyhydramnios",
+    "placenta"
+   ]
+  },
+  {
+   "code": "MED.PRESSURE_SAFETY",
+   "axis": "medical",
+   "label": "受力安全信号",
+   "definition": "担心压迫腹部或胎儿。",
+   "include": "pressure on baby, unsafe",
+   "exclude": "无",
+   "lexicon": [
+    "pressure on (?:my )?baby",
+    "unsafe for (?:the )?baby",
+    "too much pressure"
+   ]
+  }
+ ],
+ "polarity_enum": [
+  "positive",
+  "qualified_positive",
+  "negative",
+  "qualified_negative",
+  "mixed",
+  "unknown"
+ ],
+ "rules": [
+  "unknown 不等于 negative",
+  "mixed 保留正负两个 component",
+  "没有 polarity cue 时记 unknown，不默认负向",
+  "medical code 只记录 self-report，不形成功效或安全判断"
+ ]
+}

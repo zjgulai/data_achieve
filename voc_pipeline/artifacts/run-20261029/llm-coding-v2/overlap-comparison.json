@@ -1,0 +1,158 @@
+{
+ "schema_version": "voc_v1_v2_overlap_comparison_v1",
+ "generated_at": "2026-10-30T12:51:17+00:00",
+ "caveat": "v2 covers 248 of 330 text records and has 83 duplicate ids; this is a same-record overlap comparison, not a full v2 run, and it cannot grade claims.",
+ "coverage": {
+  "v1_records": 330,
+  "v2_records": 330,
+  "text_records_expected": 330,
+  "missing_from_v2": 0,
+  "missing_by_source": {}
+ },
+ "high_gate_overlap": {
+  "v1_on_overlap": {
+   "records": 330,
+   "experience_records": 114,
+   "experience_full": 92,
+   "experience_partial": 57,
+   "aspects": 160,
+   "aspect_records": 87,
+   "polarity": {
+    "positive": 110,
+    "negative": 49,
+    "qualified_negative": 1
+   },
+   "qualified_positive_records": []
+  },
+  "v2_on_overlap": {
+   "records": 330,
+   "experience_records": 116,
+   "experience_full": 93,
+   "experience_partial": 57,
+   "aspects": 167,
+   "aspect_records": 86,
+   "polarity": {
+    "qualified_positive": 5,
+    "positive": 121,
+    "negative": 38,
+    "qualified_negative": 3
+   },
+   "qualified_positive_records": [
+    "c-1rqq680",
+    "c-7658003601176119053",
+    "c-7661109234825692942",
+    "c-7677755508020528910",
+    "c-7680524603688634126"
+   ]
+  }
+ },
+ "c13": {
+  "v1_official": {
+   "decisive_records": 32,
+   "same_direction_records": 26,
+   "opposite_direction_records": 6,
+   "mixed_records": 0,
+   "agreement_pct": 81.2,
+   "excluded_partial_records": 0,
+   "excluded_none_records": 1,
+   "scope": "full"
+  },
+  "v1_on_v2_covered": {
+   "decisive_records": 32,
+   "same_direction_records": 26,
+   "opposite_direction_records": 6,
+   "mixed_records": 0,
+   "agreement_pct": 81.2,
+   "excluded_partial_records": 0,
+   "excluded_none_records": 1,
+   "scope": "full"
+  },
+  "v2_on_covered": {
+   "decisive_records": 31,
+   "same_direction_records": 27,
+   "opposite_direction_records": 4,
+   "mixed_records": 0,
+   "agreement_pct": 87.1,
+   "excluded_partial_records": 0,
+   "excluded_none_records": 0,
+   "scope": "full"
+  },
+  "v1_decisive_records": 32,
+  "v1_decisive_missing_from_v2": [],
+  "v2_decisive_records": 31,
+  "v2_newly_decisive_vs_v1": [
+   "c-7665021905910384398",
+   "c-7672402718996334350",
+   "c-7701363030302459661"
+  ],
+  "v2_no_longer_decisive_vs_v1": [
+   "c-7658867802797311758",
+   "c-7663519900497069838",
+   "c-7667963659528931085",
+   "c-7700979310009550605"
+  ]
+ },
+ "c04_c05_dependencies": {
+  "c-1sn9hb1": true,
+  "c-1opsx7o": true,
+  "c-1q2ir63": true
+ },
+ "b05": {
+  "covered": true,
+  "raw_aspects": [
+   {
+    "code": "SUP.PRESSURE_OFFLOAD",
+    "polarity": "qualified_positive",
+    "evidence_span": "Almost fully takes away the sciatica I’ve had for the last 20 weeks of pregnancy",
+    "confidence": "high"
+   },
+   {
+    "code": "GEN.OVERALL_EVALUATION",
+    "polarity": "positive",
+    "evidence_span": "Truly a lifesaver!",
+    "confidence": "high"
+   }
+  ],
+  "high_gate_aspects": [
+   {
+    "code": "SUP.PRESSURE_OFFLOAD",
+    "polarity": "qualified_positive",
+    "evidence_span": "Almost fully takes away the sciatica I’ve had for the last 20 weeks of pregnancy"
+   },
+   {
+    "code": "GEN.OVERALL_EVALUATION",
+    "polarity": "positive",
+    "evidence_span": "Truly a lifesaver!"
+   }
+  ],
+  "expected": {
+   "code": "SUP.PRESSURE_OFFLOAD",
+   "polarity": "qualified_positive"
+  }
+ },
+ "claim_grades": {
+  "v1": {
+   "C01": "Confirmed",
+   "C02": "Confirmed",
+   "C03": "Evidence gap",
+   "C11": "Confirmed",
+   "C04": "Confirmed",
+   "C05": "Evidence gap",
+   "C07": "Blocked",
+   "C08": "Not authorized",
+   "C10": "Blocked",
+   "C12": "Confirmed",
+   "C13": "Directional",
+   "C14": "Confirmed"
+  },
+  "v2": null,
+  "v2_reason": "v2 artifact is incomplete (82 records missing) and internally conflicted (43 coding conflicts)"
+ },
+ "v1_grade_distribution": {
+  "Confirmed": 6,
+  "Evidence gap": 2,
+  "Blocked": 2,
+  "Not authorized": 1,
+  "Directional": 1
+ }
+}
