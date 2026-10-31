@@ -33,7 +33,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_API = ROOT / "apps" / "api"
 
 # 只读常量，供测试引用；helper 自身不读它。
-CURRENT_HEAD = "202610290067"
+CURRENT_HEAD = "202610310068"
 
 DIAGNOSTIC_RE = re.compile(
     r"^(?P<path>[^:\n]+):(?P<line>\d+):(?: (?P<col>\d+):)? error: (?P<msg>.*)$"

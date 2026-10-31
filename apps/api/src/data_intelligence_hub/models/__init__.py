@@ -83,6 +83,10 @@ from data_intelligence_hub.models.dataset import (
 )
 from data_intelligence_hub.models.enrichment import EnrichmentJob, EnrichmentRow
 from data_intelligence_hub.models.entity import Entity, EntitySnapshot
+from data_intelligence_hub.models.insight_report import (
+    InsightReport,
+    InsightReportContent,
+)
 from data_intelligence_hub.models.intelligence import (
     Evidence,
     IntelligenceFeedback,
@@ -258,6 +262,8 @@ __all__ = [
     "EmailProviderLiveSendRun",
     "IntelligenceFeedback",
     "IntelligenceItem",
+    "InsightReport",
+    "InsightReportContent",
     "MonitoringScope",
     "MonitoringScopeTemplate",
     "Notification",

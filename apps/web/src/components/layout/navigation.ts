@@ -45,7 +45,12 @@ export function isNavigationChildActive(
   item: NavigationChild,
 ): boolean {
   const target = targetUrl(item.href);
-  if (target.pathname !== pathname) {
+  // 子路由也要点亮父项。例如 `/new/<reportId>` 仍属于“新建洞察”，
+  // `/reports/<reportId>` 仍属于“报告中心”。只做路径段前缀匹配，
+  // 避免 `/newish` 这类同前缀不同路由被误判；query 仍要求精确匹配。
+  const matchesPath =
+    pathname === target.pathname || pathname.startsWith(`${target.pathname}/`);
+  if (!matchesPath) {
     return false;
   }
 
@@ -102,6 +107,7 @@ export const primaryNavigation = [
     child("/entities", "实体库"),
   ]),
   nav("/intelligence", "洞察与交付", ChartNoAxesCombined, [
+    child("/new", "新建洞察"),
     child("/signals", "信号中心"),
     child("/reports", "报告中心"),
     child("/alerts", "预警中心"),

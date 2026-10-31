@@ -1,0 +1,70 @@
+<section id="s01" aria-labelledby="h01">
+  <div class="section-head">
+    <div class="section-num">01 / 07</div>
+    <h2 id="h01">这批爆款是什么</h2>
+  </div>
+  <p class="section-lead">这是一批已经火过的母婴、喂养视频。我们从 392 个 hashtag 的榜单里各取前 20 条，一共覆盖 43 天。这不是 TikTok 的全部视频，也不是随机抽出来的。</p>
+
+  <h3>1.1 数据从哪来</h3>
+  <ul>
+    <li><strong>文件：</strong><code>/tmp/deepread288.tsv</code>，288 条视频，9 列：video_id、hashtag、peak_play、digg_count、comment_count、share_count、theme_tags（内容类型标签）、mechanism_tags（吸引手法标签）、descr。</li>
+    <li><strong>我们抓取的范围：</strong>392 个 hashtag、43 天，每个 hashtag 取榜单前 20 条，再经 deepread 标注，留下 288 条。这 288 条实际来自 121 个 hashtag。</li>
+    <li><strong>时间：</strong>2026 年 10 月；数据最后一次写入是 2026-10-28。</li>
+    <li><strong>品类：</strong>母婴、喂养。</li>
+    <li><strong>能看到什么：</strong>只有视频配文和已有的标签，没有字幕、画面、音频的分析。</li>
+  </ul>
+
+  <h3>1.2 播放量分布</h3>
+  <div class="table-wrap">
+    <table>
+      <caption class="sr-only">288 条视频的播放分布</caption>
+      <thead>
+        <tr><th>播放区间</th><th class="num">条数</th><th class="num">占比</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>≥ 1 亿</td><td class="num">1</td><td class="num">0.3%</td></tr>
+        <tr><td>1000 万–1 亿</td><td class="num">24</td><td class="num">8.3%</td></tr>
+        <tr><td>100 万–1000 万</td><td class="num">259</td><td class="num">89.9%</td></tr>
+        <tr><td>&lt; 100 万</td><td class="num">4</td><td class="num">1.4%</td></tr>
+        <tr><td><strong>合计</strong></td><td class="num"><strong>288</strong></td><td class="num"><strong>100%</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <ul>
+    <li>播放量的中间水平是 <strong>255 万</strong>，一半视频比它高，一半比它低。把视频按播放量从低到高排，第 25% 到第 75% 这一段落在 <strong>150–522 万</strong>之间，也就是大多数视频都在这个范围。最低到最高是 <strong>9.4 万–1.88 亿</strong>。</li>
+    <li>播放量 1000 万以上的有 <strong>25 条（8.7%）</strong>；1 亿以上的有 <strong>1 条（0.3%）</strong>。</li>
+    <li>这些视频都是已经火过的。<strong>所以不能拿它推算爆款率、命中率，也不代表平台平时的自然流量分布。</strong></li>
+  </ul>
+
+  <h3>1.3 标签有多零散</h3>
+  <div class="table-wrap">
+    <table>
+      <caption class="sr-only">标签出现次数统计</caption>
+      <thead>
+        <tr><th>维度</th><th class="num">数量</th><th>零散情况</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>hashtag</td><td class="num">121 个</td><td>大部分 hashtag <span class="badge badge-warn">条数太少，说明不了问题</span>；只有 4 个达到 8 条以上</td></tr>
+        <tr><td>theme</td><td class="num">993 个，出现 1320 次</td><td>855 个只出现 1 次（86.1%），合起来占所有 theme 出现的 64.8%</td></tr>
+        <tr><td>mechanism</td><td class="num">806 个，被标 941 次</td><td>760 个只出现 1 次（94.3%）</td></tr>
+        <tr><td>每条视频平均</td><td class="num">4.58 个 theme、3.27 个 mechanism</td><td>一条视频会同时带好几个标签，不是分成互不重叠的几组</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><strong>结论：</strong>单个 theme、mechanism 标签太碎，没法直接拿来定选题。所以后面把它们归成 12 类内容类型、10 类吸引手法，再来看。</p>
+
+  <h3>1.4 季节内容偏多</h3>
+  <ul>
+    <li><strong>和万圣节有关的：64/288（22.2%）</strong>，按 theme 标签算出来的。</li>
+    <li><strong>范围放宽，带季节标签的：110/288（38.2%）</strong>，包括万圣节、开学、10 月 1 日、秋季等。</li>
+    <li>这是因为数据只在 10 月抓取，不代表全年也这样。</li>
+  </ul>
+  <p><strong>报告里会用到两种范围：</strong></p>
+  <ol>
+    <li><strong>全部视频：</strong>288 条。</li>
+    <li><strong>去掉万圣节后：</strong>288 条里去掉 64 条万圣节相关的，剩 <strong>224 条</strong>。后面凡写「常青」都指这 224 条；它仍然包含开学、10 月 1 日等其他季节内容，只是不会被万圣节单独拉高。</li>
+  </ol>
+
+  <p class="source-note"><strong>本节数字来源：</strong><code>/tmp/deepread288.tsv</code>、<code>/tmp/viral/theme-clusters.json</code>、<code>/tmp/viral/mech-clusters.json</code>。</p>
+</section>
+

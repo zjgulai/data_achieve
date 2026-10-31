@@ -2757,7 +2757,7 @@ test("primary navigation is complete on desktop and mobile", async ({
 
     await page.keyboard.press("Shift+Tab");
     await expect(
-      drawer.getByRole("link", { name: "系统设置", exact: true }),
+      drawer.getByRole("link", { name: "采集控制台", exact: true }),
     ).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(closeButton).toBeFocused();

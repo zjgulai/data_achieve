@@ -1,0 +1,197 @@
+<section id="s07" aria-labelledby="h07">
+  <div class="section-head">
+    <div class="section-num">07 / 07</div>
+    <h2 id="h07">边界与禁写</h2>
+  </div>
+
+  <h3>7.1 数据能说什么</h3>
+  <ol>
+    <li>说清楚这 288 条爆款视频都是什么内容：拍的是什么类型、用了哪些吸引手法、哪些经常一起出现，以及每条能不能照着自己拍。</li>
+    <li>说清楚 47,073 条评论里大家想表达什么、想要什么选题；所有数量都只能算「至少这么多」。</li>
+    <li>说清楚 9 个竞品账号在同一段时间里平时的播放水平，以及他们发了哪些内容。</li>
+    <li>给出可以验证的业务假设，先小范围试一试。</li>
+  </ol>
+
+  <h3>7.2 不能说什么：12 条不能下的结论</h3>
+  <ol class="forbidden">
+    <li><strong>不能写「用了 X 所以爆」。</strong>出现得多，不等于就是它导致爆；这份报告只写「在 N 条里出现 M 次」。</li>
+    <li><strong>不能把这 288 条当成 TikTok 上的全部视频。</strong>我们抓取的范围是 392 个 hashtag、43 天里每天榜单前 20 名；这不是全部视频，也不是随机抽的。</li>
+    <li><strong>不能把万圣节 22.2% 这个结论拿去推全年，也不能把 10 月的节日内容直接排到 11 月。</strong>借节日势能 100% 靠季节标签；下一个节日要重新抓数据验证。</li>
+    <li><strong>不能拿 121 个 hashtag 排一份靠得住的清单。</strong>只有 4 个 hashtag 下面有 8 条以上视频，而且都跟万圣节季有关；其余 117 个<span class="badge badge-warn">条数太少，说明不了问题</span>。</li>
+    <li><strong>不能比较「学不了」和「容易照拍」这两类谁出爆款的比例高。</strong>播放超过 1000 万的 25 条里，「学不了」这一类只有 5 条；<span class="badge badge-warn">条数太少，说明不了问题</span>，所以不比。</li>
+    <li><strong>不能说竞品和爆款的差距是「拍什么」「怎么拍」或者发帖多少造成的。</strong>我们缺粉丝量、曝光、投流数据；账号和账号之间平时的播放水平差约 84 倍，同一个账号内部的差异大多小于 2 倍。</li>
+    <li><strong>不能把我们数出来的评论诉求条数当成全部，也不能把关键词匹配到的条数当成真实需求的条数。</strong>每个视频最多抓 120 条评论，有 79 个视频抓到了上限（占 24.3% 的评论）；所有数量都只能算「至少这么多」，非英语的诉求被算少了。</li>
+    <li><strong>不能看高赞评论来判断大家想要什么。</strong>点赞最高的 500 条里，82.4% 只是情绪反应，提问占 3.2%，求同款占 0.4%；真正的需求在中低赞、只出现一两次的零散评论里。</li>
+    <li><strong>不能把「拍什么」和「怎么拍」的标签当成互不相容的分类。</strong>一条视频平均有 3.04 个内容类型、3.27 个吸引手法；那张组合表记录的是哪些标签同时出现，不是拿来照抄的模板。</li>
+    <li><strong>不能把「能不能照着自己拍」的判断当成播放量预测。</strong>播放量只说明我们抓到的视频是什么样；这个判断只看素材、方法、制作门槛和版权。</li>
+    <li><strong>不能把「学不了」那一类的中间水平（一半比它高，一半比它低）310 万高于「容易照拍」那一类的 250 万，理解成「越难复制越容易爆」。</strong>这只是描述我们抓到的视频构成；「学不了」这一类里播放最高的一批只有 5 条。</li>
+    <li><strong>不能把品牌账号的中间水平和爆款的中间水平直接比。</strong>竞品是全部视频的快照，爆款是我们筛出来的高播放视频；这两个数字的算法不一样。</li>
+  </ol>
+
+  <h3>7.3 每个数字是怎么算的</h3>
+  <div class="table-wrap wide">
+    <table>
+      <caption class="sr-only">每个部分的数字是怎么算的</caption>
+      <thead>
+        <tr><th>数据块</th><th class="num">条数</th><th>这个数字是怎么算的</th><th>不能和谁直接比</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>288 条爆款</td><td class="num">288 条视频</td><td>392 个 hashtag、43 天的榜单前 20 名，用 deepread 逐条标注</td><td>TikTok 上的全部视频；竞品的全部视频</td></tr>
+        <tr><td>竞品快照</td><td class="num">136 条 / 9 个账号；904 行 / 34 天</td><td>品牌账号每天的视频榜单</td><td>爆款视频；粉丝量和投流都不同</td></tr>
+        <tr><td>评论</td><td class="num">47,073 条 / 1,495 个视频</td><td>每个视频最多抓 120 条；主要看英语关键词</td><td>全部评论；大视频的评论被截断了</td></tr>
+        <tr><td>392 个 hashtag 的池子</td><td class="num">392 个 hashtag</td><td>榜单前 20 名</td><td>全部 hashtag</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>7.4 数据文件在哪，怎么复查</h3>
+  <ul>
+    <li>主要数据：<code>/tmp/deepread288.tsv</code></li>
+    <li>内容类型归类：<code>/tmp/viral/theme-clusters.json</code>、<code>/tmp/viral/theme-clusters.md</code></li>
+    <li>吸引手法归类：<code>/tmp/viral/mech-clusters.json</code>、<code>/tmp/viral/mech-clusters.md</code>、<code>/tmp/viral/mech-mapping.tsv</code></li>
+    <li>能不能照着自己拍：<code>/tmp/viral/replicability.json</code>、<code>/tmp/viral/replicability.tsv</code>、<code>/tmp/viral/build_replicability.py</code></li>
+    <li>哪些地方还有机会：<code>/tmp/viral/saturation.json</code>、<code>/tmp/viral/_competitor_videos.tsv</code>、<code>/tmp/viral/_brand_snapshot_summary.tsv</code></li>
+    <li>评论区：<code>/tmp/viral/comments.json</code>、<code>/tmp/viral/tools/mine3.py</code>、<code>/tmp/viral/tools/clusters.py</code>、<code>/tmp/viral/tools/gen_json.py</code></li>
+  </ul>
+
+  <h3>7.5 最后一句</h3>
+  <div class="answer-box">
+    <p><strong>如果只记一件事：先拍能接住购买意向的内容形式，再谈爆款。</strong>产品清单、教程、身份共鸣这三类，能不能照着自己拍、评论里有没有需求，在我们抓到的视频里都有依据；万圣节播放高是季节带来的红利，不是全年的正常水平。</p>
+  </div>
+</section>
+<section id="appendix" aria-labelledby="happ">
+  <div class="section-head">
+    <div class="section-num">附录 / APPENDIX</div>
+    <h2 id="happ">条数太少，说明不了问题的结论清单</h2>
+  </div>
+  <p>下面这些说法，本报告<strong>不当成结论</strong>。原因只有两个：条数太少，说明不了问题（条数少于 8 条），或者条数刚够到最低线。</p>
+  <ul>
+    <li>117/121 个 hashtag：每个出现的条数少于 8 条，<span class="badge badge-warn">条数太少，说明不了问题</span>，说明不了问题。</li>
+    <li>4 个条数够判断的 hashtag，全部是万圣节季相关，<strong>不能往外推到其他时间</strong>。</li>
+    <li>舞蹈/卡点 7 条、节日穿搭 7 条、模板/剪辑 6 条：<span class="badge badge-warn">条数太少，说明不了问题</span>，说明不了问题，不单独下结论。</li>
+    <li>「学不了」这类里播放量 1000 万以上的 5 条：<span class="badge badge-warn">条数太少，说明不了问题</span>，说明不了问题，不比较出爆款的比例。</li>
+    <li>萌娃治愈 × 反差反转（8 条）、教程 × 情绪（8 条）、身份 × 反差（9 条）、萌娃 × 悬念（11 条）、家庭搞笑 × 叙事（11 条）等组合：<span class="badge badge-caution">条数刚够最低线</span>，中间水平可以看，但不能当成稳定规律。</li>
+    <li>竞品 motifmedical 只出现 1 条：<span class="badge badge-warn">条数太少，说明不了问题</span>，说明不了问题，不拿来比较。</li>
+    <li>育儿焦虑里挑出季节相关的 8 条：<span class="badge badge-caution">条数刚够最低线</span>，只写它们同时出现，不说谁导致谁。</li>
+    <li>万圣节「学不了」这类 5 条：<span class="badge badge-warn">条数太少，说明不了问题</span>，说明不了问题，不比较中间水平。</li>
+    <li>11 月节点效果：手上只有 10 月的数据，<strong>不往外推（不能拿它推下个月）</strong>。</li>
+  </ul>
+  <div class="callout gold">
+    <p><strong>条数少于 8 条时，本报告要么直接标「条数太少，说明不了问题」，要么删掉，不写含糊话。</strong></p>
+  </div>
+</section>
+  </main>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <span><b>生成时间：</b>2026-10-31</span>
+    <span><b>数据截止：</b>2026-10-28</span>
+    <span><b>源文件：</b><code>/tmp/viral/report.md</code></span>
+    <span><b>产出：</b><code>/tmp/viral/report.html</code></span>
+  </div>
+  <p class="footer-note">整个报告就这一个 HTML 文件，不用联网加载别的东西；所有图表都直接画在文件里，能放大、能打印。报告里的数字只说明我们抓到的这批视频是什么样，不能证明谁导致谁，也不保证你照着拍就能拿到同样的播放。</p>
+</footer>
+
+<script>
+(function () {
+  var sections = Array.prototype.slice.call(document.querySelectorAll('main section[id]'));
+  var links = Array.prototype.slice.call(document.querySelectorAll('.toc a[href^="#"], .mobile-toc a[href^="#"]'));
+  if (!sections.length) return;
+
+  function setActive(id) {
+    links.forEach(function (a) {
+      a.classList.toggle('active', a.getAttribute('href') === '#' + id);
+    });
+  }
+
+  if ('IntersectionObserver' in window) {
+    var visible = new Map();
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        visible.set(entry.target.id, entry.isIntersecting);
+      });
+      var active = null;
+      for (var i = 0; i < sections.length; i++) {
+        if (visible.get(sections[i].id)) { active = sections[i].id; break; }
+      }
+      if (!active) {
+        var y = window.scrollY + 140;
+        for (var j = 0; j < sections.length; j++) {
+          if (sections[j].getBoundingClientRect().top + window.scrollY <= y) active = sections[j].id;
+        }
+      }
+      if (active) setActive(active);
+    }, { rootMargin: '-12% 0px -70% 0px', threshold: 0 });
+
+    sections.forEach(function (s) { observer.observe(s); });
+  } else {
+    var onScroll = function () {
+      var y = window.scrollY + 140;
+      var active = sections[0].id;
+      sections.forEach(function (s) {
+        if (s.getBoundingClientRect().top + window.scrollY <= y) active = s.id;
+      });
+      setActive(active);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+
+  document.querySelectorAll('.mobile-toc a').forEach(function (a) {
+    a.addEventListener('click', function () {
+      var d = a.closest('details');
+      if (d) d.open = false;
+    });
+  });
+})();
+</script>
+
+<script>
+(function () {
+  function labelCards() {
+    document.querySelectorAll('.table-wrap.cards table').forEach(function (table) {
+      var heads = Array.prototype.map.call(table.querySelectorAll('thead th'), function (th) {
+        return th.textContent.trim();
+      });
+      table.querySelectorAll('tbody tr').forEach(function (tr) {
+        Array.prototype.forEach.call(tr.children, function (td, i) {
+          if (heads[i] && !td.getAttribute('data-label')) td.setAttribute('data-label', heads[i]);
+          if (!td.querySelector(':scope > .td-value')) {
+            var span = document.createElement('span');
+            span.className = 'td-value';
+            while (td.firstChild) span.appendChild(td.firstChild);
+            td.appendChild(span);
+          }
+        });
+      });
+      var wrap = table.closest('.table-wrap.cards');
+      if (wrap) wrap.classList.add('ready');
+    });
+  }
+  function markScrollable() {
+    document.querySelectorAll('.table-wrap').forEach(function (w) {
+      var over = w.scrollWidth > w.clientWidth + 1;
+      var hint = w.previousElementSibling;
+      if (!hint || !hint.classList || !hint.classList.contains('table-hint')) {
+        hint = document.createElement('p');
+        hint.className = 'table-hint';
+        hint.textContent = '← 横向滑动查看完整表格 →';
+        w.parentNode.insertBefore(hint, w);
+      }
+      hint.classList.toggle('is-visible', over);
+      w.classList.toggle('is-scrollable', over);
+    });
+  }
+  function run() { labelCards(); markScrollable(); }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', run);
+  } else {
+    run();
+  }
+  window.addEventListener('load', run);
+  window.addEventListener('resize', markScrollable);
+})();
+</script>
+</body>
+</html>

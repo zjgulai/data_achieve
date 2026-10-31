@@ -1,0 +1,1640 @@
+{
+ "meta": {
+  "source": "raw.si_tiktok_comment (PostgreSQL abi_migtest/abitest, read-only)",
+  "generated_at": "2026-10-31",
+  "corpus": {
+   "comments": 47073,
+   "videos": 1495,
+   "videos_joined_to_video_table": 1489,
+   "top_level_comments": 44419,
+   "replies": 2654,
+   "reply_share_pct": 5.6,
+   "date_range": [
+    "2019-10-29",
+    "2026-10-28"
+   ],
+   "comments_2026_07_to_10": 41719,
+   "share_2026_07_to_10_pct": 88.6
+  },
+  "sampling": {
+   "max_comments_per_video": 120,
+   "videos_at_cap": 79,
+   "videos_below_cap": 1416,
+   "comments_from_capped_videos": 11421,
+   "share_from_capped_pct": 24.3
+  },
+  "likes": {
+   "median": 15,
+   "p90": 6819.6,
+   "p99": 161779.8,
+   "p999": 694551.5,
+   "mean": 7545.3,
+   "max": 2369866
+  },
+  "length": {
+   "median": 31,
+   "mean": 47.2
+  },
+  "language_estimate": {
+   "latin_script_pct": 95.3,
+   "english_share_of_latin_pct": 95.9,
+   "spanish_pct_of_latin": 2.2,
+   "indonesian_pct_of_latin": 0.7,
+   "french_pct_of_latin": 0.4,
+   "german_pct_of_latin": 0.5,
+   "cyrillic_pct": 2.6,
+   "arabic_pct": 1.5
+  }
+ },
+ "distribution": {
+  "monthly_volume_2026_07_to_10": {
+   "2026-07": 1951,
+   "2026-08": 6931,
+   "2026-09": 18383,
+   "2026-10": 14454
+  },
+  "top_videos_by_comment_count": [
+   {
+    "video_id": "7693259588782640397",
+    "comments": 283,
+    "plays": 10500000,
+    "hashtag": "#momof2",
+    "caption": "day one of solo parenting and the morning was CHAOS😭 jaylen choked on a piece of bacon, everyone needed me at the exact same time, and I swe",
+    "total_likes_on_comments": 443005
+   },
+   {
+    "video_id": "7670984724839517470",
+    "comments": 258,
+    "plays": 15600000,
+    "hashtag": "#auntiesoftiktok",
+    "caption": "PUM PUM BRING LIFEEEEE ! Welcome baby Jhream 💕🤰🏽 #mommytiktok #firsttimemom #Jhreamishere #auntiesoftiktok #fyp @Ja’Kala La’Sha 🦂 @misslaure",
+    "total_likes_on_comments": 1000716
+   },
+   {
+    "video_id": "7684480611410611487",
+    "comments": 224,
+    "plays": 6900000,
+    "hashtag": "#freedurkioo😈😈",
+    "caption": "#lildurk #freedurk #durkio #breakingnews #trending",
+    "total_likes_on_comments": 1467399
+   },
+   {
+    "video_id": "7683688794628869407",
+    "comments": 219,
+    "plays": 1100000,
+    "hashtag": "#schoolmorning",
+    "caption": "5am school grwm from this morning….. (forgot to edit it earlier) #grwm #katherin #school #foryou ",
+    "total_likes_on_comments": 117049
+   },
+   {
+    "video_id": "7547332765893561614",
+    "comments": 218,
+    "plays": 13500000,
+    "hashtag": "#walmartshopping",
+    "caption": "At Walmart 🛒 she spotted the Monopoly game 🎲… I said no but then came the silly walk + spin 💃🏽🌀 and the classic question: “Why bring me if y",
+    "total_likes_on_comments": 546756
+   },
+   {
+    "video_id": "7683279887930608927",
+    "comments": 216,
+    "plays": 4600000,
+    "hashtag": "#viraltiktokforyoupage",
+    "caption": "Everybody was looking at uss 😭😂  #fyp #dance #viral #trending #foryoupage  easy TikTok dances to learn | 2 person dance | dances to learn in",
+    "total_likes_on_comments": 14599
+   },
+   {
+    "video_id": "7683178938209733919",
+    "comments": 216,
+    "plays": 850200,
+    "hashtag": "#newborn",
+    "caption": "Each waking took a lonnnggg time to get back down this night but as a 3rd time mom I honestly really cherish our nights together 😭😭🤎🤎🤎 #newb",
+    "total_likes_on_comments": 204386
+   },
+   {
+    "video_id": "7681448087692381453",
+    "comments": 212,
+    "plays": 267300,
+    "hashtag": "#firsttimemom",
+    "caption": "DID I MISS ANYTHING??? Hopefully this is helpful to all the moms out there🥺💛 #newmom #postpartum #newbornessentials",
+    "total_likes_on_comments": 148197
+   },
+   {
+    "video_id": "7376056597174390059",
+    "comments": 212,
+    "plays": 18600000,
+    "hashtag": "#husbandwifecomedy",
+    "caption": "Who wants to play shark with me? 😂 #couplecomedy #funnycouple #marriedlifehumor #husbandandwife #husbandwifecomedy #husbandsoftiktok #dadsof",
+    "total_likes_on_comments": 566370
+   },
+   {
+    "video_id": "7686587722248604961",
+    "comments": 205,
+    "plays": 1900000,
+    "hashtag": "#babytime",
+    "caption": "Can‘t wait to meet my baby but I’m not ready to go through that pain again 😀",
+    "total_likes_on_comments": 241844
+   },
+   {
+    "video_id": "7685819294436920589",
+    "comments": 205,
+    "plays": 43800,
+    "hashtag": "#hobonichiweeks",
+    "caption": "New to the Hobonichi Weeks in 2027? 👀 I was a Hobonichi newbie last year, and these little things made starting my planner feel WAY less int",
+    "total_likes_on_comments": 836662
+   },
+   {
+    "video_id": "7632905183680351501",
+    "comments": 200,
+    "plays": 21800000,
+    "hashtag": "#babydevelopment",
+    "caption": "this is what your baby looks inside womb week by week #babyinwomb☺ #babyinwomb🤰🏻 #fetaldevelopment #babyintummy #babyinsidebelly #viralvideo",
+    "total_likes_on_comments": 2173389
+   },
+   {
+    "video_id": "7518850151331532037",
+    "comments": 197,
+    "plays": 15300000,
+    "hashtag": "#viraltiktokforyoupage",
+    "caption": "Este es el video más viral en mi TikTok! 🎉🐶 Gracias por tanto amor y por seguirnos 💖 ¿Qué es lo primero que viste en este reel? 👀👇 ¡Cuéntame",
+    "total_likes_on_comments": 1042
+   },
+   {
+    "video_id": "7686272746527018261",
+    "comments": 188,
+    "plays": 35800,
+    "hashtag": "#bayilucu",
+    "caption": "simpan nya di perut🤣 #bayilucu #viralreels #fyp #komedi #viral ",
+    "total_likes_on_comments": 883
+   },
+   {
+    "video_id": "7686209468509605151",
+    "comments": 186,
+    "plays": 205800,
+    "hashtag": "#babytime",
+    "caption": "ITS BABY TIMEEE 👶🏼🌟💓 (finally)",
+    "total_likes_on_comments": 68990
+   },
+   {
+    "video_id": "7684787514439224607",
+    "comments": 180,
+    "plays": 47500,
+    "hashtag": "#babyessential",
+    "caption": "First time mom registry list!!! #firsttimemom #babyregistry #babyregistrymusthaves #pregnancytiktok #babyitems",
+    "total_likes_on_comments": 3421
+   },
+   {
+    "video_id": "7632019586401013022",
+    "comments": 178,
+    "plays": 8600000,
+    "hashtag": "#cocomelonsongs",
+    "caption": "#babycartoon #babyfunny #cartoonvideos #viralvideos #kidsvideosforkids",
+    "total_likes_on_comments": 39746
+   },
+   {
+    "video_id": "7648694393683201310",
+    "comments": 164,
+    "plays": 13600000,
+    "hashtag": "#babysleep",
+    "caption": "My only responsibility right now is staring at this squishy sleeping angel 😭 #baby #cute #sleeping #adorable #love",
+    "total_likes_on_comments": 52982
+   },
+   {
+    "video_id": "7672417974963178783",
+    "comments": 163,
+    "plays": 29800000,
+    "hashtag": "#newborn",
+    "caption": "She didn't even give them time to throw a lil onesie on her first!😩 #birth #laboranddelivery #newbornbaby #momhumor #abcxyz",
+    "total_likes_on_comments": 6282135
+   },
+   {
+    "video_id": "7685873221706550559",
+    "comments": 154,
+    "plays": 63700,
+    "hashtag": "#walmartshopping",
+    "caption": "Run To Walmart! $1 Plush Blanket Clearance Find 🛒 #WalmartClearance #WalmartFinds #ClearanceFinds #BudgetShopping #DealAlert",
+    "total_likes_on_comments": 109
+   }
+  ],
+  "top_50_comments_by_likes": [
+   {
+    "digg": 2369866,
+    "reply_count": 4605,
+    "text": "I scrolled back up so fast 😭",
+    "video_id": "7686585072186608927",
+    "video_caption": "it’s true. we love moms around here. 🫶🏻 #mommytiktok #mombods #plussize #trending ",
+    "hashtag": "#mombods"
+   },
+   {
+    "digg": 1991456,
+    "reply_count": 871,
+    "text": "diagnose: chill af",
+    "video_id": "7671514972186299670",
+    "video_caption": "21 weeks baby delay cry #newborn #viralvideo #unfreezemyaccount #usa🇺🇸 #germany🇩🇪",
+    "hashtag": "#cryingbaby"
+   },
+   {
+    "digg": 1924495,
+    "reply_count": 747,
+    "text": "Can you tell your mom we love her",
+    "video_id": "7641659914502294798",
+    "video_caption": "My biggest supporter throughout everything🥹🩷 #fyp #motherdaughterduo #pregnancy #pregnancysuprise #fyp",
+    "hashtag": "#pregnancysupport"
+   },
+   {
+    "digg": 1697380,
+    "reply_count": 1256,
+    "text": "she drinking like she woke up in the middle of the night 😭",
+    "video_id": "7672417974963178783",
+    "video_caption": "She didn't even give them time to throw a lil onesie on her first!😩 #birth #laboranddelivery #newbornbaby #momhumor #abc",
+    "hashtag": "#newborn"
+   },
+   {
+    "digg": 1675329,
+    "reply_count": 1677,
+    "text": "",
+    "video_id": "7574817810342317343",
+    "video_caption": "#baby #kids #schoolphoto #funny #babyboy ",
+    "hashtag": "#babyphotos"
+   },
+   {
+    "digg": 1369091,
+    "reply_count": 2658,
+    "text": "I'd suggest using cocoa instead of charcoal next time.",
+    "video_id": "7686012462814055710",
+    "video_caption": "@Starbucks. guys PLS HELP. i called and they told me there was nothing they could do about it and i can’t exchange it bc",
+    "hashtag": "#snoopycollection"
+   },
+   {
+    "digg": 1282168,
+    "reply_count": 2428,
+    "text": "Doctor: PLEASE JUST CRY PLEASE 😭😭 Baby : Queen never cry☠️",
+    "video_id": "7671514972186299670",
+    "video_caption": "21 weeks baby delay cry #newborn #viralvideo #unfreezemyaccount #usa🇺🇸 #germany🇩🇪",
+    "hashtag": "#cryingbaby"
+   },
+   {
+    "digg": 1244038,
+    "reply_count": 957,
+    "text": "No fair she gets it premium no ads 😒",
+    "video_id": "7573896893558689037",
+    "video_caption": "Sweet girl 😭",
+    "hashtag": "#msrachel"
+   },
+   {
+    "digg": 1189120,
+    "reply_count": 209,
+    "text": "“Take da damn picture”",
+    "video_id": "7574817810342317343",
+    "video_caption": "#baby #kids #schoolphoto #funny #babyboy ",
+    "hashtag": "#babyphotos"
+   },
+   {
+    "digg": 1180769,
+    "reply_count": 4485,
+    "text": "he knows he's not in Nigeria",
+    "video_id": "7691488746365046047",
+    "video_caption": "Not gone lie.. she got me GOOD 😭😂😂 @Sachi 🌸 #viral #funny",
+    "hashtag": "#larobenz"
+   },
+   {
+    "digg": 1162947,
+    "reply_count": 82,
+    "text": "the look of betrayal😭",
+    "video_id": "7695816616147258656",
+    "video_caption": "his love language is MONEY 😭💳 #couple #couplegoals #couplescomedy",
+    "hashtag": "#couplescomedy"
+   },
+   {
+    "digg": 1159475,
+    "reply_count": 703,
+    "text": "Almost lost you sis !",
+    "video_id": "7693227430420516103",
+    "video_caption": "😭 I feel for him",
+    "hashtag": "#newbornstage"
+   },
+   {
+    "digg": 1130240,
+    "reply_count": 417,
+    "text": "A mi me dijo saliendo de el hospital “creí que estabas gorda por la bebé” una enfermera lo escuchó y le dijo te acaba de dar una hija que poca madre",
+    "video_id": "7695544084907183381",
+    "video_caption": "",
+    "hashtag": "#mamaprimeriza💜💓"
+   },
+   {
+    "digg": 1110523,
+    "reply_count": 395,
+    "text": "baby so lucky, she ain't got no screentime",
+    "video_id": "7573896893558689037",
+    "video_caption": "Sweet girl 😭",
+    "hashtag": "#msrachel"
+   },
+   {
+    "digg": 1106005,
+    "reply_count": 1632,
+    "text": "She drinking like she gave birth to herself 🤣",
+    "video_id": "7672417974963178783",
+    "video_caption": "She didn't even give them time to throw a lil onesie on her first!😩 #birth #laboranddelivery #newbornbaby #momhumor #abc",
+    "hashtag": "#newborn"
+   },
+   {
+    "digg": 1043482,
+    "reply_count": 90,
+    "text": "",
+    "video_id": "7596587423744658718",
+    "video_caption": "It’s funny now that that was 6 years ago <3333 #fyp #funny #xyzbca #2016 #fypシ",
+    "hashtag": "#newbornstage"
+   },
+   {
+    "digg": 1033905,
+    "reply_count": 879,
+    "text": "First day on Earth he's already chilling 😎",
+    "video_id": "7691038967239625997",
+    "video_caption": "Unboxing My Mini Baby Mom and Baby Surprise #myminibaby #mini #zuru #toyunboxing #asmr",
+    "hashtag": "#myminibaby"
+   },
+   {
+    "digg": 1032010,
+    "reply_count": 268,
+    "text": "He holding that snowball like it’s a threat 😂",
+    "video_id": "7574817810342317343",
+    "video_caption": "#baby #kids #schoolphoto #funny #babyboy ",
+    "hashtag": "#babyphotos"
+   },
+   {
+    "digg": 1031723,
+    "reply_count": 319,
+    "text": "i’m 25 but when i get pregnant can i tell your mom too? 😭",
+    "video_id": "7641659914502294798",
+    "video_caption": "My biggest supporter throughout everything🥹🩷 #fyp #motherdaughterduo #pregnancy #pregnancysuprise #fyp",
+    "hashtag": "#pregnancysupport"
+   },
+   {
+    "digg": 976530,
+    "reply_count": 619,
+    "text": "Ms. Rachel PLEASE hire a security team for yourself",
+    "video_id": "7675464033268501773",
+    "video_caption": "Just in 2026.",
+    "hashtag": "#msrachel"
+   },
+   {
+    "digg": 966330,
+    "reply_count": 185,
+    "text": "Pls him spitting it back out 😭😂",
+    "video_id": "7492074587941784862",
+    "video_caption": "cake guy!! #relationship #relationships #relationshipgoals #relationshipproblems #relationshipadvice #love #loveyou #hus",
+    "hashtag": "#husbandwifecomedy"
+   },
+   {
+    "digg": 941465,
+    "reply_count": 626,
+    "text": "This probably says a lot about your cooking",
+    "video_id": "7623983535036075278",
+    "video_caption": "just a man and his burrito 😪🌯 best part is he ate all this AND the real dinner I had prepared 😅 #aprilfoolsprank #harmle",
+    "hashtag": "#husbandwifecomedy"
+   },
+   {
+    "digg": 888939,
+    "reply_count": 473,
+    "text": "THIS IS WHAT THIS APP WAS MADE FOR!!!!",
+    "video_id": "7655410560502123794",
+    "video_caption": "BILLIE JEAN🕺#dance #mj #fyp",
+    "hashtag": "#michaeljacksondance"
+   },
+   {
+    "digg": 879634,
+    "reply_count": 593,
+    "text": "Literally her🥹",
+    "video_id": "7644298321166667041",
+    "video_caption": "This 2 year old SINGER shocked EVERYONE 🥹❤️ I was playing piano in Los Angeles when Leona asked me if I could play “Let ",
+    "hashtag": "#2yearsold"
+   },
+   {
+    "digg": 871679,
+    "reply_count": 193,
+    "text": "“to me this is the end of the world” such big feelings for such a little heart to express ☹️",
+    "video_id": "7682954997356678414",
+    "video_caption": "#supernannyusa #greifjourney #motherandsonduo #kidsoftiktok #emotional",
+    "hashtag": "#supernannyusa"
+   },
+   {
+    "digg": 853059,
+    "reply_count": 214,
+    "text": "the only mad i want",
+    "video_id": "7695816616147258656",
+    "video_caption": "his love language is MONEY 😭💳 #couple #couplegoals #couplescomedy",
+    "hashtag": "#couplescomedy"
+   },
+   {
+    "digg": 850843,
+    "reply_count": 2194,
+    "text": "As a man I want my mom to comfort me like that when I’m pregnant 😭",
+    "video_id": "7641659914502294798",
+    "video_caption": "My biggest supporter throughout everything🥹🩷 #fyp #motherdaughterduo #pregnancy #pregnancysuprise #fyp",
+    "hashtag": "#pregnancysupport"
+   },
+   {
+    "digg": 849408,
+    "reply_count": 1145,
+    "text": "El bebé: no esperen mucho de mi en la vida 🤣🤣🤣",
+    "video_id": "7691038967239625997",
+    "video_caption": "Unboxing My Mini Baby Mom and Baby Surprise #myminibaby #mini #zuru #toyunboxing #asmr",
+    "hashtag": "#myminibaby"
+   },
+   {
+    "digg": 844274,
+    "reply_count": 664,
+    "text": "Vegetable oil, NOT motor oil.",
+    "video_id": "7686012462814055710",
+    "video_caption": "@Starbucks. guys PLS HELP. i called and they told me there was nothing they could do about it and i can’t exchange it bc",
+    "hashtag": "#snoopycollection"
+   },
+   {
+    "digg": 837970,
+    "reply_count": 459,
+    "text": "\"Say cheese\"",
+    "video_id": "7574817810342317343",
+    "video_caption": "#baby #kids #schoolphoto #funny #babyboy ",
+    "hashtag": "#babyphotos"
+   },
+   {
+    "digg": 793930,
+    "reply_count": 494,
+    "text": "I wanna eat my, I wanna eat my",
+    "video_id": "7634014714418203934",
+    "video_caption": "Soooo many excuses at bedtime 🥲 #2yearsold #toddlersoftiktok #aminagray #toddlersbelike #toddlerlife",
+    "hashtag": "#2yearsold"
+   },
+   {
+    "digg": 780007,
+    "reply_count": 123,
+    "text": "“Don’t be scared, Mommy got you”",
+    "video_id": "7641659914502294798",
+    "video_caption": "My biggest supporter throughout everything🥹🩷 #fyp #motherdaughterduo #pregnancy #pregnancysuprise #fyp",
+    "hashtag": "#pregnancysupport"
+   },
+   {
+    "digg": 760764,
+    "reply_count": 153,
+    "text": "wait marry him again",
+    "video_id": "7651709619982617869",
+    "video_caption": "Weeks 8-16 of pregnancy tested everything I had in me 😭 I wish I could hug this version of myself now lol #firsttrimeste",
+    "hashtag": "#firsttrimester"
+   },
+   {
+    "digg": 759036,
+    "reply_count": 101,
+    "text": "This looks so painful",
+    "video_id": "7425324532996754734",
+    "video_caption": "SO CLOSE TO MEETING MY BOYS!!!! #twinboys #twinmom #twinpregnancy #pregnantwithtwins #pregnancyupdate #35weekspregnant #",
+    "hashtag": "#twinmum"
+   },
+   {
+    "digg": 755575,
+    "reply_count": 170,
+    "text": "baby got lifetime subscription of ms rachel😂",
+    "video_id": "7573896893558689037",
+    "video_caption": "Sweet girl 😭",
+    "hashtag": "#msrachel"
+   },
+   {
+    "digg": 742503,
+    "reply_count": 189,
+    "text": "Babies comforting each other is so funny bc they don’t know what to do 😭",
+    "video_id": "7609177142395522318",
+    "video_caption": "Romeo’s always comfors Logan when he cries…#twins#baby#cutebaby#fyp#cutebabies",
+    "hashtag": "#cutebabies"
+   },
+   {
+    "digg": 734971,
+    "reply_count": 93,
+    "text": "",
+    "video_id": "7553772931696921911",
+    "video_caption": "I love the outcome of these beautiful photos! | #newbornphotographer #lilonephoto #babyphotography #fyp ",
+    "hashtag": "#babyphotos"
+   },
+   {
+    "digg": 734727,
+    "reply_count": 215,
+    "text": "\"Sir step out of the vehi-\"",
+    "video_id": "7697267952940223766",
+    "video_caption": "#humor #fyp #trending #viral",
+    "hashtag": "#humor"
+   },
+   {
+    "digg": 733055,
+    "reply_count": 227,
+    "text": "Scrolled so hard I found the OG clip 😭",
+    "video_id": "7685216167182552333",
+    "video_caption": "When @JackFunny got a haircut 😂😂 #jackfunny313 #haircut #barber #meme",
+    "hashtag": "#meme"
+   },
+   {
+    "digg": 732628,
+    "reply_count": 5625,
+    "text": "This deadass make me wanna kiss my homeboy",
+    "video_id": "7693912211588271390",
+    "video_caption": "Kissing my girlfriend halfway through an argument to see her reaction!! #cutecouple #girlfriend #couple #couplecomedy",
+    "hashtag": "#couples"
+   },
+   {
+    "digg": 730653,
+    "reply_count": 485,
+    "text": "do kids not fear teens now or?",
+    "video_id": "7685161371364773151",
+    "video_caption": "wifedatttt #viral #foryoupage #fyp #repost #like",
+    "hashtag": "#wife"
+   },
+   {
+    "digg": 724619,
+    "reply_count": 1438,
+    "text": "Una vez salí con uno así y fue la mejor cita de mi vida JAJJJAJAJAJJAJ me reiiiiii que casi me orine",
+    "video_id": "7684871480156376333",
+    "video_caption": "Eres mi toda mi princesa 🩷#mamagirl #fypシ #mamafeliz ",
+    "hashtag": "#miprincesa"
+   },
+   {
+    "digg": 722486,
+    "reply_count": 88,
+    "text": "Y’all don’t realize how much money this saves",
+    "video_id": "7557165432478633247",
+    "video_caption": "Baby wipessss I love to make em! #babywipes #diy #homemade #clean #CapCut",
+    "hashtag": "#babywipes"
+   },
+   {
+    "digg": 719932,
+    "reply_count": 2100,
+    "text": "a mi me obligaba a tener relacion recién aliviada y con cesaría 😳",
+    "video_id": "7695544084907183381",
+    "video_caption": "",
+    "hashtag": "#mamaprimeriza💜💓"
+   },
+   {
+    "digg": 714962,
+    "reply_count": 1330,
+    "text": "I ain’t never cussed my kids out in whispering imma start today",
+    "video_id": "7634357447653707021",
+    "video_caption": "If you don’t have kids… DON’T! Just get the damn dog bc motherHOOD can be so mf ghetto. On the brighter side, we made it",
+    "hashtag": "#momlifebelike"
+   },
+   {
+    "digg": 707126,
+    "reply_count": 218,
+    "text": "Can you play ‘Let it go’?",
+    "video_id": "7644298321166667041",
+    "video_caption": "This 2 year old SINGER shocked EVERYONE 🥹❤️ I was playing piano in Los Angeles when Leona asked me if I could play “Let ",
+    "hashtag": "#2yearsold"
+   },
+   {
+    "digg": 696695,
+    "reply_count": 93,
+    "text": "Genuinely looks terrifying from that pov bro what",
+    "video_id": "7697550099492146453",
+    "video_caption": "That third trimester pregnant life… #thirdtrimester #twins #pregnant #pregnancy #fyp",
+    "hashtag": "#pregnancy"
+   },
+   {
+    "digg": 694681,
+    "reply_count": 1122,
+    "text": "in this awful world, be a dolly parton, not an Elon musk.",
+    "video_id": "7678083962782125343",
+    "video_caption": "On the day she died, Dolly Parton sent us a reminder that she wasn’t a billionaire. ",
+    "hashtag": "#imaginationlibrary"
+   },
+   {
+    "digg": 692883,
+    "reply_count": 146,
+    "text": "She instantly turned into that person she needed at her age",
+    "video_id": "7641659914502294798",
+    "video_caption": "My biggest supporter throughout everything🥹🩷 #fyp #motherdaughterduo #pregnancy #pregnancysuprise #fyp",
+    "hashtag": "#pregnancysupport"
+   },
+   {
+    "digg": 688113,
+    "reply_count": 250,
+    "text": "Titi was in the military🤣",
+    "video_id": "7691499278170213646",
+    "video_caption": "His mama already got enough on her plate so titi to the rescue, I don’t hit kids but we Finna make that body hurt 🤏🏾 let",
+    "hashtag": "#nephew"
+   }
+  ],
+  "length_histogram": [
+   {
+    "bucket": "0-9",
+    "n": 5953,
+    "pct": 12.83
+   },
+   {
+    "bucket": "10-24",
+    "n": 12116,
+    "pct": 26.12
+   },
+   {
+    "bucket": "25-49",
+    "n": 15143,
+    "pct": 32.64
+   },
+   {
+    "bucket": "50-99",
+    "n": 9085,
+    "pct": 19.58
+   },
+   {
+    "bucket": "100-199",
+    "n": 3238,
+    "pct": 6.98
+   },
+   {
+    "bucket": "200-499",
+    "n": 731,
+    "pct": 1.58
+   },
+   {
+    "bucket": "500+",
+    "n": 124,
+    "pct": 0.27
+   }
+  ],
+  "note": "评论量 88.6% 集中在 2026-07 至 2026-10；2019-2025 的评论是长尾历史内容。"
+ },
+ "intent": {
+  "method": "人工逐条标注 2 个 500 条样本；每类定义见 categories。反讽/玩笑式问句归 R，只有真实求证信息归 Q。",
+  "categories": {
+   "Q": "提问（真实求证信息）",
+   "B": "求同款/求链接",
+   "C": "批评/质疑/纠正",
+   "E": "分享自身经历或经验建议",
+   "R": "情绪反应（玩笑、共鸣、引用、纯夸赞）",
+   "O": "其他（@、刷屏、无法判断）"
+  },
+  "sample_likes_weighted_top500": {
+   "n": 500,
+   "counts": {
+    "Q": 16,
+    "B": 2,
+    "C": 27,
+    "E": 40,
+    "R": 412,
+    "O": 3
+   },
+   "shares_pct": {
+    "Q": 3.2,
+    "B": 0.4,
+    "C": 5.4,
+    "E": 8.0,
+    "R": 82.4,
+    "O": 0.6
+   },
+   "ci95_pct": {
+    "Q": [
+     2.0,
+     5.1
+    ],
+    "B": [
+     0.1,
+     1.4
+    ],
+    "C": [
+     3.7,
+     7.7
+    ],
+    "E": [
+     5.9,
+     10.7
+    ],
+    "R": [
+     78.8,
+     85.5
+    ],
+    "O": [
+     0.2,
+     1.7
+    ]
+   },
+   "examples": {
+    "Q": [
+     "why is he armed?😭",
+     "Does he remember this😭😭",
+     "why is he strapped 😭",
+     "Mi pregunta esssss de donde sacaron ese carro tan perfecto para hacer el video",
+     "How is it raw and burnt"
+    ],
+    "B": [
+     "Can I have that! I need it!",
+     "that bed looks so comfy i want one for myself"
+    ],
+    "C": [
+     "I mean congrats but also tell him to stay off you, your body needs to heal",
+     "He’s not misbehaving he’s grieving 🥺🥺🥺",
+     "Missing an entire recital over a regular baseball game is actually so insane.",
+     "Men like this disgust me low key",
+     "This shi actually disgusts me"
+    ],
+    "E": [
+     "I'd suggest using cocoa instead of charcoal next time.",
+     "A mi me dijo saliendo de el hospital “creí que estabas gorda por la bebé” una enfermera lo escuchó y le dijo te acaba de dar una hija que poca madre",
+     "Una vez salí con uno así y fue la mejor cita de mi vida JAJJJAJAJAJJAJ me reiiiiii que casi me orine",
+     "Y’all don’t realize how much money this saves",
+     "a mi me obligaba a tener relacion recién aliviada y con cesaría 😳"
+    ],
+    "R": [
+     "I scrolled back up so fast 😭",
+     "diagnose: chill af",
+     "Can you tell your mom we love her",
+     "she drinking like she woke up in the middle of the night 😭",
+     "Doctor: PLEASE JUST CRY PLEASE 😭😭 Baby : Queen never cry☠️"
+    ]
+   }
+  },
+  "sample_uniform_random500": {
+   "n": 500,
+   "counts": {
+    "Q": 42,
+    "B": 23,
+    "C": 25,
+    "E": 98,
+    "R": 265,
+    "O": 47
+   },
+   "shares_pct": {
+    "Q": 8.4,
+    "B": 4.6,
+    "C": 5.0,
+    "E": 19.6,
+    "R": 53.0,
+    "O": 9.4
+   },
+   "ci95_pct": {
+    "Q": [
+     6.3,
+     11.2
+    ],
+    "B": [
+     3.1,
+     6.8
+    ],
+    "C": [
+     3.4,
+     7.3
+    ],
+    "E": [
+     16.4,
+     23.3
+    ],
+    "R": [
+     48.6,
+     57.3
+    ],
+    "O": [
+     7.1,
+     12.3
+    ]
+   },
+   "examples": {
+    "Q": [
+     "Makes you 💩 and feel full for longer?",
+     "vine por trend del vídeo peor no sé si es niño o niña",
+     "quien es este? el de producción?",
+     "Why is everyone spelling cholking wrong 😭",
+     "Que cantaba"
+    ],
+    "B": [
+     "Where is the blanket from",
+     "Link for her hair products ?!",
+     "I need these! But they need to also bring back the BLOOD ORANGE SPRITZ that’s my fave",
+     "Omg I want!!!",
+     "Budweiser & I’d buy"
+    ],
+    "C": [
+     "This is scary dude. Her immediately trying to gaslight a manipulate you into you thinking you’re the problem is disgusting.",
+     "It’s not funny.",
+     "y como puede su mama burlarse de él",
+     "Child cruelty 😳",
+     "franchement ? c'est laid"
+    ],
+    "E": [
+     "Oh the gasp I gusped!! I did not realize just how much the skull fragments can overlap!! I learned something new today!",
+     "I think she is using her voice to point out how ridiculous it’s to have only ONLY 6 weeks of leave",
+     "That’s how my 5th came fr, I made it to the er at an 8 after they checked me they stuck my iv in to draw blood and I got to pushing (I’d say within 10 mins on arrival)",
+     "i had this last week but not this week",
+     "Yeah unfortunately it’s the smaller packaging [Crying] It’s awful bc i love those LOL"
+    ],
+    "R": [
+     "when he falls the dogs like “i swear it wasn’t me” 😂",
+     "Me watching with a sore throat -.-",
+     "I G U A L I T O!!! Jajajajaja, cosas de mamás",
+     "i'm just gonna scroll, okay?",
+     "Corre bien recio 😂😂😂😂 soy la única que habla español acá?"
+    ]
+   }
+  },
+  "contrast": "按获赞排序的 500 条里 Q 占 3.2%、B 占 0.4%；均匀随机 500 条里 Q 占 8.4%、B 占 4.6%。高赞评论以情绪反应为主，不能用来估计需求占比。"
+ },
+ "questions": {
+  "candidate_volume": {
+   "comments_with_question_mark": 3676,
+   "qmark_share_pct": 7.8,
+   "question_candidates": 5976,
+   "candidate_share_pct": 12.7,
+   "distinct_videos": 1293
+  },
+  "commercial_union": {
+   "definition": "where_to_buy ∪ link_request ∪ price ∪ brand（明确购买意图）",
+   "comments": 307,
+   "distinct_videos": 153,
+   "share_pct": 0.65
+  },
+  "clusters": [
+   {
+    "cluster": "where_to_buy",
+    "keyword_match_n": 223,
+    "distinct_videos": 124,
+    "manual_sample_n": 35,
+    "manual_sample_true": 35,
+    "manual_precision": 1.0,
+    "estimated_true_n": 223,
+    "examples": [
+     {
+      "digg": 26212,
+      "text": "great great.... I love that for you, now where can I get one?",
+      "video_caption": "never know what to expect with this one 😂 #funnymoments #momof3 #toddlerlife",
+      "hashtag": "#toddlerlife"
+     },
+     {
+      "digg": 4408,
+      "text": "Off topic but I’m a dancer like where do you get your pants from???",
+      "video_caption": "Six‑year‑old pageant girl Brenna won’t allow anyone to say she is not beautiful.#usa #tiktok #realitytv #tlc #toddlersan",
+      "hashtag": "#toddlersandtiaras"
+     },
+     {
+      "digg": 1400,
+      "text": "Where can I find this bumper sticker? My Dad would want this for me!",
+      "video_caption": "Little man gets into all the things! 🤯 🔗LINKED ON MY LTK🔗 #babyproofing#babymusthaves#babyregistrymusthaves",
+      "hashtag": "#babyessential"
+     }
+    ]
+   },
+   {
+    "cluster": "howto",
+    "keyword_match_n": 102,
+    "distinct_videos": 82,
+    "manual_sample_n": 22,
+    "manual_sample_true": 14,
+    "manual_precision": 0.64,
+    "estimated_true_n": 65,
+    "examples": [
+     {
+      "digg": 46797,
+      "text": "How did you get the nails😂😂",
+      "video_caption": "such a peaceful morning 😴 eyepatches from @Biodance Store US #morningroutine #vlog #school #senior #productivity",
+      "hashtag": "#morningvlogs"
+     },
+     {
+      "digg": 32449,
+      "text": "please, I'm begging you... make a recipe book for all these sandwiches....",
+      "video_caption": "Today’s pregnant craving: The bacon and mac n’ cheese sandwich… 🥪 🧀🥓 #Sandwich #pregnancytiktok #pregnantlife #cheese #b",
+      "hashtag": "#pregnancycraving"
+     },
+     {
+      "digg": 19648,
+      "text": "Yea so yall need to start telling us HOW to make this 😭",
+      "video_caption": "I’ve personally used breast milk lotion for baby acne, cradle cap and dry, sensitive skin, and it’s worked so well for u",
+      "hashtag": "#milkbaby"
+     }
+    ]
+   },
+   {
+    "cluster": "community_validation",
+    "keyword_match_n": 65,
+    "distinct_videos": 61,
+    "manual_sample_n": 20,
+    "manual_sample_true": 20,
+    "manual_precision": 1.0,
+    "estimated_true_n": 65,
+    "examples": [
+     {
+      "digg": 60710,
+      "text": "is it just me or is waking up at 5:30am for school insane?",
+      "video_caption": "When you’re so exhausted that you mix up one of the FIVE alarms you set for the morning… 😭😂 Mom fail of the day. Apparen",
+      "hashtag": "#momstruggles"
+     },
+     {
+      "digg": 42806,
+      "text": "Is anyone else still dealing with phlegm and a cough?!? Like no other symptoms just lingering?!!?",
+      "video_caption": "The #CDC has warned that 35 states are seeing four #respiratory illnesses on the rise: #flu, #COVID-19, #RSV and #norovi",
+      "hashtag": "#rsv"
+     },
+     {
+      "digg": 34518,
+      "text": "Am I the only one who honestly I don’t find nothing wrong with a little girl loving our brow skin..",
+      "video_caption": "Kaykays babies in action! @kcanaday1 #pageant #pageantgirl #toddlersandtiaras #glitz",
+      "hashtag": "#toddlersandtiaras"
+     }
+    ]
+   },
+   {
+    "cluster": "product_or_object_name",
+    "keyword_match_n": 74,
+    "distinct_videos": 66,
+    "manual_sample_n": 74,
+    "manual_sample_true": 42,
+    "manual_precision": 0.57,
+    "estimated_true_n": 42,
+    "examples": [
+     {
+      "digg": 133386,
+      "text": "what is this",
+      "video_caption": "Ai baby dance 🔥🔥🔥🔥🔥#capcut #capcutpioneer #pioneertemplate #fyp #viral ",
+      "hashtag": "#aibabytrend"
+     },
+     {
+      "digg": 71411,
+      "text": "May she be healed in the name of Jesus ❤️",
+      "video_caption": "Childhood cancer affects the whole family. The reality is, as much as we love visits, the goodbyes are really bloody har",
+      "hashtag": "#hospitalstay"
+     },
+     {
+      "digg": 49726,
+      "text": "tangan siapa itu, semoga dateng ke indonesia🥰🥰🥰🫶🫶🫶🫶",
+      "video_caption": "B𝘢lliBotMogis #TrendingReels #FYP #Vir𝘢lTikTok #MillionViews #TrendingReels #For𝘺oupage #FYP #RobotVibes #innov𝘢tion #Te",
+      "hashtag": "#viraltiktokforyoupage"
+     }
+    ]
+   },
+   {
+    "cluster": "price",
+    "keyword_match_n": 40,
+    "distinct_videos": 26,
+    "manual_sample_n": 40,
+    "manual_sample_true": 38,
+    "manual_precision": 0.95,
+    "estimated_true_n": 38,
+    "examples": [
+     {
+      "digg": 2340,
+      "text": "How much for the clear snoopy cup",
+      "video_caption": "Snoopy X Starbucks is HERE🐶☕️✨ Prices included #fyp #starbucks #snoopy #charliebrown",
+      "hashtag": "#snoopycollection"
+     },
+     {
+      "digg": 1155,
+      "text": "بكم وهل يجي معها النونو ولا بدون؟",
+      "video_caption": "Just a bit of cuteness to get you through to Friday #babyspaday #babyspa #cutebaby #babygirl #firsttimemom #firsttimemum",
+      "hashtag": "#cutebabies"
+     },
+     {
+      "digg": 859,
+      "text": "how much are the butter squishys??",
+      "video_caption": "Halloween gift idea on a budget💅🏻🎃👻@Dollar Tree #dollartree#dollartreefinds#dollartreediy#boobasket#halloween",
+      "hashtag": "#halloweengift"
+     }
+    ]
+   },
+   {
+    "cluster": "link_request",
+    "keyword_match_n": 38,
+    "distinct_videos": 23,
+    "manual_sample_n": 10,
+    "manual_sample_true": 10,
+    "manual_precision": 1.0,
+    "estimated_true_n": 38,
+    "examples": [
+     {
+      "digg": 80,
+      "text": "I didn’t see the link for the clear bags? Can you add that on your boo baskets on Amazon",
+      "video_caption": "Let’s make some mini BOO 👻 Baskets 🎃 Comment “BOO” and I’ll send you all the details ✨ #boobasket #boobasketideas #booba",
+      "hashtag": "#boobasketseason"
+     },
+     {
+      "digg": 65,
+      "text": "anyone got the link ?",
+      "video_caption": "The flyest 🤧 #toddlersoftiktok #toddlerfashion #fyp #fypシ #explorepage✨ ",
+      "hashtag": "#kidsoutfit"
+     },
+     {
+      "digg": 50,
+      "text": "Lotusinhand on YouTube has a full bootcamp and squaredup has an amazing Skool cardistry academy (link for that in bio) 🫡",
+      "video_caption": "She didn't even give them time to throw a lil onesie on her first!😩 #birth #laboranddelivery #newbornbaby #momhumor #abc",
+      "hashtag": "#newborn"
+     }
+    ]
+   },
+   {
+    "cluster": "ai_authenticity",
+    "keyword_match_n": 50,
+    "distinct_videos": 36,
+    "manual_sample_n": 14,
+    "manual_sample_true": 9,
+    "manual_precision": 0.64,
+    "estimated_true_n": 32,
+    "examples": [
+     {
+      "digg": 33676,
+      "text": "can sm1 tell me how is it ai😭 im so lost in the sht rn",
+      "video_caption": "Lmk if this is you😂 #lockisha #funny #relatable #unbothered",
+      "hashtag": "#relatable"
+     },
+     {
+      "digg": 28886,
+      "text": "mi hijo dice que es IA 😅",
+      "video_caption": "Lo que mande y ordene 😮‍💨@Jess Fernández 💜 #mama #comedyvideo",
+      "hashtag": "#humordemamá"
+     },
+     {
+      "digg": 5004,
+      "text": "Ya no se que es IA y que no 😳",
+      "video_caption": "There goes my childhood 😭🥀 #relateable #meme #funnymemes #relateablememe #cheekyboy",
+      "hashtag": "#relatablememes"
+     }
+    ]
+   },
+   {
+    "cluster": "age_months",
+    "keyword_match_n": 40,
+    "distinct_videos": 29,
+    "manual_sample_n": 12,
+    "manual_sample_true": 9,
+    "manual_precision": 0.75,
+    "estimated_true_n": 30,
+    "examples": [
+     {
+      "digg": 291972,
+      "text": "How old is your son.. asking for a friend..",
+      "video_caption": "You really asked that out loud?? 🤯 Leason learned! #BigBrother #Siblings #FunnyKids #FamilyMoments #funnykidsoftiktok",
+      "hashtag": "#familymoments"
+     },
+     {
+      "digg": 268743,
+      "text": "How old is he again😂😂",
+      "video_caption": "He wasted no time 😭🔥 #larobenz #babies #zaza",
+      "hashtag": "#larobenz"
+     },
+     {
+      "digg": 32524,
+      "text": "How old is she",
+      "video_caption": "My biggest supporter throughout everything🥹🩷 #fyp #motherdaughterduo #pregnancy #pregnancysuprise #fyp",
+      "hashtag": "#pregnancysupport"
+     }
+    ]
+   },
+   {
+    "cluster": "ship_restock",
+    "keyword_match_n": 26,
+    "distinct_videos": 19,
+    "manual_sample_n": 26,
+    "manual_sample_true": 15,
+    "manual_precision": 0.58,
+    "estimated_true_n": 15,
+    "examples": [
+     {
+      "digg": 700,
+      "text": "unfortunately it does matter where you live, the imagination library would not ship to my zip code :(",
+      "video_caption": "what a legacy this woman created ✨ To see if there is a participating library near you go to imaginationlibrary.com and ",
+      "hashtag": "#imaginationlibrary"
+     },
+     {
+      "digg": 223,
+      "text": "Ngl yall hella ungrateful he was thoughtful and he got good stuff what if his girl js like her hygiene products or needed a restock",
+      "video_caption": "Fellas is officially boo basket season #fyp #viral #trending",
+      "hashtag": "#boobasketseason"
+     },
+     {
+      "digg": 20,
+      "text": "This is a fetus. Babies need milk which is not available in the womb",
+      "video_caption": "Can Your Stress Affect Your Baby During Pregnancy? 🤰🧠 #pregnancystress #pregnancyfacts #babydevelopment #fetaldevelopmen",
+      "hashtag": "#babydevelopment"
+     }
+    ]
+   },
+   {
+    "cluster": "normal_or_safe",
+    "keyword_match_n": 21,
+    "distinct_videos": 18,
+    "manual_sample_n": 21,
+    "manual_sample_true": 14,
+    "manual_precision": 0.67,
+    "estimated_true_n": 14,
+    "examples": [
+     {
+      "digg": 18716,
+      "text": "wait so is it okay for your husband to see your hair?",
+      "video_caption": "Who can see my hair? Husbands fam edition #hijab#muslimtiktok#learnfromme#husbandwifecomedy#learnontiktok#todayilearned#",
+      "hashtag": "#husbandwifecomedy"
+     },
+     {
+      "digg": 8782,
+      "text": "The most important question …is he ok now?",
+      "video_caption": "This is RSV. So don’t think, oh I just have a runny nose, I’m fine. Because your runny nose could be respiratory failure",
+      "hashtag": "#rsv"
+     },
+     {
+      "digg": 967,
+      "text": "Is this okay?",
+      "video_caption": "LITERALLY the perfect BOO BASKET🧡🎃👻🫧 #boobasket #spookybasket #giftideas #boobasketideas #bodycare",
+      "hashtag": "#spookybasket"
+     }
+    ]
+   },
+   {
+    "cluster": "song_name",
+    "keyword_match_n": 14,
+    "distinct_videos": 11,
+    "manual_sample_n": 14,
+    "manual_sample_true": 14,
+    "manual_precision": 1.0,
+    "estimated_true_n": 14,
+    "examples": [
+     {
+      "digg": 1138,
+      "text": "cómo se llama la canción",
+      "video_caption": "WHEELS ON THE BUS! #baby #kids #fypシ゚viral #cocomelon #neicesandnephew #watchforkids",
+      "hashtag": "#cocomelonsongs"
+     },
+     {
+      "digg": 985,
+      "text": "I forgot the song name can some one tell me",
+      "video_caption": "lil durk is free #lildurk #lildurkedits #edit #fyp #viral @Almxghty⁶𓅓",
+      "hashtag": "#freedurkioo😈😈"
+     },
+     {
+      "digg": 51,
+      "text": "Music name ??",
+      "video_caption": "#CapCut lovesong #adele #slowmo #cinematic #template",
+      "hashtag": "#iwillallwaysloveyou"
+     }
+    ]
+   },
+   {
+    "cluster": "size",
+    "keyword_match_n": 27,
+    "distinct_videos": 22,
+    "manual_sample_n": 27,
+    "manual_sample_true": 13,
+    "manual_precision": 0.48,
+    "estimated_true_n": 13,
+    "examples": [
+     {
+      "digg": 9111,
+      "text": "Ay hermoso “aqui no estamos para batallar” dios t bendiga",
+      "video_caption": "",
+      "hashtag": ""
+     },
+     {
+      "digg": 3254,
+      "text": "Que hago yo sonriéndole a la pantalla 🤣",
+      "video_caption": "That Precious Newborn Smile Is Simply Adorable ❤️👶",
+      "hashtag": "#newborn"
+     },
+     {
+      "digg": 1247,
+      "text": "Do they have this an adult size?",
+      "video_caption": "Every first-time parent needs this for their newborn😍 #newmom #newborn #newparent #newbornbaby #parenting101",
+      "hashtag": "#newparent"
+     }
+    ]
+   }
+  ],
+  "top10": [
+   {
+    "rank": 1,
+    "intent": "在哪买 / 哪来的（求购买出处）",
+    "estimated_n": 223,
+    "videos": 124,
+    "verbatim": [
+     "where can I get one?",
+     "where did you get that?",
+     "Where is your set from!",
+     "dónde lo consigo",
+     "where do you buy your clothes!?!?!?"
+    ]
+   },
+   {
+    "rank": 2,
+    "intent": "求教程 / 怎么做",
+    "estimated_n": 65,
+    "videos": 82,
+    "keyword_n": 102,
+    "verbatim": [
+     "How did you do that so smoothly without the baby crying??",
+     "Can you do a tutorial on how to clip coupons?",
+     "Yea so yall need to start telling us HOW to make this 😭",
+     "Cómo se hacen esas guirnaldas de bolas ?"
+    ]
+   },
+   {
+    "rank": 3,
+    "intent": "只有我这样吗（共鸣求证）",
+    "estimated_n": 65,
+    "videos": 61,
+    "verbatim": [
+     "is it just me or is waking up at 5:30am for school insane?",
+     "Anyone else seeing tons of viral videos they’ve already seen 😳",
+     "Am I the only one who is crying",
+     "does anyone else do this for kids"
+    ]
+   },
+   {
+    "rank": 4,
+    "intent": "这是什么 / 什么牌子",
+    "estimated_n": 42,
+    "videos": 66,
+    "keyword_n": 74,
+    "verbatim": [
+     "what is this",
+     "Okay but what is it called? What am I ordering ?",
+     "qué marca de gato es?",
+     "What is the brand of the clothing set? PLEASE"
+    ]
+   },
+   {
+    "rank": 5,
+    "intent": "多少钱",
+    "estimated_n": 38,
+    "videos": 26,
+    "keyword_n": 40,
+    "verbatim": [
+     "How much for the clear snoopy cup",
+     "precio",
+     "cuánto cuesta ??",
+     "How much? Where?"
+    ]
+   },
+   {
+    "rank": 6,
+    "intent": "求链接",
+    "estimated_n": 38,
+    "videos": 23,
+    "verbatim": [
+     "anyone got the link ?",
+     "Can I have the link to the peel and stick trim pls?",
+     "I need links to all the outfits. Drop offs included",
+     "CAN U LINK THE FEEDING PILLOW?!?"
+    ]
+   },
+   {
+    "rank": 7,
+    "intent": "是不是 AI / 真的假的",
+    "estimated_n": 32,
+    "videos": 36,
+    "keyword_n": 50,
+    "verbatim": [
+     "Is this real or AI please",
+     "Is she AI? Is this AI?",
+     "Ya no se que es IA y que no 😳",
+     "can sm1 tell me how is it ai😭"
+    ]
+   },
+   {
+    "rank": 8,
+    "intent": "宝宝多大 / 几个月几周",
+    "estimated_n": 30,
+    "videos": 29,
+    "keyword_n": 40,
+    "verbatim": [
+     "How old is your son.. asking for a friend..",
+     "how many weeks?",
+     "How many months left?",
+     "how old is she"
+    ]
+   },
+   {
+    "rank": 9,
+    "intent": "能寄到我这吗 / 什么时候补货",
+    "estimated_n": 15,
+    "videos": 19,
+    "keyword_n": 26,
+    "verbatim": [
+     "why this is not available in Canada? 🥺🥺",
+     "when is their restock day",
+     "How do I ship to Jamaica",
+     "Is the 3d printer with all filaments coming back in stock?"
+    ]
+   },
+   {
+    "rank": 10,
+    "intent": "这正常吗 / 安全吗",
+    "estimated_n": 14,
+    "videos": 18,
+    "keyword_n": 21,
+    "verbatim": [
+     "Is it normal for nausea to go away at 9 weeks?",
+     "Should I be worried if he doesn’t want to do tummy time?",
+     "Is it safe to put in the oven?",
+     "es normal que se vea un árbol en su ojo ?"
+    ]
+   }
+  ],
+  "near_miss": [
+   {
+    "intent": "问歌名/音频",
+    "estimated_n": 14,
+    "videos": 11
+   },
+   {
+    "intent": "问尺码",
+    "estimated_n": 13,
+    "videos": 22
+   }
+  ],
+  "repeated_phrasings": [
+   {
+    "pattern": "where can/could I get/buy/find",
+    "n": 139,
+    "videos": 87
+   },
+   {
+    "pattern": "where did/do you get/buy/find",
+    "n": 83,
+    "videos": 55
+   },
+   {
+    "pattern": "where is/are X from",
+    "n": 62,
+    "videos": 37
+   },
+   {
+    "pattern": "dónde lo/la consigo/compro",
+    "n": 31,
+    "videos": 19
+   },
+   {
+    "pattern": "link please / send the link / need the link",
+    "n": 38,
+    "videos": 23
+   },
+   {
+    "pattern": "how much / precio / cuánto cuesta",
+    "n": 46,
+    "videos": 30
+   },
+   {
+    "pattern": "how old / how many months / weeks",
+    "n": 40,
+    "videos": 29
+   },
+   {
+    "pattern": "song name / what song",
+    "n": 14,
+    "videos": 11
+   }
+  ],
+  "ask_rate_by_content_type": [
+   {
+    "content_type": "shopping_list",
+    "comments": 3865,
+    "commercial_asks": 92,
+    "asks_per_1000_comments": 23.8
+   },
+   {
+    "content_type": "diy_tutorial",
+    "comments": 1508,
+    "commercial_asks": 33,
+    "asks_per_1000_comments": 21.88
+   },
+   {
+    "content_type": "review_compare",
+    "comments": 967,
+    "commercial_asks": 14,
+    "asks_per_1000_comments": 14.48
+   },
+   {
+    "content_type": "costume",
+    "comments": 3000,
+    "commercial_asks": 32,
+    "asks_per_1000_comments": 10.67
+   },
+   {
+    "content_type": "parenting",
+    "comments": 22038,
+    "commercial_asks": 82,
+    "asks_per_1000_comments": 3.72
+   },
+   {
+    "content_type": "other",
+    "comments": 15691,
+    "commercial_asks": 54,
+    "asks_per_1000_comments": 3.44
+   }
+  ],
+  "top_videos_by_commercial_asks": [
+   {
+    "video_id": "7682523998038592798",
+    "asks": 12,
+    "plays": 27400,
+    "hashtag": "#nurserytour",
+    "caption": "nursery tour 🤍 #nurseryreveal #nurserytour #babygirlnursery #nurseryinspo #fyp",
+    "asks_per_100k_plays": 43.8
+   },
+   {
+    "video_id": "7672982716937178382",
+    "asks": 11,
+    "plays": 1400000,
+    "hashtag": "#christmasgiftsforkids",
+    "caption": "Look at this amazing DIY squishy kit! You get 2 cat‑paw skins, 4 ball skins and loads of glitter & beads. Create tons of unique squishies, s",
+    "asks_per_100k_plays": 0.79
+   },
+   {
+    "video_id": "7685085200077901069",
+    "asks": 10,
+    "plays": 201300,
+    "hashtag": "#boobasketseason",
+    "caption": "Let’s make some mini BOO 👻 Baskets 🎃 Comment “BOO” and I’ll send you all the details ✨ #boobasket #boobasketideas #boobasketseason #boobaske",
+    "asks_per_100k_plays": 4.97
+   },
+   {
+    "video_id": "7684787514439224607",
+    "asks": 8,
+    "plays": 47500,
+    "hashtag": "#babyessential",
+    "caption": "First time mom registry list!!! #firsttimemom #babyregistry #babyregistrymusthaves #pregnancytiktok #babyitems",
+    "asks_per_100k_plays": 16.84
+   },
+   {
+    "video_id": "7683178938209733919",
+    "asks": 7,
+    "plays": 850200,
+    "hashtag": "#newborn",
+    "caption": "Each waking took a lonnnggg time to get back down this night but as a 3rd time mom I honestly really cherish our nights together 😭😭🤎🤎🤎 #newb",
+    "asks_per_100k_plays": 0.82
+   },
+   {
+    "video_id": "7686211774428859661",
+    "asks": 7,
+    "plays": 3100000,
+    "hashtag": "#diyhalloween",
+    "caption": "Follow for the tutorials 🎃👻 I saved my favorite for last! Technically it was for my dark fairytale baby shower but it would be perfect for H",
+    "asks_per_100k_plays": 0.23
+   },
+   {
+    "video_id": "7684718694336892191",
+    "asks": 7,
+    "plays": 136300,
+    "hashtag": "#halloweengift",
+    "caption": "Target knew EXACTLY what they were doing with these 🎃👻🐈‍⬛ We turned their NEW Halloween snack boxes into the cutest little Halloween gifts! ",
+    "asks_per_100k_plays": 5.14
+   },
+   {
+    "video_id": "7683633838131645727",
+    "asks": 6,
+    "plays": 24100,
+    "hashtag": "#bottlewasher",
+    "caption": "Momcozy KleanPal Pro vs. DeepClean D8 bottle washer comparison 🍼 Both bottle washers wash, sterilize, dry and store-so they're both great op",
+    "asks_per_100k_plays": 24.9
+   },
+   {
+    "video_id": "7675356170353184013",
+    "asks": 6,
+    "plays": 2300000,
+    "hashtag": "#halloweengift",
+    "caption": "Halloween gift idea! 🎃🍂 These make the perfect little boo basket! I love the cups! These are great little gifts for friends, teachers, co wo",
+    "asks_per_100k_plays": 0.26
+   },
+   {
+    "video_id": "7684203385494539533",
+    "asks": 5,
+    "plays": 1400000,
+    "hashtag": "#decoraciondenavidad",
+    "caption": "link in bio 🎄✨ this little wall light makes the whole room feel instantly more magical once it turns on 😍 the Christmas trail effect is so p",
+    "asks_per_100k_plays": 0.36
+   },
+   {
+    "video_id": "7692189098047474976",
+    "asks": 5,
+    "plays": 1100000,
+    "hashtag": "#xmasgift",
+    "caption": "Get yours on my profile🎁🎄",
+    "asks_per_100k_plays": 0.45
+   },
+   {
+    "video_id": "7683408259264335125",
+    "asks": 5,
+    "plays": 12500000,
+    "hashtag": "#wearableblanket",
+    "caption": "Meet the coziest thing you’ll wear all winter 🎄 This hooded and heated Grinch robe is basically a wearable blanket, floor-length, sherpa-lin",
+    "asks_per_100k_plays": 0.04
+   },
+   {
+    "video_id": "7692178539159768342",
+    "asks": 5,
+    "plays": 3700000,
+    "hashtag": "#mamaprimeriza💜💓",
+    "caption": "Toda mamá primeriza necesita ESTO...🤱✨️#madreprimeriza #sueñodelbebe #maternidad #bebé",
+    "asks_per_100k_plays": 0.14
+   },
+   {
+    "video_id": "7688295840963874078",
+    "asks": 4,
+    "plays": 3400000,
+    "hashtag": "#babynursery",
+    "caption": "Comment “Car” if you’d like one for your baby 🚗 #babyshower #nurserydecor #mommylife #momcar",
+    "asks_per_100k_plays": 0.12
+   },
+   {
+    "video_id": "7689509675988978958",
+    "asks": 4,
+    "plays": 2000000,
+    "hashtag": "#keepsakegift",
+    "caption": "Some things are just too special to stay tucked away in a box ♥ turning an old handwritten birthday card from my Grammy into a DIY keepsake ",
+    "asks_per_100k_plays": 0.2
+   }
+  ],
+  "note": "聚类计数为关键词命中；manual_precision 来自人工抽查，estimated_true_n = 关键词命中 × 人工精度（取整）。「求购买出处」是最大单一诉求。"
+ },
+ "seasonality": {
+  "comments_on_halloween_tagged_videos": 4110,
+  "share_pct": 8.7,
+  "comments_mentioning_halloween": 230,
+  "mention_share_pct": 0.5,
+  "deepread288_halloween_videos": 60,
+  "deepread288_total": 288,
+  "deepread288_halloween_share_pct": 20.8,
+  "comments_on_deepread_halloween_videos": 1379,
+  "deepread_videos_with_any_comments": 272,
+  "deepread_comment_total": 7759,
+  "note": "288 条爆款样本里万圣节占 20.8%（60/288），但这 288 条对应的评论只占全部评论的 16.5%（7,759/47,073），其万圣节视频评论 1,379 条。全量评论里只有 8.7% 落在万圣节标签视频下。两个口径都受 10 月采集窗口影响，任何'爆款主题'排序都必须剔除或单列万圣节。"
+ },
+ "opportunities": [
+  {
+   "rank": 1,
+   "topic": "每条视频固定『同款清单』（片尾 5 秒 + 置顶评论 + 主页链接）",
+   "evidence": "223 条求购买出处，覆盖 124 个视频；nursery tour 视频 2.74 万播放产生 12 条求购，婴儿房/清单类视频求购密度最高（43.8 次/10 万播放）。",
+   "format": "30 秒『Everything in this video』快剪 + 图文清单 + 关键词自动回复"
+  },
+  {
+   "rank": 2,
+   "topic": "教程视频的『续集答疑』：把评论区 Top 5 问题拍成第二条",
+   "evidence": "DIY 万圣节教程视频 310 万播放，27 条提问集中在热熔胶是否伤银盘、污渍是否可擦、苔藓是否防火、成品如何收纳；教程/做法类关键词命中 102 条、估计 65 条真实请求。",
+   "format": "『你们问最多的 5 个问题』口播 + 演示；每条教程预留 aftercare/安全/收纳 三个机位"
+  },
+  {
+   "rank": 3,
+   "topic": "『只有我这样吗』共鸣合集",
+   "evidence": "65 条社区共鸣式提问（does anyone else / am I the only one / is it just me），覆盖 61 个视频；例如『is it just me or is waking up at 5:30am for school insane?』获 6.07 万赞。",
+   "format": "把评论原话做成标题与口播，一条视频回答 5-8 条共鸣提问"
+  },
+  {
+   "rank": 4,
+   "topic": "『这是什么/什么牌子』物品标注",
+   "evidence": "产品/物品名称类关键词命中 74 条，人工抽查约 57% 为真实识别请求（估计 42 条）；典型：口红/腮红色号、喷雾、衣柜系统、发夹、玩具型号。",
+   "format": "画面内贴纸标注品牌/型号/色号；或做『视频里出现的 10 样东西』图文"
+  },
+  {
+   "rank": 5,
+   "topic": "价格透明化",
+   "evidence": "38 条真实问价（关键词命中 40 条，人工剔除 2 条俚语/反问），覆盖 26 个视频；西班牙语区多为单词『precio』。",
+   "format": "视频内标价格区间/是否含运费；置顶评论放价格表"
+  },
+  {
+   "rank": 6,
+   "topic": "链接承接与关键词漏斗",
+   "evidence": "38 条明确要链接，23 个视频；有视频用『Comment BOO and I'll send you all the details』把 10 条求购集中到一条评论漏斗。",
+   "format": "置顶评论 + 关键词自动回复 + 主页 storefront；每条视频只留一个 CTA"
+  },
+  {
+   "rank": 7,
+   "topic": "『这是 AI 还是实拍』透明化",
+   "evidence": "50 条评论在 36 个视频下讨论/追问是否 AI（估计 32 条为真实求证）；「ts song older than her」「Ya no se que es IA y que no」等高赞评论说明信任缺口。",
+   "format": "幕后拍摄花絮、原始素材时间戳、AI 使用声明；『真实 vs AI』对比演示"
+  },
+  {
+   "rank": 8,
+   "topic": "月龄/周龄字幕与『按月龄』系列",
+   "evidence": "40 条问年龄/月龄（估计 30 条真实），29 个视频；高赞例『how old is your son.. asking for a friend..』29.2 万赞。",
+   "format": "视频开头 1 秒标『X 个月 / Y 周』；按月龄做发育里程碑合集"
+  },
+  {
+   "rank": 9,
+   "topic": "地区可购性与补货提醒",
+   "evidence": "15 条关于 ship to / not available in / restock（关键词命中 26 条，人工抽查精度约 58%），覆盖 19 个视频；涉及加拿大、美国、牙买加、秘鲁、委内瑞拉、卡塔尔。",
+   "format": "『哪些国家能买/怎么转运』说明；补货日历与提醒视频"
+  },
+  {
+   "rank": 10,
+   "topic": "『这正常吗/安全吗』护士或儿科视角答疑",
+   "evidence": "21 条关键词命中、估计 14 条真实（如 is it safe to put in the oven、should I worry about tummy time、is it normal for nausea to go away at 9 weeks）；安全类评论总量约 93 条。",
+   "format": "护士/儿科视角短视频，固定加『非医疗建议』免责声明"
+  },
+  {
+   "rank": 11,
+   "topic": "穿搭同款拆解",
+   "evidence": "32 条求 outfit/衣服/发饰出处（24 个视频），如『where do you get your pants from???』4408 赞、『where do you buy your clothes!?!?!?』1206 赞。",
+   "format": "OOTD 逐件标注 + 『本周穿搭』合集"
+  },
+  {
+   "rank": 12,
+   "topic": "BGM 标注与歌单",
+   "evidence": "14 条问歌名/音频（11 个视频）；『cómo se llama la canción』1138 赞。",
+   "format": "视频角标标 BGM 名称；每周 BGM 合集"
+  }
+ ],
+ "caveats": [
+  "只读查询 raw.si_tiktok_comment，未修改任何数据。分析在本地对 47,069 行可解析记录进行（4 行因制表符/编码解析失败跳过，占 0.01%）。",
+  "评论表每个视频最多 120 条（sample_rank 0-119）：79 个视频触及上限（11,421 条，占 24.3%），1,416 个视频低于上限（35,652 条）。大视频的评论被截断，且截断评论文本偏向高赞；因此意图占比对大视频有偏，商业诉求计数是下限。",
+  "样本 ≠ TikTok 全量：392 个 tag × 43 天采样，品类偏母婴/喂养，最后写入 2026-10-28。",
+  "语言：拉丁字母 95.3%，其中英语约 96%（粗估）；西语约 2.2%、印尼语 0.7%、法语 0.4%、德语 0.5%；另有西里尔 2.6%、阿拉伯 1.5%。关键词计数以英语为主，非英语诉求会被低估。",
+  "万圣节季节性：全量评论 8.7% 落在万圣节标签视频下；288 条爆款样本里万圣节占 20.8%。10 月窗口内的主题排序必须单列万圣节，不能当作全年结论。",
+  "所有数字是频率描述，不是因果：『清单类视频求购率高』只说明在这批评论里同时出现，不能推出『做清单就一定爆』。",
+  "样本 <8 的结论不出：本报告所有聚类均给出样本量与视频数；未对 n<8 的子类下结论。",
+  "评论意图为人工标注（2×500 条），存在标注者偏差；Q/B 占比的 95% 置信区间已在 JSON 中给出。两个 500 条样本都只含非空文本评论；全量中另有 679 条空文本（1.4%）未纳入，因此 O 类的真实占比略高于样本值。",
+  "creators 的置顶评论/自动回复混在评论中（如『Comment BOO and I'll send details』），已尽量归入 O 或 E，但可能污染少量统计。"
+ ]
+}

@@ -74,9 +74,17 @@ data_scrapy-apify-docs/
 !apps/web/public/**/*.html
 # 例外：设计稿预览需入库。仓库曾因缺这条丢过文件。
 !docs/design/**/*.html
+# 例外：洞察报告包与报告构建源必须入库。导入器按字节校验 report.html。
+!tools/insight-reports/**/*.html
+!insight_pipeline/**/*.html
 
 # Baidu Cloud sync temp files
 *.baiduyun.uploading.cfg
 
 # ABI 飞书写入临时载荷
 .abi_tmp/
+
+# 可再生的分析中间产物（见 insight_pipeline/tiktok_viral/README.md）
+insight_pipeline/tiktok_viral/data/_classified_first.json
+insight_pipeline/tiktok_viral/data/questions.tsv
+insight_pipeline/tiktok_viral/data/questions_sorted.tsv

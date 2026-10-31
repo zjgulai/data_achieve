@@ -28,6 +28,10 @@ export type ApiErrorCode =
   | "verification_task_conflict"
   | "publication_parent_conflict"
   | "catalog_snapshot_invalid"
+  | "insight_report_not_found"
+  | "insight_report_content_missing"
+  | "insight_report_integrity_failed"
+  | "workspace_not_found"
   | "internal_server_error";
 
 export type ApiErrorRecoveryDetails = {
@@ -60,6 +64,10 @@ const stableApiErrorCodes = new Set<ApiErrorCode>([
   "verification_task_conflict",
   "publication_parent_conflict",
   "catalog_snapshot_invalid",
+  "insight_report_not_found",
+  "insight_report_content_missing",
+  "insight_report_integrity_failed",
+  "workspace_not_found",
   "internal_server_error",
 ]);
 const recoveryDetailErrorCodes = new Set<ApiErrorCode>([
@@ -122,6 +130,38 @@ export async function apiFetch<T>(
   }
 
   return response.json() as Promise<T>;
+}
+
+/**
+ * 读取纯文本响应（例如报告 HTML 正文）。
+ *
+ * 不复用 `apiFetch`：后者固定按 JSON 解析，并且默认写
+ * `Content-Type: application/json`。正文端点返回 `text/html`，
+ * 错误响应仍然可能是 JSON，所以失败路径复用同一套错误解析。
+ */
+export async function apiFetchText(
+  path: string,
+  init?: RequestInit,
+): Promise<string> {
+  const response = await fetch(`${apiBaseUrl}${path}`, {
+    ...init,
+    credentials: "include",
+    headers: {
+      ...init?.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await readApiError(response);
+    throw new ApiRequestError(response.status, error.message, {
+      validationIssues: error.validationIssues,
+      requestId: response.headers.get("x-request-id"),
+      code: error.code,
+      details: error.details,
+    });
+  }
+
+  return response.text();
 }
 
 async function readApiError(response: Response): Promise<{

@@ -1,0 +1,66 @@
+{
+  "schema_version": "insight_report_bundle_v1",
+  "analysis_type": "tiktok_viral_topic",
+  "version": "2026-10-31",
+  "title": "下周拍什么：288 条母婴爆款的选题报告",
+  "summary": "下周优先拍产品清单、教程、身份共鸣三类常青内容；万圣节内容应从全年选题中剔除。",
+  "generated_at": "2026-10-31T00:00:00Z",
+  "source_status": "snapshot_only",
+  "source_note": "报告基于本地 abi_migtest 快照生成；生产环境未接入该数据源。",
+  "data_scope": {
+    "window_label": "2026-10",
+    "window_end": "2026-10-28",
+    "sample_size": 288,
+    "sampling": "392 个 hashtag × 43 天，每个 tag 取榜单 top20",
+    "source": {
+      "environment": "local docker / abi_migtest",
+      "database": "abitest",
+      "last_write_at": "2026-10-28",
+      "tables": [
+        {
+          "schema": "raw",
+          "name": "si_tiktok_video",
+          "rows": 31366
+        },
+        {
+          "schema": "raw",
+          "name": "si_tiktok_comment",
+          "rows": 47073
+        },
+        {
+          "schema": "raw",
+          "name": "si_tiktok_hashtag_snapshot",
+          "rows": 102153
+        },
+        {
+          "schema": "raw",
+          "name": "si_metric_snapshot",
+          "rows": 4856
+        },
+        {
+          "schema": "raw",
+          "name": "si_author_video_snapshot",
+          "rows": 904
+        }
+      ]
+    }
+  },
+  "content": {
+    "path": "report.html",
+    "format": "html",
+    "source_bytes": 182450,
+    "source_sha256": "415445711c9fc293d330c34cbb6a273af768348adbefe18739a4318ad31ed8d1",
+    "content_bytes": 181984,
+    "content_sha256": "f7f7c4f0b5483e789740345cff7c115100283b5ec1847cd181ef55e7f00b50dc",
+    "normalize": [
+      {
+        "find": "/tmp/viral/",
+        "replace": ""
+      },
+      {
+        "find": "/tmp/deepread288.tsv",
+        "replace": "deepread288.tsv"
+      }
+    ]
+  }
+}

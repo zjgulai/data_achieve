@@ -475,8 +475,8 @@ def test_fresh_database_upgrade_has_single_head_and_phase_two_objects(
         for line in _run_alembic(postgres_database_url, "heads").stdout.splitlines()
         if line.strip()
     ]
-    assert heads == ["202610290067 (head)"]
-    assert _database_revision(postgres_database_url) == "202610290067"
+    assert heads == ["202610310068 (head)"]
+    assert _database_revision(postgres_database_url) == "202610310068"
     _assert_phase_two_objects_present(postgres_database_url)
 
 

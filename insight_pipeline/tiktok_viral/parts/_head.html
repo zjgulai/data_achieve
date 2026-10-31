@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>下周拍什么：288 条母婴爆款的选题报告</title>
+<style>
+:root{
+  --paper:#FDFCFA;
+  --card:#FFFFFF;
+  --ink:#1F1B19;
+  --secondary:#6B615C;
+  --weak:#6B615C;
+  --accent:#A8422F;
+  --accent-soft:#F4E6E1;
+  --green:#2E5B4E;
+  --green-soft:#E8F0ED;
+  --gold:#B8860B;
+  --gold-ink:#7A5A08;
+  --gold-soft:#F8F1DE;
+  --line:#E8E1DA;
+  --panel:#FAF6F1;
+  --panel-alt:#FBF0EA;
+  --zebra:#FBF8F4;
+  --thbg:#F7F3EE;
+  --band:#1F1B19;
+  --band-ink:#F7F2EC;
+  --band-line:rgba(247,242,236,.20);
+  --band-muted:rgba(247,242,236,.72);
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC","Microsoft YaHei","Hiragino Sans GB",sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --paper:#151311;
+    --card:#1C1917;
+    --ink:#EFE9E3;
+    --secondary:#C0B5AD;
+    --weak:#948981;
+    --accent:#D97A64;
+    --accent-soft:#33231F;
+    --green:#87B4A3;
+    --green-soft:#1E2B27;
+    --gold:#D6A845;
+    --gold-ink:#E8C477;
+    --gold-soft:#2B2417;
+    --line:#332E2A;
+    --panel:#221E1B;
+    --panel-alt:#2A211D;
+    --zebra:#211D1A;
+    --thbg:#24201C;
+    --band:#0C0A09;
+    --band-ink:#F1EBE4;
+    --band-line:rgba(241,235,228,.18);
+    --band-muted:rgba(241,235,228,.66);
+  }
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:16px;
+  line-height:1.75;
+  text-rendering:optimizeLegibility;
+  -webkit-font-smoothing:antialiased;
+}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+::selection{background:var(--accent-soft);color:var(--ink)}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
+code{
+  font-family:var(--mono);
+  font-size:.86em;
+  background:var(--panel);
+  border:1px solid var(--line);
+  padding:0 4px;
+  border-radius:2px;
+  word-break:break-all;
+}
+.sr-only{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+  overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
+}
+.skip{
+  position:absolute;left:-9999px;top:0;background:var(--band);color:var(--band-ink);
+  padding:8px 14px;z-index:100;font-size:13px;
+}
+.skip:focus{left:8px;top:8px}
+
+/* ---------- Hero ---------- */
+.hero{border-bottom:1px solid var(--line);background:linear-gradient(180deg,var(--paper) 0%,var(--panel) 100%)}
+.hero-inner{max-width:1240px;margin:0 auto;padding:52px 32px 40px}
+.kicker{font-size:12px;letter-spacing:.14em;color:var(--accent);font-weight:650;margin:0 0 10px}
+h1{font-size:clamp(38px,6vw,62px);line-height:1.08;letter-spacing:-.025em;margin:0 0 10px;font-weight:700}
+.subtitle{font-size:clamp(17px,2vw,21px);line-height:1.5;color:var(--secondary);margin:0;font-weight:400}
+.meta{display:flex;flex-wrap:wrap;gap:5px 22px;font-size:12.5px;color:var(--weak);margin-top:18px;line-height:1.6}
+.meta b{color:var(--secondary);font-weight:600}
+.answer{
+  max-width:960px;margin:30px 0 0;padding:12px 0 12px 22px;
+  border-left:3px solid var(--accent);
+  font-size:clamp(16px,1.7vw,18.5px);line-height:1.85;
+}
+.answer .answer-label{display:block;font-size:11px;letter-spacing:.12em;color:var(--accent);font-weight:700;margin-bottom:4px}
+
+/* ---------- Three counter-intuitive conclusions ---------- */
+.takeaways{margin:24px 0 0;background:var(--card);border:1px solid var(--line);border-left:3px solid var(--gold);padding:14px 18px 10px}
+.takeaways-title{font-size:11px;letter-spacing:.12em;color:var(--gold-ink);font-weight:700;margin:0 0 9px}
+.takeaways-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 16px}
+.takeaways-list li{display:flex;gap:9px;margin:0;font-size:13px;line-height:1.65;color:var(--secondary)}
+.t-num{font-family:var(--mono);font-size:11px;color:var(--accent);font-weight:700;flex:none;padding-top:2px}
+.takeaways-list strong{color:var(--ink);font-weight:650}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:28px 0 0}
+.kpi{background:var(--card);border:1px solid var(--line);padding:16px 16px 14px;border-radius:2px;min-width:0}
+.kpi-label{font-size:11.5px;line-height:1.5;color:var(--weak);margin:0}
+.kpi-value{
+  font-family:var(--mono);font-variant-numeric:tabular-nums;
+  font-size:clamp(21px,2.5vw,31px);line-height:1.15;letter-spacing:-.03em;
+  color:var(--accent);font-weight:650;margin:7px 0 6px;word-break:keep-all;
+}
+.kpi-value.sm{font-size:clamp(18px,2.1vw,26px)}
+.kpi-meaning{font-size:12.5px;line-height:1.6;color:var(--secondary);margin:0}
+.kpi-meta{font-size:11px;line-height:1.5;color:var(--weak);margin-top:9px;padding-top:6px;border-top:1px dotted var(--line)}
+.hero-actions-title{font-size:12px;letter-spacing:.12em;color:var(--secondary);font-weight:650;margin:30px 0 10px}
+.hero-read{font-size:13px;line-height:1.7;color:var(--secondary);margin:14px 0 0;padding-left:12px;border-left:2px solid var(--gold)}
+
+/* ---------- Data boundary band ---------- */
+.boundary{margin-top:26px;background:var(--band);color:var(--band-ink);padding:16px 20px 14px;border-radius:2px}
+.boundary-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 12px;margin-bottom:7px}
+.boundary-title{font-size:12px;letter-spacing:.12em;color:var(--gold-ink);font-weight:700}
+.boundary-sub{font-size:11px;color:var(--band-muted)}
+.boundary-items{display:flex;flex-wrap:wrap;gap:5px 8px;margin:0;font-size:12px;line-height:1.7}
+.boundary-items span{border:1px solid var(--band-line);padding:0 7px;border-radius:2px;white-space:nowrap}
+.boundary-items span.strong{border-color:var(--gold);color:#F1D79A}
+.boundary-note{font-size:12px;line-height:1.7;color:var(--band-muted);border-top:1px solid var(--band-line);margin-top:9px;padding-top:7px}
+
+/* ---------- Layout ---------- */
+.layout{
+  max-width:1240px;margin:0 auto;padding:0 32px;
+  display:grid;grid-template-columns:220px minmax(0,1fr);gap:64px;align-items:start;
+}
+.toc{position:sticky;top:24px;padding:36px 0 0;max-height:calc(100vh - 48px);overflow:auto}
+.toc-title{font-size:11px;letter-spacing:.14em;color:var(--weak);font-weight:650;margin:0 0 12px}
+.toc ol{list-style:none;margin:0;padding:0;border-left:1px solid var(--line)}
+.toc li{margin:0}
+.toc a{
+  display:flex;gap:10px;padding:7px 0 7px 13px;margin-left:-1px;
+  font-size:13.5px;line-height:1.45;color:var(--secondary);text-decoration:none;
+  border-left:2px solid transparent;
+}
+.toc a .n{font-family:var(--mono);font-size:10.5px;color:var(--weak);min-width:19px;padding-top:1px}
+.toc a:hover{color:var(--ink)}
+.toc a.active{color:var(--accent);border-left-color:var(--accent);font-weight:650}
+.toc a.active .n{color:var(--accent)}
+.toc-foot{font-size:11px;line-height:1.6;color:var(--weak);margin:18px 0 0;padding-top:12px;border-top:1px dotted var(--line)}
+main{min-width:0;max-width:880px;padding:36px 0 72px}
+.mobile-toc{display:none;margin:20px 0 0;border:1px solid var(--line);background:var(--card)}
+.mobile-toc summary{
+  cursor:pointer;padding:12px 16px;font-size:13px;font-weight:650;list-style:none;
+  display:flex;justify-content:space-between;align-items:center;
+}
+.mobile-toc summary::-webkit-details-marker{display:none}
+.mobile-toc summary::after{content:"＋";color:var(--accent);font-family:var(--mono)}
+.mobile-toc[open] summary::after{content:"－"}
+.mobile-toc ol{list-style:none;margin:0;padding:0 0 8px;border-top:1px solid var(--line)}
+.mobile-toc a{display:flex;gap:10px;padding:9px 16px;font-size:13.5px;color:var(--secondary);text-decoration:none}
+.mobile-toc a .n{font-family:var(--mono);font-size:11px;color:var(--weak);min-width:20px}
+.mobile-toc a.active{color:var(--accent);font-weight:650}
+
+/* ---------- Sections ---------- */
+section{scroll-margin-top:20px}
+section + section{margin-top:10px}
+.section-head{border-top:2px solid var(--ink);padding-top:16px;margin:0 0 20px}
+.section-num{font-family:var(--mono);font-size:12px;letter-spacing:.12em;color:var(--accent);font-weight:650}
+h2{font-size:26px;line-height:1.3;margin:4px 0 0;letter-spacing:-.01em;font-weight:700}
+.section-lead{
+  font-size:16.5px;line-height:1.85;color:var(--secondary);
+  border-left:2px solid var(--accent);padding:2px 0 2px 16px;margin:16px 0 26px;
+}
+h3{font-size:19px;line-height:1.45;margin:34px 0 10px;font-weight:650;letter-spacing:-.005em}
+h4{font-size:15px;line-height:1.5;margin:22px 0 8px;font-weight:650}
+p{margin:0 0 14px}
+ul,ol{margin:0 0 16px;padding-left:1.45em}
+li{margin:3px 0}
+li>ul,li>ol{margin-top:4px;margin-bottom:6px}
+strong{font-weight:650}
+blockquote{margin:18px 0;padding:13px 18px;background:var(--panel);border-left:3px solid var(--gold);font-size:14px;line-height:1.75;color:var(--secondary)}
+blockquote p:last-child{margin-bottom:0}
+hr{border:0;border-top:1px solid var(--line);margin:30px 0}
+
+.callout{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--accent);padding:15px 20px;margin:22px 0;font-size:14.5px;line-height:1.75}
+.callout.green{border-left-color:var(--green)}
+.callout.gold{border-left-color:var(--gold)}
+.callout-label{font-size:11px;letter-spacing:.1em;font-weight:700;color:var(--accent);margin:0 0 5px}
+.callout.green .callout-label{color:var(--green)}
+.callout.gold .callout-label{color:var(--gold-ink)}
+.callout p:last-child{margin-bottom:0}
+.answer-box{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--green);padding:16px 20px;margin:20px 0;font-size:15px;line-height:1.8}
+.answer-box p:last-child{margin-bottom:0}
+
+/* ---------- Badges ---------- */
+.badge{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:11px;line-height:1.4;padding:1px 7px;border-radius:999px;
+  white-space:nowrap;font-weight:500;vertical-align:1px;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact;
+}
+.badge::before{content:"";width:5px;height:5px;border-radius:50%;flex:none}
+.badge-warn{color:var(--gold-ink);background:var(--gold-soft);border:1px solid #E3C978}
+.badge-warn::before{background:var(--gold)}
+.badge-caution{color:#8A5A00;background:#FBF3E2;border:1px solid #E8D3A4}
+.badge-caution::before{background:#C9971C}
+.badge-green{color:var(--green);background:var(--green-soft);border:1px solid #C9DCD5}
+.badge-green::before{background:var(--green)}
+.badge-gray{color:var(--secondary);background:var(--panel);border:1px solid var(--line)}
+.badge-gray::before{background:var(--weak)}
+.badge-accent{color:var(--accent);background:var(--accent-soft);border:1px solid #E5C4BA}
+.badge-accent::before{background:var(--accent)}
+.badge-gold{color:var(--gold-ink);background:transparent;border:1px solid var(--gold)}
+.badge-gold::before{background:var(--gold)}
+@media (prefers-color-scheme: dark){
+  .badge-caution{color:#E8C477;background:#2B2417;border-color:#5A4A22}
+}
+
+/* ---------- Tables ---------- */
+.table-wrap{
+  overflow-x:auto;margin:18px 0 22px;border:1px solid var(--line);
+  background:var(--card);-webkit-overflow-scrolling:touch;
+}
+table{width:100%;border-collapse:collapse;font-size:13.5px;line-height:1.6;font-variant-numeric:tabular-nums}
+thead th{
+  background:var(--thbg);color:var(--secondary);font-weight:650;font-size:12px;
+  text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap;
+}
+tbody td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tbody tr:nth-child(even){background:var(--zebra)}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--panel)}
+.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+th.num{text-align:right}
+.nowrap{white-space:nowrap}
+.table-note{font-size:12px;line-height:1.7;color:var(--weak);margin:-12px 0 22px}
+.table-wrap.wide table{min-width:720px}
+
+/* ---------- Table scroll affordance ---------- */
+.table-hint{display:none;font-size:11px;line-height:1.5;color:var(--secondary);margin:0 0 5px}
+
+/* ---------- Mobile card tables (6.1 / 2.1) ---------- */
+@media (max-width:760px){
+  .table-hint.is-visible{display:block}
+  .table-wrap.is-scrollable{box-shadow:inset -18px 0 14px -14px rgba(0,0,0,.20)}
+  .table-wrap.cards.ready{overflow:visible;border:none;background:transparent;box-shadow:none}
+  .table-wrap.cards.ready table{display:block;min-width:0;width:100%}
+  .table-wrap.cards.ready thead{display:none}
+  .table-wrap.cards.ready tbody{display:block}
+  .table-wrap.cards.ready tr{display:block;border:1px solid var(--line);background:var(--card);margin:0 0 12px;padding:10px 12px}
+  .table-wrap.cards.ready tr:nth-child(even){background:var(--card)}
+  .table-wrap.cards.ready td{display:grid;grid-template-columns:8em minmax(0,1fr);gap:8px;border:none;padding:5px 0;text-align:left;white-space:normal}
+  .table-wrap.cards.ready td::before{content:attr(data-label);color:var(--weak);font-size:11px;line-height:1.6;font-weight:650}
+  .table-wrap.cards.ready td.num{text-align:left}
+  .table-wrap.cards.ready td > .td-value{min-width:0;line-height:1.65}
+  .table-wrap.cards.ready td code{font-size:10.5px}
+}
+
+/* ---------- Motif profile cards ---------- */
+.motif{background:var(--card);border:1px solid var(--line);padding:17px 20px 15px;margin:13px 0;border-radius:2px}
+.motif h4{font-size:17px;margin:0 0 2px;display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;font-weight:650;line-height:1.45}
+.motif .m-idx{font-family:var(--mono);font-size:11px;color:var(--accent);font-weight:600}
+.motif .m-meta{font-size:12px;color:var(--weak);margin:0 0 8px}
+.motif dl{display:grid;grid-template-columns:72px minmax(0,1fr);gap:3px 12px;margin:8px 0 0;font-size:14px;line-height:1.7}
+.motif dt{font-size:11.5px;color:var(--weak);padding-top:2px}
+.motif dd{margin:0}
+.motif dd code{font-size:11.5px}
+
+/* ---------- Action / execution cards ---------- */
+.action-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0 24px}
+.action{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--accent);padding:15px 16px 14px}
+.action:nth-child(2){border-top-color:var(--green)}
+.action:nth-child(3){border-top-color:var(--gold)}
+.action-title{font-size:15.5px;margin:0 0 2px;font-weight:650;line-height:1.45}
+.action .act-tag{font-family:var(--mono);font-size:10.5px;color:var(--accent);letter-spacing:.04em}
+.action p{font-size:13px;line-height:1.65;margin:7px 0 0}
+.action .act-label{display:block;font-size:10.5px;color:var(--weak);margin-top:8px;letter-spacing:.04em}
+.exec{background:var(--card);border:1px solid var(--line);padding:18px 20px 14px;margin:14px 0}
+.exec-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:8px}
+.exec h4{font-size:17px;margin:0;line-height:1.45;font-weight:650}
+.exec .prio{font-family:var(--mono);font-size:11px;color:var(--accent);border:1px solid var(--accent);padding:1px 6px;border-radius:2px;white-space:nowrap;flex:none}
+.exec dl{display:grid;grid-template-columns:84px minmax(0,1fr);gap:3px 12px;margin:6px 0 0;font-size:14px;line-height:1.7}
+.exec dt{font-size:11.5px;color:var(--weak);padding-top:2px}
+.exec dd{margin:0}
+.exec dd code{font-size:11.5px}
+
+/* ---------- Figures ---------- */
+figure{
+  margin:30px 0 34px;background:var(--card);border:1px solid var(--line);
+  padding:20px 20px 15px;border-radius:2px;break-inside:avoid;
+}
+.fig-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 16px}
+.fig-title{font-size:15px;font-weight:650;margin:0 0 2px;line-height:1.45}
+.fig-sub{font-size:12px;line-height:1.6;color:var(--weak);margin:0 0 8px}
+.chart-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.chart-wrap svg{display:block;width:100%;height:auto;overflow:visible}
+.scroll-hint{display:none;font-size:11px;color:var(--weak);margin:0 0 5px}
+figcaption{
+  font-size:12px;line-height:1.7;color:var(--weak);
+  border-top:1px solid var(--line);margin-top:14px;padding-top:9px;
+}
+figcaption b{color:var(--secondary);font-weight:650}
+
+/* SVG shared styles */
+.fig svg text{font-family:var(--sans)}
+.svg-ink{fill:var(--ink)}
+.svg-sec{fill:var(--secondary)}
+.svg-weak{fill:var(--weak)}
+.svg-accent{fill:var(--accent)}
+.svg-green{fill:var(--green)}
+.svg-gold{fill:var(--gold)}
+.svg-gold-ink{fill:var(--gold-ink)}
+.svg-white{fill:#FFFFFF}
+.heat-ink{fill:#1F1B19}
+.heat-white{fill:#FFFFFF}
+.svg-mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.grid-line{stroke:var(--line);stroke-width:1;stroke-dasharray:2 4}
+.axis-line{stroke:var(--weak);stroke-width:1}
+.bar-main{fill:var(--accent)}
+.bar-muted{fill:var(--weak);opacity:.55}
+.bar-gold{fill:var(--gold)}
+.bar-green{fill:var(--green)}
+.bar-track{fill:var(--line)}
+.panel{fill:var(--panel);stroke:var(--line);stroke-width:1}
+.panel-highlight{fill:var(--panel-alt);stroke:var(--accent);stroke-width:1.5}
+.heat-blank{fill:var(--panel);stroke:var(--line);stroke-width:.5}
+.heat-cell{stroke:none}
+.heat-red{fill:none;stroke:var(--gold);stroke-width:1.6}
+.ref-line{stroke:var(--accent);stroke-width:1;stroke-dasharray:3 3}
+
+/* ---------- Footer ---------- */
+footer{border-top:1px solid var(--line);background:var(--panel);margin-top:24px}
+.footer-inner{
+  max-width:1240px;margin:0 auto;padding:26px 32px 40px;
+  display:flex;flex-wrap:wrap;gap:10px 44px;font-size:12px;line-height:1.7;color:var(--weak);
+}
+.footer-inner b{color:var(--secondary);font-weight:650}
+.footer-note{max-width:1240px;margin:0 auto;padding:0 32px 30px;font-size:11.5px;line-height:1.7;color:var(--weak)}
+
+/* ---------- Responsive ---------- */
+@media (max-width:1099px){
+  .layout{grid-template-columns:minmax(0,1fr);gap:0;padding:0 24px}
+  .toc{display:none}
+  .mobile-toc{display:block}
+  main{width:100%;max-width:none;margin:0;padding-top:24px}
+}
+@media (max-width:760px){
+  .hero-inner{padding:36px 20px 28px}
+  .layout{padding:0 20px}
+  .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .takeaways-list{grid-template-columns:1fr}
+  .action-grid{grid-template-columns:1fr}
+  .chart-wrap svg{min-width:660px}
+  .chart-wrap.wide svg{min-width:840px}
+  .scroll-hint{display:block}
+  .motif dl,.exec dl{grid-template-columns:64px minmax(0,1fr)}
+  .footer-inner,.footer-note{padding-left:20px;padding-right:20px}
+}
+@media (max-width:460px){
+  .kpi-grid{grid-template-columns:1fr}
+  h1{font-size:34px}
+  .answer{font-size:15.5px;padding-left:16px}
+}
+
+/* ---------- Print ---------- */
+@media print{
+  :root{
+    --paper:#FFFFFF;--card:#FFFFFF;--ink:#000000;--secondary:#2E2E2E;--weak:#555555;
+    --accent:#6E2A1E;--accent-soft:#F2F2F2;--green:#1F4438;--green-soft:#F2F2F2;
+    --gold:#7A5A08;--gold-ink:#4F3A00;--gold-soft:#F7F2E4;--line:#BBBBBB;
+    --panel:#F7F7F7;--panel-alt:#F7F7F7;--zebra:#FAFAFA;--thbg:#EFEFEF;
+    --band:#FFFFFF;--band-ink:#000000;--band-line:#777777;--band-muted:#333333;
+  }
+  html{scroll-behavior:auto}
+  body{background:#fff;color:#000;font-size:10.5pt;line-height:1.55}
+  .toc,.mobile-toc,.skip,.scroll-hint{display:none!important}
+  .layout{display:block;max-width:none;padding:0}
+  main{max-width:none;padding:0}
+  .hero{background:none;border-bottom:1px solid #999}
+  .hero-inner{padding:0 0 14px}
+  h1{font-size:26pt}
+  .subtitle{font-size:13pt}
+  .answer{font-size:11pt;border-left-color:#000}
+  .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .kpi{border:1px solid #999;padding:8px}
+  .kpi-value{font-size:18pt}
+  .boundary{background:#fff!important;color:#000!important;border:2px solid #000;padding:10px 12px}
+  .boundary-title{color:#000}
+  .boundary-sub,.boundary-note{color:#000}
+  .boundary-items span{border-color:#666;color:#000}
+  .boundary-note{border-top-color:#999}
+  .section-head{border-top-color:#000;page-break-after:avoid;page-break-inside:avoid;break-inside:avoid}
+  .hero-actions-title{break-after:avoid;page-break-after:avoid}
+  .action-grid{break-inside:avoid;page-break-inside:avoid}
+  h2,h3,h4{page-break-after:avoid;page-break-inside:avoid;break-inside:avoid}
+  .table-wrap{overflow:visible!important;border:1px solid #999}
+  .table-wrap table{min-width:0!important;width:100%!important}
+  .table-hint{display:none!important}
+  .table-wrap.cards.ready{overflow:visible!important;border:1px solid #999;background:#fff}
+  .table-wrap.cards.ready table{display:table;min-width:0!important;width:100%!important}
+  .table-wrap.cards.ready thead{display:table-header-group}
+  .table-wrap.cards.ready tbody{display:table-row-group}
+  .table-wrap.cards.ready tr{display:table-row;border:none;margin:0;padding:0;background:transparent!important}
+  .table-wrap.cards.ready td{display:table-cell;padding:4px;text-align:left;white-space:normal}
+  .table-wrap.cards.ready td::before{display:none}
+  .takeaways{break-inside:avoid;page-break-inside:avoid}
+  table{font-size:8pt;line-height:1.4}
+  thead{display:table-header-group}
+  tr{break-inside:avoid;page-break-inside:avoid}
+  thead th{white-space:normal!important;font-size:7.2pt;padding:4px 4px}
+  tbody td{padding:4px 4px}
+  table code{word-break:break-all}
+  figure,.kpi,.motif,.exec,.action,table,.callout,.answer-box,blockquote{break-inside:avoid}
+  figure{padding:10px}
+  .chart-wrap{overflow:visible}
+  .chart-wrap svg,.chart-wrap.wide svg{min-width:0!important;width:100%!important}
+  a{color:#000;text-decoration:none}
+  footer{background:none;border-top:1px solid #999}
+  .footer-inner{padding:12px 0}
+  .badge{border:1px solid #666!important;background:#fff!important;color:#000!important}
+  .badge::before{display:none}
+}
+@page{margin:15mm}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">跳到正文</a>
+
+<header class="hero">
+  <div class="hero-inner">
+    <p class="kicker">TIKTOK 母婴 · 选题分析报告</p>
+    <h1>下周拍什么</h1>
+    <p class="subtitle">288 条母婴爆款，看完就知道下周拍什么</p>
+    <div class="meta">
+      <span><b>读者：</b>品牌市场负责人</span>
+      <span><b>数据截止：</b>2026-10-28</span>
+      <span><b>报告生成：</b>2026-10-31</span>
+    </div>
+
+    <div class="answer">
+      <span class="answer-label">先说结论</span>
+      下周先拍 3 条能反复用的内容：产品清单、教程、身份共鸣。这三种照着拍最省事。把万圣节那 64 条从全年选题里去掉，容易照拍的内容占比会从 40.3% 降到 31.7%，剩下的才是你全年都能拍的底子。
+    </div>
+
+    <div class="takeaways" aria-label="三个反直觉结论">
+      <p class="takeaways-title">三个反直觉结论</p>
+      <ol class="takeaways-list">
+        <li><span class="t-num">01</span><div><strong>学不了的内容，播放中位反而更高。</strong>难以复刻的 45 条，播放中位 310 万；可直接复刻的 116 条，播放中位 250 万。这是样本构成描述，不写因果。</div></li>
+        <li><span class="t-num">02</span><div><strong>万圣节抬高了「容易照拍」的比例。</strong>288 条全样本里是 40.3%；去掉万圣节、剩下 224 条常青内容后是 31.7%，相差 8.6 个百分点。</div></li>
+        <li><span class="t-num">03</span><div><strong>播放量高，不等于有人想买。</strong>清单类小视频每 10 万次播放有 43.8 条明确求购，大爆款只有 0.3–0.8 条，约差 55–146 倍。</div></li>
+      </ol>
+    </div>
+
+    <p class="hero-actions-title">下周三个动作</p>
+    <div class="action-grid">
+      <div class="action">
+        <span class="act-tag">A · 产品清单</span>
+        <p class="action-title">30 秒「一件到底」快剪</p>
+        <p>片尾 5 秒同款清单 + 置顶评论 + 主页链接。</p>
+        <p><span class="act-label">为什么现在拍</span>71 条全年能拍、也容易照拍的视频里，产品/种草占 38.0%（27/71）；播放量的中间水平是 220 万（27 条视频）。评论里有 223 条在问哪里能买，分布在 124 个视频下。</p>
+        <p><span class="act-label">大概会在什么范围</span>中间水平 220 万；大多数视频（一半）落在 140–585 万之间：25% 低于 140 万，75% 低于 585 万（27 条视频）。</p>
+      </div>
+      <div class="action">
+        <span class="act-tag">B · 教程</span>
+        <p class="action-title">「新手爸妈不知道的 3 个宝宝哭声」</p>
+        <p>步骤字幕 + 月龄标注。</p>
+        <p><span class="act-label">为什么现在拍</span>71 条全年能拍、也容易照拍的视频里，教程/DIY 占 32.4%（23/71）；播放量的中间水平是 280 万（23 条视频）。评论里有 65 条在求教程，分布在 82 个视频下。</p>
+        <p><span class="act-label">大概会在什么范围</span>中间水平 280 万；大多数视频（一半）落在 150–410 万之间：25% 低于 150 万，75% 低于 410 万（23 条视频）。</p>
+      </div>
+      <div class="action">
+        <span class="act-tag">C · 身份共鸣</span>
+        <p class="action-title">「只有我这样吗」评论原话合集</p>
+        <p>评论原话 + 口播回答。</p>
+        <p><span class="act-label">为什么现在拍</span>71 条全年能拍、也容易照拍的视频里，身份共鸣占 29.6%（21/71）；播放量的中间水平是 320 万（21 条视频）。评论里有 65 条是「只有我这样吗」式的共鸣提问，分布在 61 个视频下。</p>
+        <p><span class="act-label">大概会在什么范围</span>中间水平 320 万；大多数视频（一半）落在 180–540 万之间：25% 低于 180 万，75% 低于 540 万（21 条视频）。</p>
+      </div>
+    </div>
+    <p class="hero-actions-title">四个关键数字 · 口径</p>
+    <div class="kpi-grid" aria-label="四个关键数字">
+      <div class="kpi">
+        <p class="kpi-label">容易照拍的内容占比 · 含不含万圣节</p>
+        <div class="kpi-value sm">40.3% → 31.7%</div>
+        <p class="kpi-meaning">288 条全部里容易照拍的占比 → 去掉万圣节、剩下 224 条后的占比；两者差 8.6 个百分点</p>
+        <p class="kpi-meta">116/288 → 71/224</p>
+      </div>
+      <div class="kpi">
+        <p class="kpi-label">全年都能拍的底子 · 两类主力</p>
+        <div class="kpi-value">70.4%</div>
+        <p class="kpi-meaning">在全年能拍、也容易照拍的 71 条里，「产品/种草」和「教程/DIY」两类加起来占多少</p>
+        <p class="kpi-meta">50/71</p>
+      </div>
+      <div class="kpi">
+        <p class="kpi-label">每 10 万次播放的明确求购评论数</p>
+        <div class="kpi-value sm">43.8 对 0.3–0.8</div>
+        <p class="kpi-meaning">产品清单类小视频每 10 万次播放有 43.8 条明确求购评论，大爆款只有 0.3–0.8 条；前者约是后者的 55–146 倍</p>
+        <p class="kpi-meta">怎么算的：明确求购评论数 ÷ 播放量</p>
+      </div>
+      <div class="kpi">
+        <p class="kpi-label">想买的评论 · 占全部评论多少</p>
+        <div class="kpi-value">3.4 倍</div>
+        <p class="kpi-meaning">问「在哪买」的 223 条，问「求教程」的 65 条，前者是后者的 3.4 倍；明确想买的 307 条，只占全部评论 47,073 条的 0.65%</p>
+        <p class="kpi-meta">307 条明确想买 / 47,073 条全部评论</p>
+      </div>
+    </div>
+
+
+    <p class="hero-read">这些数字只是把我们抓到的这批视频数了一遍。它们告诉你哪类内容容易照拍、哪类评论里有人想买，不保证照着拍一定爆。</p>
+    <div class="boundary" role="note" aria-label="数据边界徽章">
+      <div class="boundary-head">
+        <span class="boundary-title">数据边界</span>
+        <span class="boundary-sub">看结论之前，先看这几条</span>
+      </div>
+      <p class="boundary-items">
+        <span class="strong">288 条已爆视频</span>
+        <span>392 个 hashtag × 43 天</span>
+        <span>2026-10 抓取的时间段</span>
+        <span>数据最后更新 2026-10-28</span>
+        <span class="strong">万圣节相关 22.2%（64/288）</span>
+        <span>母婴/喂养品类</span>
+        <span>只看了视频文案和平台已有的标签，没看字幕，也没分析画面</span>
+        <span>只查了数据库，没改过任何数据</span>
+      </p>
+      <p class="boundary-note"><strong>怎么算的：</strong>播放量的中间水平只说明这 288 条视频长什么样，不证明是谁导致谁；少于 8 条视频的结论，我们标「条数太少，说明不了问题」；所有数字都只是数出来的次数，或者两类内容一起出现的情况，不能拿来证明是谁导致谁。</p>
+    </div>
+
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="toc" aria-label="目录">
+    <p class="toc-title">目录</p>
+    <ol>
+      <li><a href="#s01"><span class="n">01</span><span>这批爆款是什么</span></a></li>
+      <li><a href="#s02"><span class="n">02</span><span>十二类共鸣内容</span></a></li>
+      <li><a href="#s03"><span class="n">03</span><span>哪些能学，哪些不能</span></a></li>
+      <li><a href="#s04"><span class="n">04</span><span>哪里还有机会</span></a></li>
+      <li><a href="#s05"><span class="n">05</span><span>观众自己要什么</span></a></li>
+      <li><a href="#s06"><span class="n">06</span><span>下周能直接拍的选题清单</span></a></li>
+      <li><a href="#s07"><span class="n">07</span><span>边界与禁写</span></a></li>
+      <li><a href="#appendix"><span class="n">附</span><span>条数太少，说明不了问题的结论清单</span></a></li>
+    </ol>
+    <p class="toc-foot">所有数字都只是把这批视频数了一遍。<br>不证明是谁导致谁，也不承诺播放量。</p>
+  </aside>
+
+  <main id="main">
+    <details class="mobile-toc">
+      <summary>目录 · 7 节 + 附录</summary>
+      <ol>
+        <li><a href="#s01"><span class="n">01</span><span>这批爆款是什么</span></a></li>
+        <li><a href="#s02"><span class="n">02</span><span>十二类共鸣内容</span></a></li>
+        <li><a href="#s03"><span class="n">03</span><span>哪些能学，哪些不能</span></a></li>
+        <li><a href="#s04"><span class="n">04</span><span>哪里还有机会</span></a></li>
+        <li><a href="#s05"><span class="n">05</span><span>观众自己要什么</span></a></li>
+        <li><a href="#s06"><span class="n">06</span><span>下周能直接拍的选题清单</span></a></li>
+        <li><a href="#s07"><span class="n">07</span><span>边界与禁写</span></a></li>
+        <li><a href="#appendix"><span class="n">附</span><span>条数太少，说明不了问题的结论清单</span></a></li>
+      </ol>
+    </details>
+
+

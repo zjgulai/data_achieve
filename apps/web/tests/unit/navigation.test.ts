@@ -51,6 +51,53 @@ describe("primary navigation", () => {
     );
   });
 
+  it("adds New Insight as the first child under intelligence", () => {
+    const intelligence = primaryNavigation.find(
+      (item) => item.href === "/intelligence",
+    )!;
+    expect(primaryNavigation).toHaveLength(7);
+    expect(intelligence.children[0]).toEqual({
+      href: "/new",
+      label: "新建洞察",
+    });
+
+    const newInsight = intelligence.children[0]!;
+    expect(isNavigationChildActive("/new", "", newInsight)).toBe(true);
+    expect(
+      isNavigationChildActive(
+        "/new/0f7d9c2e-5a1b-4c3d-8e9f-1a2b3c4d5e6f",
+        "",
+        newInsight,
+      ),
+    ).toBe(true);
+    expect(
+      isNavigationItemActive(
+        "/new/0f7d9c2e-5a1b-4c3d-8e9f-1a2b3c4d5e6f",
+        "",
+        intelligence,
+      ),
+    ).toBe(true);
+    expect(isNavigationChildActive("/newish", "", newInsight)).toBe(false);
+  });
+
+  it("matches dynamic report details under the reports child", () => {
+    const intelligence = primaryNavigation.find(
+      (item) => item.href === "/intelligence",
+    )!;
+    const reports = intelligence.children.find(
+      (item) => String(item.href) === "/reports",
+    )!;
+
+    expect(
+      isNavigationChildActive(
+        "/reports/0f7d9c2e-5a1b-4c3d-8e9f-1a2b3c4d5e6f",
+        "",
+        reports,
+      ),
+    ).toBe(true);
+    expect(isNavigationChildActive("/reports-archive", "", reports)).toBe(false);
+  });
+
   it("marks a child route through its parent", () => {
     const workflow = primaryNavigation.find(
       (item) => item.href === "/automation",

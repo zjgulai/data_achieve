@@ -5,11 +5,13 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 import structlog
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.encoders import jsonable_encoder
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from data_intelligence_hub.agents.shusuo.router import router as shusuo_router
 from data_intelligence_hub.agents.tiktok_cdo.router import router as tiktok_cdo_router
@@ -33,6 +35,14 @@ from data_intelligence_hub.api.routes.dashboard import router as dashboard_route
 from data_intelligence_hub.api.routes.enrichment import router as enrichment_router
 from data_intelligence_hub.api.routes.entities import router as entities_router
 from data_intelligence_hub.api.routes.health import router as health_router
+from data_intelligence_hub.api.routes.insight import (
+    InsightApiError,
+    ensure_request_id,
+    insight_exception_handler,
+)
+from data_intelligence_hub.api.routes.insight import (
+    router as insight_router,
+)
 from data_intelligence_hub.api.routes.intelligence import router as intelligence_router
 from data_intelligence_hub.api.routes.mcp_tool_policies import (
     router as mcp_tool_policies_router,
@@ -195,6 +205,35 @@ def create_app() -> FastAPI:
             content={"detail": jsonable_encoder(exc.errors())},
         )
 
+    # /api/insight 的错误信封是 {"detail": ..., "code": ...}。401/403 由
+    # get_auth_context 抛出 HTTPException，这里按路径前缀补上稳定错误码；
+    # 其他路径继续走 FastAPI 默认处理器，既有契约不变。
+    insight_http_errors = {
+        401: ("authentication_required", "登录已过期，请重新登录。"),
+        403: ("workspace_not_found", "当前工作区不可用。请切换工作区或联系管理员。"),
+        503: ("internal_server_error", "服务暂时不可用，请稍后重试。"),
+    }
+
+    @app.exception_handler(StarletteHTTPException)
+    async def _insight_http_error(
+        request: Request,
+        exc: StarletteHTTPException,
+    ) -> Response:
+        if request.url.path.startswith("/api/insight"):
+            mapped = insight_http_errors.get(exc.status_code)
+            if mapped is not None:
+                code, detail = mapped
+                headers = dict(exc.headers or {})
+                headers["X-Request-ID"] = ensure_request_id(request)
+                return JSONResponse(
+                    status_code=exc.status_code,
+                    content={"detail": detail, "code": code},
+                    headers=headers,
+                )
+        return await http_exception_handler(request, exc)
+
+    app.add_exception_handler(InsightApiError, insight_exception_handler)
+
     app.include_router(health_router)
     app.include_router(health_router, prefix="/api")
     app.include_router(auth_router, prefix="/api/auth")
@@ -221,6 +260,7 @@ def create_app() -> FastAPI:
     app.include_router(entities_router, prefix="/api/entities")
     app.include_router(signals_router, prefix="/api/signals")
     app.include_router(intelligence_router, prefix="/api/intelligence")
+    app.include_router(insight_router, prefix="/api/insight")
     app.include_router(automation_router, prefix="/api/automation")
     app.include_router(social_provider_router, prefix="/api/automation")
     app.include_router(toolkit_router, prefix="/api/toolkit")

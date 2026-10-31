@@ -73,6 +73,18 @@ class ReportNotFoundError(ServiceError):
     message = "Report not found"
 
 
+class InsightReportNotFoundError(ServiceError):
+    message = "insight_report_not_found"
+
+
+class InsightReportContentMissingError(ServiceError):
+    message = "insight_report_content_missing"
+
+
+class InsightReportIntegrityError(ServiceError):
+    message = "insight_report_integrity_failed"
+
+
 class ReportSendAuthorizationError(ServiceError):
     message = "report_send_authorization_required"
 

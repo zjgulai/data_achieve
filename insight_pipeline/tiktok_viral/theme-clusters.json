@@ -1,0 +1,8549 @@
+{
+  "generated_from": "deepread288.tsv",
+  "corpus": {
+    "videos": 288,
+    "unique_themes": 993,
+    "theme_occurrences": 1320,
+    "avg_themes_per_video": 4.58,
+    "unique_hashtags": 121,
+    "peak_min": 94000,
+    "peak_median": 2550000,
+    "peak_max": 188000000,
+    "halloween_videos": 64,
+    "halloween_share": 0.2222,
+    "halloween_videos_loose": 66,
+    "halloween_share_loose": 0.2292,
+    "broad_seasonal_videos": 110,
+    "broad_seasonal_share": 0.3819,
+    "hit10m_videos": 25,
+    "hit10m_share": 0.0868,
+    "frequency_buckets": {
+      "5-9": 17,
+      "1": 855,
+      "2-4": 116,
+      "10+": 5
+    },
+    "themes_ge3": [
+      [
+        "万圣节穿搭",
+        17
+      ],
+      [
+        "人类幼崽",
+        16
+      ],
+      [
+        "萌娃日常",
+        15
+      ],
+      [
+        "万圣节装扮",
+        13
+      ],
+      [
+        "反差萌",
+        11
+      ],
+      [
+        "母婴育儿",
+        9
+      ],
+      [
+        "母婴好物",
+        9
+      ],
+      [
+        "开学季",
+        8
+      ],
+      [
+        "新手妈妈",
+        8
+      ],
+      [
+        "节日灵感",
+        8
+      ],
+      [
+        "家庭幽默",
+        7
+      ],
+      [
+        "育儿日常",
+        7
+      ],
+      [
+        "低成本DIY",
+        7
+      ],
+      [
+        "家庭搞笑",
+        6
+      ],
+      [
+        "育儿痛点",
+        6
+      ],
+      [
+        "万圣节变装",
+        6
+      ],
+      [
+        "晨间日常",
+        6
+      ],
+      [
+        "返校季",
+        5
+      ],
+      [
+        "儿童选美",
+        5
+      ],
+      [
+        "母乳喂养",
+        5
+      ],
+      [
+        "亲子日常",
+        5
+      ],
+      [
+        "万圣节DIY",
+        5
+      ],
+      [
+        "卡点变装",
+        4
+      ],
+      [
+        "带娃日常",
+        4
+      ],
+      [
+        "母婴日常",
+        4
+      ],
+      [
+        "育儿妙招",
+        4
+      ],
+      [
+        "黑色幽默",
+        4
+      ],
+      [
+        "反差幽默",
+        4
+      ],
+      [
+        "新手父母",
+        4
+      ],
+      [
+        "治愈解压",
+        4
+      ],
+      [
+        "情侣互动",
+        4
+      ],
+      [
+        "穿搭灵感",
+        4
+      ],
+      [
+        "硬核带娃",
+        4
+      ],
+      [
+        "育儿争议",
+        4
+      ],
+      [
+        "情绪反转",
+        4
+      ],
+      [
+        "萌娃变装",
+        4
+      ],
+      [
+        "视觉奇观",
+        4
+      ],
+      [
+        "新手爸妈",
+        3
+      ],
+      [
+        "新生儿护理",
+        3
+      ],
+      [
+        "情侣日常",
+        3
+      ],
+      [
+        "亲子DIY",
+        3
+      ],
+      [
+        "AI萌娃",
+        3
+      ],
+      [
+        "沉浸式Vlog",
+        3
+      ],
+      [
+        "育儿神器",
+        3
+      ],
+      [
+        "角色扮演",
+        3
+      ],
+      [
+        "万圣节布置",
+        3
+      ],
+      [
+        "家庭育儿",
+        3
+      ],
+      [
+        "育儿焦虑",
+        3
+      ],
+      [
+        "儿童编发",
+        3
+      ],
+      [
+        "节点借势",
+        3
+      ],
+      [
+        "真实育儿",
+        3
+      ],
+      [
+        "萌娃搞笑",
+        3
+      ],
+      [
+        "亲子整蛊",
+        3
+      ],
+      [
+        "节日清单",
+        3
+      ],
+      [
+        "亲子互动",
+        3
+      ],
+      [
+        "情感共鸣",
+        3
+      ]
+    ],
+    "videos_covered_by_12_motifs": 287,
+    "videos_covered_by_12_motifs_share": 0.9965,
+    "videos_only_other": 1,
+    "videos_only_other_share": 0.0035,
+    "videos_only_other_ids": [
+      "7683201356001234190"
+    ],
+    "motif_memberships_per_video": {
+      "1": 12,
+      "2": 67,
+      "3": 119,
+      "4": 78,
+      "5": 12
+    },
+    "top_motif_pairs": [
+      [
+        "节点借势",
+        "变装穿搭与视觉奇观",
+        45
+      ],
+      [
+        "家庭搞笑",
+        "家庭情感与关系",
+        36
+      ],
+      [
+        "家庭情感与关系",
+        "身份共鸣",
+        33
+      ],
+      [
+        "母婴好物种草",
+        "节点借势",
+        32
+      ],
+      [
+        "家庭情感与关系",
+        "热梗音乐与二创",
+        31
+      ],
+      [
+        "实用教程与DIY",
+        "节点借势",
+        29
+      ],
+      [
+        "家庭搞笑",
+        "身份共鸣",
+        27
+      ],
+      [
+        "孕产喂养与护理",
+        "身份共鸣",
+        26
+      ],
+      [
+        "家庭搞笑",
+        "萌娃治愈",
+        26
+      ],
+      [
+        "孕产喂养与护理",
+        "家庭情感与关系",
+        25
+      ]
+    ]
+  },
+  "motifs": [
+    {
+      "key": "cute",
+      "name": "萌娃治愈",
+      "definition": "以婴幼儿的外形、表情、奶音和反应本身作为观看理由，核心是可爱与治愈。",
+      "theme_count": 35,
+      "occurrence_count": 78,
+      "video_count": 49,
+      "video_share": 0.1701,
+      "peak_median": 3500000,
+      "peak_p25": 1900000,
+      "peak_p75": 7600000,
+      "top_videos": [
+        {
+          "video_id": "7680563312504917278",
+          "peak": 23800000,
+          "hashtag": "#toddlerhacks",
+          "themes": [
+            "育儿妙招",
+            "女童打扮",
+            "生活黑客",
+            "萌娃日常"
+          ]
+        },
+        {
+          "video_id": "7673862935868902686",
+          "peak": 17200000,
+          "hashtag": "#familytrend",
+          "themes": [
+            "家庭幽默",
+            "反差萌",
+            "家庭地位",
+            "搞怪舞蹈",
+            "父女互动"
+          ]
+        },
+        {
+          "video_id": "7672146526663134495",
+          "peak": 15700000,
+          "hashtag": "#babydancing",
+          "themes": [
+            "AI婴儿",
+            "反差幽默",
+            "萌娃成精",
+            "猎奇搞笑"
+          ]
+        }
+      ],
+      "top_hashtag": "#bayi",
+      "top_hashtag_videos": 4,
+      "top_hashtag_share": 0.082,
+      "top_hashtags": [
+        {
+          "hashtag": "#bayi",
+          "videos": 4
+        },
+        {
+          "hashtag": "#bayilucu",
+          "videos": 4
+        },
+        {
+          "hashtag": "#funnybaby",
+          "videos": 3
+        }
+      ],
+      "seasonal_tag_video_count": 5,
+      "seasonal_tag_share": 0.102,
+      "halloween_video_count": 5,
+      "halloween_share": 0.102,
+      "pure_seasonal_video_count": 0,
+      "pure_seasonal_share": 0.0,
+      "ex_seasonal_video_count": 49,
+      "ex_seasonal_peak_median": 3500000,
+      "seasonal_subset_median": 4600000,
+      "nonseasonal_subset_median": 3300000,
+      "hit10m_count": 8,
+      "hit10m_share": 0.163,
+      "themes": [
+        "人类幼崽",
+        "萌娃日常",
+        "反差萌",
+        "AI萌娃",
+        "AI婴儿",
+        "童言无忌",
+        "AI萌宝",
+        "八卦宝宝",
+        "反差萌人设",
+        "天使宝宝",
+        "奶音互动",
+        "婴儿日常",
+        "婴儿萌态",
+        "懂事大宝",
+        "新生儿日常",
+        "新生儿萌宠感",
+        "治愈吸娃",
+        "治愈撒娇",
+        "治愈萌娃",
+        "混血宝宝",
+        "萌娃互动",
+        "萌娃反应",
+        "萌娃变脸",
+        "萌娃吃播",
+        "萌娃学步",
+        "萌娃成精",
+        "萌娃才艺",
+        "萌娃搞怪",
+        "萌娃模仿",
+        "萌娃治愈",
+        "萌娃解压",
+        "萌宝团宠",
+        "萌宠互动",
+        "萌宠萌娃",
+        "解压合辑"
+      ]
+    },
+    {
+      "key": "comedy",
+      "name": "家庭搞笑",
+      "definition": "以家庭或育儿场景中的翻车、整蛊、吐槽和荒诞反差为主要笑点。",
+      "theme_count": 87,
+      "occurrence_count": 113,
+      "video_count": 84,
+      "video_share": 0.2917,
+      "peak_median": 2800000,
+      "peak_p25": 1700000,
+      "peak_p75": 6375000,
+      "top_videos": [
+        {
+          "video_id": "7693227430420516103",
+          "peak": 26500000,
+          "hashtag": "#newbornstage",
+          "themes": [
+            "新手爸妈",
+            "带娃日常",
+            "睡眠剥夺",
+            "育儿幽默",
+            "新生儿护理"
+          ]
+        },
+        {
+          "video_id": "7670847268345482526",
+          "peak": 24900000,
+          "hashtag": "#boymom",
+          "themes": [
+            "家有男宝",
+            "育儿翻车",
+            "家庭搞笑",
+            "母婴日常"
+          ]
+        },
+        {
+          "video_id": "7677898993719987469",
+          "peak": 24500000,
+          "hashtag": "#babiesoftiktok",
+          "themes": [
+            "二胎争端",
+            "AI视觉奇观",
+            "家庭搞笑",
+            "育儿痛点",
+            "爽剧解法"
+          ]
+        }
+      ],
+      "top_hashtag": "#beforeschool",
+      "top_hashtag_videos": 4,
+      "top_hashtag_share": 0.048,
+      "top_hashtags": [
+        {
+          "hashtag": "#beforeschool",
+          "videos": 4
+        },
+        {
+          "hashtag": "#funnybaby",
+          "videos": 3
+        },
+        {
+          "hashtag": "#newparents",
+          "videos": 3
+        }
+      ],
+      "seasonal_tag_video_count": 24,
+      "seasonal_tag_share": 0.286,
+      "halloween_video_count": 7,
+      "halloween_share": 0.083,
+      "pure_seasonal_video_count": 0,
+      "pure_seasonal_share": 0.0,
+      "ex_seasonal_video_count": 84,
+      "ex_seasonal_peak_median": 2800000,
+      "seasonal_subset_median": 2800000,
+      "nonseasonal_subset_median": 2800000,
+      "hit10m_count": 12,
+      "hit10m_share": 0.143,
+      "themes": [
+        "家庭幽默",
+        "家庭搞笑",
+        "反差幽默",
+        "黑色幽默",
+        "亲子整蛊",
+        "萌娃搞笑",
+        "家庭喜剧",
+        "搞笑反差",
+        "搞笑合辑",
+        "育儿搞笑",
+        "认知反差",
+        "低成本搞怪",
+        "假哭撒娇",
+        "反差搞笑",
+        "反差自嘲",
+        "反转搞笑",
+        "发疯自嘲",
+        "夫妻互坑",
+        "宝妈自嘲",
+        "家庭地位",
+        "带娃吐槽",
+        "幽默印花",
+        "幽默自嘲",
+        "当众社死",
+        "心虚抓包",
+        "恶作剧合辑",
+        "悬念吃瓜",
+        "意外反转",
+        "戏剧反差",
+        "打脸逆袭",
+        "接娃吐槽",
+        "搞笑动物",
+        "搞笑反转",
+        "搞笑整蛊",
+        "搞笑日常",
+        "搞笑模仿",
+        "搞笑段子",
+        "搞笑短剧",
+        "搞笑自嘲",
+        "搞笑萌娃",
+        "整蛊反差",
+        "整蛊恶搞",
+        "无厘头恶搞",
+        "极致反差",
+        "校园吐槽",
+        "母婴搞笑",
+        "毒舌吐槽",
+        "漂发翻车",
+        "爆笑反转",
+        "父子搞笑",
+        "父母争宠",
+        "爽剧解法",
+        "爽感逆袭",
+        "猎奇搞笑",
+        "猫鼠喜剧",
+        "生活喜剧",
+        "生活搞笑",
+        "监控搞笑",
+        "真实翻车",
+        "社交社死",
+        "社死反转",
+        "神态反差",
+        "神评吐槽",
+        "经典整蛊",
+        "美妆翻车",
+        "美式喜剧",
+        "肢体幽默",
+        "育儿幽默",
+        "育儿打脸",
+        "育儿翻车",
+        "自嘲幽默",
+        "自黑搞笑",
+        "荒诞动物",
+        "荒诞喜剧",
+        "荒诞幽默",
+        "荒诞短剧",
+        "荒谬幽默",
+        "萌娃嘴替",
+        "萌娃翻车",
+        "萌宠整蛊",
+        "街头恶作剧",
+        "街拍恶搞",
+        "装酷翻车",
+        "视觉幽默",
+        "车内互怼",
+        "迷惑行为",
+        "逆袭反差"
+      ]
+    },
+    {
+      "key": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "definition": "呈现育儿中的疲惫、焦虑、争议与母职压力，核心是痛点和共情。",
+      "theme_count": 50,
+      "occurrence_count": 70,
+      "video_count": 49,
+      "video_share": 0.1701,
+      "peak_median": 2400000,
+      "peak_p25": 1400000,
+      "peak_p75": 4600000,
+      "top_videos": [
+        {
+          "video_id": "7693227430420516103",
+          "peak": 26500000,
+          "hashtag": "#newbornstage",
+          "themes": [
+            "新手爸妈",
+            "带娃日常",
+            "睡眠剥夺",
+            "育儿幽默",
+            "新生儿护理"
+          ]
+        },
+        {
+          "video_id": "7677898993719987469",
+          "peak": 24500000,
+          "hashtag": "#babiesoftiktok",
+          "themes": [
+            "二胎争端",
+            "AI视觉奇观",
+            "家庭搞笑",
+            "育儿痛点",
+            "爽剧解法"
+          ]
+        },
+        {
+          "video_id": "7679715405484543245",
+          "peak": 18300000,
+          "hashtag": "#iwillallwaysloveyou",
+          "themes": [
+            "生死离别",
+            "情侣日常",
+            "真实悼念",
+            "珍惜眼前人"
+          ]
+        }
+      ],
+      "top_hashtag": "#toddlersandtiaras",
+      "top_hashtag_videos": 5,
+      "top_hashtag_share": 0.102,
+      "top_hashtags": [
+        {
+          "hashtag": "#toddlersandtiaras",
+          "videos": 5
+        },
+        {
+          "hashtag": "#breastfedbaby",
+          "videos": 3
+        },
+        {
+          "hashtag": "#beforeschool",
+          "videos": 2
+        }
+      ],
+      "seasonal_tag_video_count": 8,
+      "seasonal_tag_share": 0.163,
+      "halloween_video_count": 0,
+      "halloween_share": 0.0,
+      "pure_seasonal_video_count": 1,
+      "pure_seasonal_share": 0.02,
+      "ex_seasonal_video_count": 48,
+      "ex_seasonal_peak_median": 2400000,
+      "seasonal_subset_median": 1350000,
+      "nonseasonal_subset_median": 3100000,
+      "hit10m_count": 5,
+      "hit10m_share": 0.102,
+      "themes": [
+        "育儿痛点",
+        "儿童选美",
+        "育儿争议",
+        "育儿焦虑",
+        "产后心理",
+        "哄睡崩溃",
+        "女性困境",
+        "开学焦虑",
+        "深夜emo",
+        "睡眠剥夺",
+        "争议吐槽",
+        "产后焦虑",
+        "伦理争议",
+        "儿童抗癌",
+        "入园焦虑",
+        "公共场所争议",
+        "分离焦虑",
+        "反击母职审判",
+        "司法争议",
+        "哄睡痛点",
+        "圈层对抗",
+        "孕晚期痛点",
+        "学业压力",
+        "带娃崩溃",
+        "带娃应激",
+        "带娃痛点",
+        "情绪失控",
+        "情绪崩溃",
+        "撞衫撕逼",
+        "极端情绪",
+        "母婴痛点",
+        "母职痛感共情",
+        "生死离别",
+        "生育共情",
+        "生育焦虑",
+        "病童告别",
+        "真实悼念",
+        "社会伦理",
+        "窒息育儿",
+        "童年异化",
+        "童星现状",
+        "精神警示",
+        "育儿修罗场",
+        "育儿共情",
+        "育儿反思",
+        "育儿疲惫",
+        "身材焦虑",
+        "过度刺激",
+        "道德审判",
+        "避孕焦虑"
+      ]
+    },
+    {
+      "key": "family",
+      "name": "家庭情感与关系",
+      "definition": "记录亲子、夫妻、代际之间的情感连接、陪伴与家庭故事。",
+      "theme_count": 108,
+      "occurrence_count": 160,
+      "video_count": 108,
+      "video_share": 0.375,
+      "peak_median": 2800000,
+      "peak_p25": 1475000,
+      "peak_p75": 6125000,
+      "top_videos": [
+        {
+          "video_id": "7671514972186299670",
+          "peak": 188000000,
+          "hashtag": "#cryingbaby",
+          "themes": [
+            "超早产儿",
+            "生命奇迹",
+            "新生儿反射",
+            "医疗纪实",
+            "母婴育儿"
+          ]
+        },
+        {
+          "video_id": "7693227430420516103",
+          "peak": 26500000,
+          "hashtag": "#newbornstage",
+          "themes": [
+            "新手爸妈",
+            "带娃日常",
+            "睡眠剥夺",
+            "育儿幽默",
+            "新生儿护理"
+          ]
+        },
+        {
+          "video_id": "7677898993719987469",
+          "peak": 24500000,
+          "hashtag": "#babiesoftiktok",
+          "themes": [
+            "二胎争端",
+            "AI视觉奇观",
+            "家庭搞笑",
+            "育儿痛点",
+            "爽剧解法"
+          ]
+        }
+      ],
+      "top_hashtag": "#october1st",
+      "top_hashtag_videos": 6,
+      "top_hashtag_share": 0.056,
+      "top_hashtags": [
+        {
+          "hashtag": "#october1st",
+          "videos": 6
+        },
+        {
+          "hashtag": "#miprincesa",
+          "videos": 5
+        },
+        {
+          "hashtag": "#familytrend",
+          "videos": 4
+        }
+      ],
+      "seasonal_tag_video_count": 22,
+      "seasonal_tag_share": 0.204,
+      "halloween_video_count": 12,
+      "halloween_share": 0.111,
+      "pure_seasonal_video_count": 0,
+      "pure_seasonal_share": 0.0,
+      "ex_seasonal_video_count": 108,
+      "ex_seasonal_peak_median": 2800000,
+      "seasonal_subset_median": 4050000,
+      "nonseasonal_subset_median": 2600000,
+      "hit10m_count": 11,
+      "hit10m_share": 0.102,
+      "themes": [
+        "母婴育儿",
+        "育儿日常",
+        "亲子日常",
+        "带娃日常",
+        "情侣互动",
+        "情绪反转",
+        "治愈解压",
+        "亲子互动",
+        "家庭育儿",
+        "情侣日常",
+        "情感共鸣",
+        "真实育儿",
+        "亲子沟通",
+        "亲情共鸣",
+        "夫妻日常",
+        "家庭温情",
+        "情感治愈",
+        "母婴情感",
+        "治愈温情",
+        "治愈系",
+        "父女互动",
+        "生命奇迹",
+        "硬汉柔情",
+        "闺蜜合拍",
+        "世纪和解",
+        "两性互动",
+        "二胎争端",
+        "二胎日常",
+        "亲子关系",
+        "亲子博弈",
+        "亲子反差",
+        "亲子情感",
+        "亲子挑战",
+        "亲子趣味",
+        "亲情情侣",
+        "亲情羁绊",
+        "代际冲突",
+        "伤感爱情",
+        "伴侣关系",
+        "伴侣陪产",
+        "催泪感动",
+        "兄弟社交",
+        "出院第一晚",
+        "反差父爱",
+        "基因相似",
+        "多胞胎日常",
+        "夫妻互动",
+        "夫妻分工",
+        "夫妻反差",
+        "夫妻相处",
+        "夫妻约会",
+        "姐妹亲情",
+        "婚礼名场面",
+        "宝宝成长纪念",
+        "家庭日常",
+        "家庭治愈",
+        "家庭珍惜当下",
+        "家庭纪实",
+        "恋爱心动",
+        "恋爱思念",
+        "情感反差",
+        "情绪共振",
+        "情绪共鸣",
+        "情绪反差",
+        "情绪唤醒",
+        "情绪宣泄",
+        "情绪治愈",
+        "情绪解压",
+        "情绪释放",
+        "手足情深",
+        "抢玩具冲突",
+        "挫折沟通",
+        "母女日常",
+        "母女羁绊",
+        "母婴亲情",
+        "母婴纪实",
+        "母爱叙事",
+        "治愈励志",
+        "治愈带娃",
+        "治愈系生活",
+        "治愈陪伴",
+        "浪漫被爱",
+        "深情告白",
+        "父亲家书",
+        "父女情感",
+        "父女温情",
+        "父爱表达",
+        "珍惜眼前人",
+        "生命治愈",
+        "真实带娃",
+        "真实母婴",
+        "真实试错",
+        "祖孙亲情",
+        "童年治愈",
+        "育儿情感",
+        "育儿解压",
+        "虐心情感",
+        "走心情感",
+        "身高差暗爽",
+        "逆境希望",
+        "逆境突围",
+        "遗憾释怀",
+        "闺蜜日常",
+        "雪地浪漫",
+        "青春恋爱",
+        "验孕反差",
+        "高甜告白",
+        "高颜值CP"
+      ]
+    },
+    {
+      "key": "lifestyle",
+      "name": "生活方式与居家美学",
+      "definition": "展示带娃家庭的日常流程、居家布置、出行与生活美学。",
+      "theme_count": 37,
+      "occurrence_count": 50,
+      "video_count": 39,
+      "video_share": 0.1354,
+      "peak_median": 1900000,
+      "peak_p25": 1300000,
+      "peak_p75": 3950000,
+      "top_videos": [
+        {
+          "video_id": "7670847268345482526",
+          "peak": 24900000,
+          "hashtag": "#boymom",
+          "themes": [
+            "家有男宝",
+            "育儿翻车",
+            "家庭搞笑",
+            "母婴日常"
+          ]
+        },
+        {
+          "video_id": "7681031467970956566",
+          "peak": 8600000,
+          "hashtag": "#vlogtok",
+          "themes": [
+            "美高生活",
+            "沉浸式Vlog",
+            "校园日常",
+            "开学季",
+            "跨文化体验"
+          ]
+        },
+        {
+          "video_id": "7690658830908165389",
+          "peak": 8300000,
+          "hashtag": "#momstruggles",
+          "themes": [
+            "母婴育儿",
+            "家庭搞笑",
+            "真实翻车",
+            "晨间日常",
+            "育儿疲惫"
+          ]
+        }
+      ],
+      "top_hashtag": "#beforeschool",
+      "top_hashtag_videos": 3,
+      "top_hashtag_share": 0.077,
+      "top_hashtags": [
+        {
+          "hashtag": "#beforeschool",
+          "videos": 3
+        },
+        {
+          "hashtag": "#diyhalloween",
+          "videos": 3
+        },
+        {
+          "hashtag": "#october1st",
+          "videos": 3
+        }
+      ],
+      "seasonal_tag_video_count": 20,
+      "seasonal_tag_share": 0.513,
+      "halloween_video_count": 7,
+      "halloween_share": 0.179,
+      "pure_seasonal_video_count": 0,
+      "pure_seasonal_share": 0.0,
+      "ex_seasonal_video_count": 39,
+      "ex_seasonal_peak_median": 1900000,
+      "seasonal_subset_median": 2200000,
+      "nonseasonal_subset_median": 1700000,
+      "hit10m_count": 1,
+      "hit10m_share": 0.026,
+      "themes": [
+        "晨间日常",
+        "母婴日常",
+        "沉浸式Vlog",
+        "十月仪式感",
+        "成长仪式感",
+        "放学日常",
+        "仪式感",
+        "仪式感生活",
+        "卧室布置",
+        "学习Vlog",
+        "家居装饰",
+        "家居软装",
+        "家庭电影夜",
+        "市井烟火",
+        "庭院装饰",
+        "房间布置",
+        "房间装饰",
+        "接娃日常",
+        "接送娃日常",
+        "早晨准备",
+        "早起上学",
+        "晚间仪式感",
+        "晨间准备",
+        "晨间流程",
+        "机舱带娃",
+        "母婴生活",
+        "沉浸式带娃",
+        "沉浸式看房",
+        "深夜带娃",
+        "生活习惯",
+        "生活切片",
+        "生活美学",
+        "睡前流程",
+        "精致生活",
+        "美高生活",
+        "超市带娃",
+        "雨天氛围"
+      ]
+    },
+    {
+      "key": "identity",
+      "name": "身份共鸣",
+      "definition": "以新手妈妈、男宝妈、多孩、奶爸、女性等身份标签为核心。",
+      "theme_count": 82,
+      "occurrence_count": 103,
+      "video_count": 81,
+      "video_share": 0.2812,
+      "peak_median": 2300000,
+      "peak_p25": 1400000,
+      "peak_p75": 4900000,
+      "top_videos": [
+        {
+          "video_id": "7693227430420516103",
+          "peak": 26500000,
+          "hashtag": "#newbornstage",
+          "themes": [
+            "新手爸妈",
+            "带娃日常",
+            "睡眠剥夺",
+            "育儿幽默",
+            "新生儿护理"
+          ]
+        },
+        {
+          "video_id": "7670847268345482526",
+          "peak": 24900000,
+          "hashtag": "#boymom",
+          "themes": [
+            "家有男宝",
+            "育儿翻车",
+            "家庭搞笑",
+            "母婴日常"
+          ]
+        },
+        {
+          "video_id": "7671770011769392398",
+          "peak": 13700000,
+          "hashtag": "#toddlerhacks",
+          "themes": [
+            "育儿妙招",
+            "奇葩带娃",
+            "低成本改造",
+            "学步神器",
+            "母婴痛点"
+          ]
+        }
+      ],
+      "top_hashtag": "#newparents",
+      "top_hashtag_videos": 4,
+      "top_hashtag_share": 0.049,
+      "top_hashtags": [
+        {
+          "hashtag": "#newparents",
+          "videos": 4
+        },
+        {
+          "hashtag": "#beforeschool",
+          "videos": 3
+        },
+        {
+          "hashtag": "#septemberbaby",
+          "videos": 3
+        }
+      ],
+      "seasonal_tag_video_count": 17,
+      "seasonal_tag_share": 0.21,
+      "halloween_video_count": 1,
+      "halloween_share": 0.012,
+      "pure_seasonal_video_count": 1,
+      "pure_seasonal_share": 0.012,
+      "ex_seasonal_video_count": 80,
+      "ex_seasonal_peak_median": 2450000,
+      "seasonal_subset_median": 2100000,
+      "nonseasonal_subset_median": 2450000,
+      "hit10m_count": 5,
+      "hit10m_share": 0.062,
+      "themes": [
+        "新手妈妈",
+        "新手父母",
+        "硬核带娃",
+        "新手爸妈",
+        "公益借势",
+        "多孩家庭",
+        "奇葩带娃",
+        "学生日常",
+        "年轻妈妈",
+        "新手育儿",
+        "产前焦虑自嘲",
+        "人生格言",
+        "人设反差",
+        "人间清醒",
+        "公益项目",
+        "反向育儿",
+        "反差人设",
+        "反差带娃",
+        "反消费主义",
+        "圈层文化",
+        "圈层黑话",
+        "处事哲学",
+        "多孩育儿",
+        "多胎家庭",
+        "奇葩育儿",
+        "女性互助",
+        "女性力量",
+        "奶爸审美",
+        "孕产自嘲",
+        "学步期育儿",
+        "学龄前育儿",
+        "宝妈共鸣",
+        "宝妈日常",
+        "家有男宝",
+        "宿舍日常",
+        "工位日常",
+        "情绪嘴替",
+        "搞钱思维",
+        "收养家庭",
+        "文化出海",
+        "文化自豪",
+        "新手奶爸",
+        "无痛带娃",
+        "无障碍育儿",
+        "极限自律",
+        "校园搞怪",
+        "校园日常",
+        "校园暗恋",
+        "母婴互助",
+        "母职告别",
+        "母职解脱",
+        "民族认同",
+        "爱国情怀",
+        "父职教育",
+        "爸爸育儿",
+        "特需家庭",
+        "独自育儿",
+        "生育观念",
+        "真实新手妈妈",
+        "硬汉奶爸",
+        "社交货币",
+        "社群共鸣",
+        "粉红丝带",
+        "职场吐槽",
+        "职场幽默",
+        "育儿共鸣",
+        "自律生活",
+        "观点嘴替",
+        "豪车接娃",
+        "跨文化体验",
+        "跨种族育儿",
+        "身份反差",
+        "身份认同",
+        "身材激励",
+        "轮椅妈妈",
+        "辣妈人设",
+        "辣妹标签",
+        "阶级反差",
+        "青少年育儿",
+        "青春期育儿",
+        "预产月共鸣",
+        "高中生日常"
+      ]
+    },
+    {
+      "key": "seasonal",
+      "name": "节点借势",
+      "definition": "借万圣节、节日、开学、换季等时间节点组织内容与消费。",
+      "theme_count": 82,
+      "occurrence_count": 153,
+      "video_count": 103,
+      "video_share": 0.3576,
+      "peak_median": 3000000,
+      "peak_p25": 1800000,
+      "peak_p75": 5300000,
+      "top_videos": [
+        {
+          "video_id": "7692643410313776414",
+          "peak": 27200000,
+          "hashtag": "#halloweencostumeideas",
+          "themes": [
+            "万圣节装扮",
+            "动漫Cosplay",
+            "卡点变装",
+            "Y2K穿搭"
+          ]
+        },
+        {
+          "video_id": "7693719970777222413",
+          "peak": 23600000,
+          "hashtag": "#halloweencostumeideas",
+          "themes": [
+            "万圣节变装",
+            "惊悚仿妆",
+            "IP角色扮演",
+            "闺蜜组团穿搭"
+          ]
+        },
+        {
+          "video_id": "7691389682642406688",
+          "peak": 16300000,
+          "hashtag": "#october1st",
+          "themes": [
+            "万圣节借势",
+            "网络迷因梗",
+            "魔性洗脑",
+            "食物拟人",
+            "情绪释放"
+          ]
+        }
+      ],
+      "top_hashtag": "#halloweencostumeideas",
+      "top_hashtag_videos": 14,
+      "top_hashtag_share": 0.136,
+      "top_hashtags": [
+        {
+          "hashtag": "#halloweencostumeideas",
+          "videos": 14
+        },
+        {
+          "hashtag": "#october1st",
+          "videos": 10
+        },
+        {
+          "hashtag": "#diyhalloween",
+          "videos": 9
+        }
+      ],
+      "seasonal_tag_video_count": 103,
+      "seasonal_tag_share": 1.0,
+      "halloween_video_count": 64,
+      "halloween_share": 0.621,
+      "pure_seasonal_video_count": 103,
+      "pure_seasonal_share": 1.0,
+      "ex_seasonal_video_count": 0,
+      "ex_seasonal_peak_median": null,
+      "seasonal_subset_median": 3000000,
+      "nonseasonal_subset_median": null,
+      "hit10m_count": 7,
+      "hit10m_share": 0.068,
+      "themes": [
+        "万圣节穿搭",
+        "万圣节装扮",
+        "开学季",
+        "节日灵感",
+        "万圣节变装",
+        "万圣节DIY",
+        "返校季",
+        "万圣节布置",
+        "节日清单",
+        "节点借势",
+        "万圣节发型",
+        "万圣节礼盒",
+        "万圣节礼篮",
+        "节日仪式感",
+        "节日布景",
+        "节日氛围感",
+        "节日穿搭灵感",
+        "节日装饰",
+        "节日谐音梗",
+        "节日送礼",
+        "万圣节",
+        "万圣节二创",
+        "万圣节借势",
+        "万圣节创意",
+        "万圣节好物",
+        "万圣节手工",
+        "万圣节搞怪",
+        "万圣节氛围",
+        "万圣节派对",
+        "万圣节狂欢",
+        "万圣节童装",
+        "万圣节节点",
+        "万圣节装饰",
+        "万圣节限定",
+        "倒数日历",
+        "儿童圣诞礼",
+        "圣诞宝宝",
+        "圣诞礼品",
+        "圣诞装饰",
+        "大学开学",
+        "应季服饰",
+        "开学倒计时",
+        "开学前夜",
+        "开学季打卡",
+        "开学收心",
+        "换季仪式感",
+        "时令热点",
+        "月份仪式感",
+        "月初打卡",
+        "月度备忘",
+        "派对灵感",
+        "生日伴手礼",
+        "生日祝福",
+        "生日节点",
+        "秋冬保暖",
+        "秋冬居家服",
+        "秋冬送礼",
+        "秋季新品",
+        "秋季氛围感",
+        "秋季礼篮",
+        "秋季穿搭",
+        "秋季美学",
+        "秋季节点",
+        "秋日仪式感",
+        "秋日氛围",
+        "节庆热梗",
+        "节日仿妆",
+        "节日借势",
+        "节日变装",
+        "节日抢跑",
+        "节日氛围好物",
+        "节日灵感板",
+        "节日热梗",
+        "节日电商种草",
+        "节日礼物清单",
+        "节日祝福",
+        "节日种草",
+        "节日预热",
+        "节点带货",
+        "节点营销",
+        "返校季穿搭",
+        "返校穿搭"
+      ]
+    },
+    {
+      "key": "diy",
+      "name": "实用教程与DIY",
+      "definition": "提供可复制的做法：育儿妙招、手工改造、早教、健身与生活黑客。",
+      "theme_count": 79,
+      "occurrence_count": 100,
+      "video_count": 60,
+      "video_share": 0.2083,
+      "peak_median": 2500000,
+      "peak_p25": 1675000,
+      "peak_p75": 4750000,
+      "top_videos": [
+        {
+          "video_id": "7680563312504917278",
+          "peak": 23800000,
+          "hashtag": "#toddlerhacks",
+          "themes": [
+            "育儿妙招",
+            "女童打扮",
+            "生活黑客",
+            "萌娃日常"
+          ]
+        },
+        {
+          "video_id": "7688056286314908959",
+          "peak": 15100000,
+          "hashtag": "#partycostume",
+          "themes": [
+            "万圣节变装",
+            "亲子DIY",
+            "错视道具",
+            "低成本搞怪"
+          ]
+        },
+        {
+          "video_id": "7671770011769392398",
+          "peak": 13700000,
+          "hashtag": "#toddlerhacks",
+          "themes": [
+            "育儿妙招",
+            "奇葩带娃",
+            "低成本改造",
+            "学步神器",
+            "母婴痛点"
+          ]
+        }
+      ],
+      "top_hashtag": "#diyhalloween",
+      "top_hashtag_videos": 9,
+      "top_hashtag_share": 0.15,
+      "top_hashtags": [
+        {
+          "hashtag": "#diyhalloween",
+          "videos": 9
+        },
+        {
+          "hashtag": "#toddlerhacks",
+          "videos": 4
+        },
+        {
+          "hashtag": "#movements",
+          "videos": 4
+        }
+      ],
+      "seasonal_tag_video_count": 31,
+      "seasonal_tag_share": 0.517,
+      "halloween_video_count": 21,
+      "halloween_share": 0.35,
+      "pure_seasonal_video_count": 0,
+      "pure_seasonal_share": 0.0,
+      "ex_seasonal_video_count": 60,
+      "ex_seasonal_peak_median": 2500000,
+      "seasonal_subset_median": 2300000,
+      "nonseasonal_subset_median": 2900000,
+      "hit10m_count": 5,
+      "hit10m_share": 0.083,
+      "themes": [
+        "低成本DIY",
+        "育儿妙招",
+        "亲子DIY",
+        "儿童编发",
+        "亲子手工",
+        "低成本改造",
+        "剪辑教程",
+        "变废为宝",
+        "手工教程",
+        "旧物改造",
+        "早教启蒙",
+        "美妆教程",
+        "3D早教动画",
+        "DIY灵感",
+        "IP衍生手作",
+        "乳房按摩手法",
+        "低幼启蒙",
+        "低成本手作",
+        "低成本手工",
+        "低成本早教",
+        "低成本育儿",
+        "体态纠正",
+        "假发打理",
+        "健身日常",
+        "儿童发型",
+        "儿童早教",
+        "创意DIY",
+        "前后对比",
+        "动作拆解",
+        "动物流训练",
+        "卷发打理",
+        "实用手法",
+        "家居DIY",
+        "家居改造",
+        "居家健身",
+        "常服改造",
+        "平价手作",
+        "幼小衔接",
+        "幼教灵感",
+        "废品改造",
+        "开髋拉伸",
+        "待产备忘",
+        "微缩手作",
+        "戴森用法",
+        "手作改造",
+        "手印画教程",
+        "托特包收纳",
+        "扭扭棒手工",
+        "握笔姿势",
+        "操作教程",
+        "教程解密",
+        "时间管理",
+        "核心训练",
+        "桌面收纳",
+        "正误对比",
+        "母婴干货",
+        "气球手工",
+        "沉浸式收纳",
+        "瑜伽跟练",
+        "生活妙招",
+        "生活黑客",
+        "电子哄娃",
+        "电子设备管控",
+        "社媒排版",
+        "纸艺改造",
+        "美发护理",
+        "美发教程",
+        "美发避雷",
+        "育儿减负",
+        "育儿干货",
+        "育儿答疑",
+        "育儿经验",
+        "自制风味零食",
+        "舞蹈教学",
+        "解闷手工",
+        "趣味哄娃",
+        "避坑指南",
+        "防漏实操",
+        "高效备餐"
+      ]
+    },
+    {
+      "key": "product",
+      "name": "母婴好物种草",
+      "definition": "围绕具体商品做种草、开箱、测评、清单与购买决策。",
+      "theme_count": 105,
+      "occurrence_count": 123,
+      "video_count": 63,
+      "video_share": 0.2188,
+      "peak_median": 2200000,
+      "peak_p25": 1400000,
+      "peak_p75": 3800000,
+      "top_videos": [
+        {
+          "video_id": "7671770011769392398",
+          "peak": 13700000,
+          "hashtag": "#toddlerhacks",
+          "themes": [
+            "育儿妙招",
+            "奇葩带娃",
+            "低成本改造",
+            "学步神器",
+            "母婴痛点"
+          ]
+        },
+        {
+          "video_id": "7688048188787363085",
+          "peak": 8100000,
+          "hashtag": "#newparent",
+          "themes": [
+            "母婴好物",
+            "新生儿安抚",
+            "宝宝睡眠",
+            "治愈带娃",
+            "育儿神器"
+          ]
+        },
+        {
+          "video_id": "7684411730532896022",
+          "peak": 7500000,
+          "hashtag": "#boobasketseason",
+          "themes": [
+            "秋季礼篮",
+            "整蛊反差",
+            "美妆奢品",
+            "送礼暗示",
+            "视错觉梗"
+          ]
+        }
+      ],
+      "top_hashtag": "#halloweenshirt",
+      "top_hashtag_videos": 8,
+      "top_hashtag_share": 0.127,
+      "top_hashtags": [
+        {
+          "hashtag": "#halloweenshirt",
+          "videos": 8
+        },
+        {
+          "hashtag": "#halloweengift",
+          "videos": 3
+        },
+        {
+          "hashtag": "#beforeschool",
+          "videos": 3
+        }
+      ],
+      "seasonal_tag_video_count": 34,
+      "seasonal_tag_share": 0.54,
+      "halloween_video_count": 18,
+      "halloween_share": 0.286,
+      "pure_seasonal_video_count": 1,
+      "pure_seasonal_share": 0.016,
+      "ex_seasonal_video_count": 62,
+      "ex_seasonal_peak_median": 2200000,
+      "seasonal_subset_median": 2300000,
+      "nonseasonal_subset_median": 2100000,
+      "hit10m_count": 1,
+      "hit10m_share": 0.016,
+      "themes": [
+        "母婴好物",
+        "育儿神器",
+        "三丽鸥周边",
+        "复古T恤",
+        "好物种草",
+        "待产清单",
+        "潮玩周边",
+        "美妆护肤",
+        "送礼暗示",
+        "送礼灵感",
+        "DIY礼物灵感",
+        "Target好物",
+        "儿童房改造",
+        "儿童护肤",
+        "儿童放电玩具",
+        "儿童牙刷",
+        "儿童玩具",
+        "免费绘本",
+        "冬季保暖",
+        "冲奶神器",
+        "副驾礼物",
+        "印花T恤",
+        "反差萌卫衣",
+        "发质争议",
+        "变美清单",
+        "吸奶器种草",
+        "品牌赞助",
+        "哄娃神器",
+        "囤货种草",
+        "图鉴开箱",
+        "复古数码",
+        "奶瓶横评",
+        "奶瓶清洗机",
+        "好物测评",
+        "好物组装",
+        "婴儿床",
+        "婴儿房装修",
+        "婴儿服饰",
+        "学步神器",
+        "室内运动玩具",
+        "家庭囤货",
+        "居家好物",
+        "工装裤",
+        "带娃神器",
+        "平价伴手礼",
+        "平价好物",
+        "平替攻略",
+        "开箱惊喜",
+        "开箱盲盒",
+        "开箱种草",
+        "影视IP联名",
+        "快餐玩具",
+        "怕冷星人",
+        "恐怖IP周边",
+        "恶霸犬周边",
+        "感官玩具",
+        "戴森测评",
+        "户外装备",
+        "数码外设",
+        "文具分享",
+        "新生儿摄影",
+        "新生儿送礼",
+        "早鸟选品",
+        "暴力测评",
+        "服饰平铺质感",
+        "服饰验货",
+        "母婴家居",
+        "母婴羊毛",
+        "母婴装备",
+        "氛围感种草",
+        "汽车改装",
+        "沃尔玛探店",
+        "沃尔玛采购",
+        "沉浸式选品",
+        "清空心愿单",
+        "潮玩盲盒",
+        "爆款测评",
+        "盲盒开箱",
+        "睡前护肤",
+        "硬核户外风",
+        "礼物篮灵感",
+        "福利裂变",
+        "穿戴毛毯",
+        "穿搭清单",
+        "竞品对比",
+        "童书绘本",
+        "童装穿搭",
+        "美发工具实测",
+        "美妆奢品",
+        "育儿好物",
+        "育儿好物推荐",
+        "育儿福利",
+        "萌宠服饰",
+        "解压玩具",
+        "货架探店",
+        "资源白嫖",
+        "超市抢购",
+        "超市省钱",
+        "跨界联名",
+        "车内开箱",
+        "送礼仪式感",
+        "防水耐磨",
+        "防沉迷替代",
+        "防胀气奶瓶",
+        "马桶安全锁"
+      ]
+    },
+    {
+      "key": "care",
+      "name": "孕产喂养与护理",
+      "definition": "孕产、喂养、睡眠、护理与儿童健康的知识和经验。",
+      "theme_count": 84,
+      "occurrence_count": 94,
+      "video_count": 57,
+      "video_share": 0.1979,
+      "peak_median": 1900000,
+      "peak_p25": 1400000,
+      "peak_p75": 3700000,
+      "top_videos": [
+        {
+          "video_id": "7671514972186299670",
+          "peak": 188000000,
+          "hashtag": "#cryingbaby",
+          "themes": [
+            "超早产儿",
+            "生命奇迹",
+            "新生儿反射",
+            "医疗纪实",
+            "母婴育儿"
+          ]
+        },
+        {
+          "video_id": "7693227430420516103",
+          "peak": 26500000,
+          "hashtag": "#newbornstage",
+          "themes": [
+            "新手爸妈",
+            "带娃日常",
+            "睡眠剥夺",
+            "育儿幽默",
+            "新生儿护理"
+          ]
+        },
+        {
+          "video_id": "7686829205765606678",
+          "peak": 12800000,
+          "hashtag": "#newbornmom",
+          "themes": [
+            "新生儿护理",
+            "哭声破译",
+            "育儿干货",
+            "新手父母"
+          ]
+        }
+      ],
+      "top_hashtag": "#breastfedbaby",
+      "top_hashtag_videos": 3,
+      "top_hashtag_share": 0.053,
+      "top_hashtags": [
+        {
+          "hashtag": "#breastfedbaby",
+          "videos": 3
+        },
+        {
+          "hashtag": "#kehamilan",
+          "videos": 3
+        },
+        {
+          "hashtag": "#sleeptraining",
+          "videos": 2
+        }
+      ],
+      "seasonal_tag_video_count": 4,
+      "seasonal_tag_share": 0.07,
+      "halloween_video_count": 0,
+      "halloween_share": 0.0,
+      "pure_seasonal_video_count": 0,
+      "pure_seasonal_share": 0.0,
+      "ex_seasonal_video_count": 57,
+      "ex_seasonal_peak_median": 1900000,
+      "seasonal_subset_median": 2250000,
+      "nonseasonal_subset_median": 1900000,
+      "hit10m_count": 4,
+      "hit10m_share": 0.07,
+      "themes": [
+        "母乳喂养",
+        "新生儿护理",
+        "产后恢复",
+        "产后护理",
+        "婴儿哄睡",
+        "睡眠训练",
+        "3D医学动画",
+        "两性避孕",
+        "产后日常",
+        "产后第一天",
+        "产后胀奶",
+        "产房日常",
+        "产房纪实",
+        "人工流产",
+        "儿科急诊",
+        "儿童喂药",
+        "儿童安全",
+        "儿童换牙",
+        "儿童牙齿护理",
+        "儿童疾病速查",
+        "出行喂奶",
+        "分娩报喜",
+        "分娩纪实",
+        "分娩计划",
+        "分房睡眠",
+        "剖腹产科普",
+        "医学辟谣",
+        "医疗纪实",
+        "哄睡日常",
+        "哭声免疫法",
+        "哭声破译",
+        "哺乳日常分享",
+        "喂养异常",
+        "备孕自测",
+        "多胞胎分娩",
+        "大动作发育",
+        "女性健康",
+        "奶瓶喂养",
+        "如厕训练",
+        "婴儿哭闹",
+        "婴儿护理",
+        "孕产知识",
+        "孕产记录",
+        "孕期打卡",
+        "孕期记录",
+        "孕肚对比",
+        "宝宝厌奶瓶",
+        "宝宝喂药",
+        "宝宝睡眠",
+        "家居防护",
+        "年轻孕妈",
+        "待产真实记录",
+        "心理健康",
+        "急救个护",
+        "意外怀孕",
+        "戒尿布指南",
+        "换季育儿防护",
+        "新生儿",
+        "新生儿作息",
+        "新生儿反射",
+        "新生儿夜醒",
+        "新生儿安抚",
+        "新生儿睡眠",
+        "早产儿",
+        "母婴健康",
+        "母婴吸奶教程",
+        "母婴哺乳",
+        "母婴喂养",
+        "母婴孕产",
+        "瓶喂困难",
+        "生病护理",
+        "睡眠健康",
+        "秋冬流感季",
+        "纸尿裤技巧",
+        "育儿科普",
+        "背奶日常",
+        "自主进食",
+        "自我安抚",
+        "超早产儿",
+        "超早孕反应",
+        "车内哺乳",
+        "通乳实测",
+        "隐匿妊娠",
+        "高危妊娠"
+      ]
+    },
+    {
+      "key": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "definition": "以变装、穿搭、妆造、特效、AI/3D 与奇观画面为核心视觉。",
+      "theme_count": 98,
+      "occurrence_count": 120,
+      "video_count": 83,
+      "video_share": 0.2882,
+      "peak_median": 2700000,
+      "peak_p25": 1500000,
+      "peak_p75": 5550000,
+      "top_videos": [
+        {
+          "video_id": "7692643410313776414",
+          "peak": 27200000,
+          "hashtag": "#halloweencostumeideas",
+          "themes": [
+            "万圣节装扮",
+            "动漫Cosplay",
+            "卡点变装",
+            "Y2K穿搭"
+          ]
+        },
+        {
+          "video_id": "7677898993719987469",
+          "peak": 24500000,
+          "hashtag": "#babiesoftiktok",
+          "themes": [
+            "二胎争端",
+            "AI视觉奇观",
+            "家庭搞笑",
+            "育儿痛点",
+            "爽剧解法"
+          ]
+        },
+        {
+          "video_id": "7680563312504917278",
+          "peak": 23800000,
+          "hashtag": "#toddlerhacks",
+          "themes": [
+            "育儿妙招",
+            "女童打扮",
+            "生活黑客",
+            "萌娃日常"
+          ]
+        }
+      ],
+      "top_hashtag": "#halloweencostumeideas",
+      "top_hashtag_videos": 14,
+      "top_hashtag_share": 0.169,
+      "top_hashtags": [
+        {
+          "hashtag": "#halloweencostumeideas",
+          "videos": 14
+        },
+        {
+          "hashtag": "#halloweencostumeinspo",
+          "videos": 4
+        },
+        {
+          "hashtag": "#october1st",
+          "videos": 3
+        }
+      ],
+      "seasonal_tag_video_count": 46,
+      "seasonal_tag_share": 0.554,
+      "halloween_video_count": 34,
+      "halloween_share": 0.41,
+      "pure_seasonal_video_count": 0,
+      "pure_seasonal_share": 0.0,
+      "ex_seasonal_video_count": 83,
+      "ex_seasonal_peak_median": 2700000,
+      "seasonal_subset_median": 3100000,
+      "nonseasonal_subset_median": 2200000,
+      "hit10m_count": 11,
+      "hit10m_share": 0.133,
+      "themes": [
+        "卡点变装",
+        "穿搭灵感",
+        "萌娃变装",
+        "视觉奇观",
+        "角色扮演",
+        "AI生成",
+        "AI视觉奇观",
+        "Cosplay",
+        "半脸拼接",
+        "变装挑战",
+        "小众变装",
+        "暗黑动画",
+        "视觉解压",
+        "3D动画",
+        "3D卡通萌娃",
+        "3D奇观",
+        "AI动画",
+        "AI拟真视频",
+        "AI生成动画",
+        "AI萌系动画",
+        "IP角色扮演",
+        "OOTD变装",
+        "Y2K穿搭",
+        "Y2K风格",
+        "亲子穿搭",
+        "人体奇观",
+        "仿妆挑战",
+        "创意道具互动",
+        "力量美学",
+        "动漫Cosplay",
+        "反差创意",
+        "反差变装",
+        "反差妆造",
+        "反差换装",
+        "反转动画",
+        "发量王者",
+        "变装反转",
+        "变装灵感",
+        "哥特风穿搭",
+        "嘻哈潮流",
+        "器物拟人",
+        "复古潮流",
+        "多胞胎奇观",
+        "女童打扮",
+        "定格动画",
+        "定格动画挑战",
+        "定格展示",
+        "宫廷小丑妆",
+        "小丑妆造",
+        "小众装扮",
+        "巨物奇观",
+        "影视仿妆",
+        "微缩场景还原",
+        "悬浮射击",
+        "惊悚仿妆",
+        "时尚穿搭",
+        "暗黑小丑妆",
+        "极简穿搭",
+        "极限柔韧",
+        "母婴穿搭",
+        "毒藤女变装",
+        "治愈系ASMR",
+        "治愈系陈列",
+        "流体塑形",
+        "潮流OOTD",
+        "潮童街拍",
+        "特效化妆",
+        "特效道具",
+        "生理通感",
+        "硬核芭蕾",
+        "穿搭反差",
+        "穿搭拼贴",
+        "穿搭拼贴板",
+        "经典动画还原",
+        "萌娃装扮",
+        "萌系穿搭",
+        "街头抓拍",
+        "视觉反差",
+        "视觉反差萌",
+        "视觉美学",
+        "视觉翻车",
+        "视错觉梗",
+        "角色装扮",
+        "角色还原",
+        "触觉解压",
+        "辣妈穿搭",
+        "迷彩复古",
+        "酷女孩审美",
+        "酷女孩风",
+        "错视道具",
+        "闪光灯美学",
+        "闺蜜双人Cos",
+        "闺蜜双人变装",
+        "闺蜜穿搭",
+        "闺蜜组团穿搭",
+        "食物拟人",
+        "鬼妈妈Cos",
+        "魔性动画"
+      ]
+    },
+    {
+      "key": "meme",
+      "name": "热梗音乐与二创",
+      "definition": "以热梗、音乐卡点、舞蹈模板、影视/IP 二创为主要形式。",
+      "theme_count": 121,
+      "occurrence_count": 131,
+      "video_count": 81,
+      "video_share": 0.2812,
+      "peak_median": 2400000,
+      "peak_p25": 1500000,
+      "peak_p75": 6200000,
+      "top_videos": [
+        {
+          "video_id": "7683233439096605965",
+          "peak": 21900000,
+          "hashtag": "#cartooncomedy",
+          "themes": [
+            "黑色幽默",
+            "反转动画",
+            "脑洞短剧",
+            "荒诞喜剧"
+          ]
+        },
+        {
+          "video_id": "7673862935868902686",
+          "peak": 17200000,
+          "hashtag": "#familytrend",
+          "themes": [
+            "家庭幽默",
+            "反差萌",
+            "家庭地位",
+            "搞怪舞蹈",
+            "父女互动"
+          ]
+        },
+        {
+          "video_id": "7691389682642406688",
+          "peak": 16300000,
+          "hashtag": "#october1st",
+          "themes": [
+            "万圣节借势",
+            "网络迷因梗",
+            "魔性洗脑",
+            "食物拟人",
+            "情绪释放"
+          ]
+        }
+      ],
+      "top_hashtag": "#october1st",
+      "top_hashtag_videos": 7,
+      "top_hashtag_share": 0.086,
+      "top_hashtags": [
+        {
+          "hashtag": "#october1st",
+          "videos": 7
+        },
+        {
+          "hashtag": "#iwillallwaysloveyou",
+          "videos": 4
+        },
+        {
+          "hashtag": "#familytrend",
+          "videos": 3
+        }
+      ],
+      "seasonal_tag_video_count": 25,
+      "seasonal_tag_share": 0.309,
+      "halloween_video_count": 15,
+      "halloween_share": 0.185,
+      "pure_seasonal_video_count": 0,
+      "pure_seasonal_share": 0.0,
+      "ex_seasonal_video_count": 81,
+      "ex_seasonal_peak_median": 2400000,
+      "seasonal_subset_median": 3600000,
+      "nonseasonal_subset_median": 2050000,
+      "hit10m_count": 7,
+      "hit10m_share": 0.086,
+      "themes": [
+        "卡点舞蹈",
+        "影视切片",
+        "影视剪辑",
+        "影视混剪",
+        "明星热点",
+        "热梗二创",
+        "经典IP混剪",
+        "经典电影",
+        "鬼妈妈",
+        "魔性卡点",
+        "3D动画儿歌",
+        "AI短剧",
+        "MJ街舞",
+        "POV日常",
+        "一人分饰多角",
+        "三丽鸥",
+        "三人闺蜜舞",
+        "二次元梗",
+        "亲子卡点",
+        "亲子律动",
+        "假唱对口型",
+        "动作挑战",
+        "千禧怀旧",
+        "卡点律动",
+        "卡点转场",
+        "双人卡点",
+        "双人默契挑战",
+        "反差卡点",
+        "反差复仇",
+        "圣诞夜惊魂",
+        "地域梗",
+        "复仇爽剧",
+        "复古情怀",
+        "复古流行文化",
+        "好友默契",
+        "小马宝莉拟人",
+        "居家律动",
+        "带娃挑战",
+        "影视名场面复刻",
+        "影视快剪",
+        "影视梗对口型",
+        "怀旧影视",
+        "怀旧混剪",
+        "怪兽电力公司",
+        "恐怖文化",
+        "悬疑奇幻",
+        "情怀消费",
+        "情绪模板",
+        "手势舞",
+        "打卡挑战",
+        "挑战赛借势",
+        "搞怪舞蹈",
+        "搞笑二创",
+        "搞笑表情包",
+        "明星混剪",
+        "明星访谈",
+        "暗黑童话",
+        "极简卡点",
+        "校园手势舞",
+        "校园模因",
+        "模因二创",
+        "欧美老歌",
+        "殿堂现场",
+        "沉浸式现场",
+        "洗脑叫醒",
+        "洗脑神曲",
+        "洗脑童谣",
+        "演唱会舞美",
+        "灰姑娘出逃",
+        "热梗挑战",
+        "热梗跟练",
+        "热梗迷因",
+        "热歌挑战",
+        "热点借势",
+        "热点卡点模因",
+        "热点玩法",
+        "特效Meme",
+        "现场狂欢",
+        "生活挑战",
+        "病毒挑战",
+        "真人秀争议",
+        "真人秀名场面",
+        "神曲卡点",
+        "第一人称视角",
+        "精灵旅社",
+        "精灵高中",
+        "经典IP",
+        "经典Meme",
+        "经典名曲",
+        "经典影视混剪",
+        "经典情怀",
+        "经典英文儿歌",
+        "经典音乐",
+        "网络迷因",
+        "网络迷因梗",
+        "美式复古",
+        "群聊表情包",
+        "肢体抽帧模仿",
+        "脑洞短剧",
+        "萌娃配音",
+        "街头快闪",
+        "街头齐舞",
+        "表情包素材",
+        "视觉卡点",
+        "说唱圈层",
+        "说唱录音棚",
+        "说唱文化",
+        "说唱现场",
+        "谐音梗设计",
+        "转生奇幻",
+        "追星圆梦",
+        "音乐现场",
+        "音乐踩点",
+        "音乐轶事",
+        "饭圈和解",
+        "高燃混剪",
+        "鬼妈妈同人",
+        "魔性动作",
+        "魔性大笑",
+        "魔性洗脑",
+        "魔性舞蹈"
+      ]
+    },
+    {
+      "key": "other",
+      "name": "其他",
+      "definition": "无法归入以上母题的泛纪实、泛热点与格式类长尾。",
+      "theme_count": 25,
+      "occurrence_count": 25,
+      "video_count": 18,
+      "video_share": 0.0625,
+      "peak_median": 2500000,
+      "peak_p25": 1400000,
+      "peak_p75": 3550000,
+      "top_videos": [
+        {
+          "video_id": "7691569613942951199",
+          "peak": 4900000,
+          "hashtag": "#halloweencostumeideas",
+          "themes": [
+            "万圣节变装",
+            "打卡挑战",
+            "Cosplay",
+            "幕后纪实",
+            "穿搭灵感"
+          ]
+        },
+        {
+          "video_id": "7682136277436665101",
+          "peak": 4800000,
+          "hashtag": "#toddlersandtiaras",
+          "themes": [
+            "儿童选美",
+            "反差妆造",
+            "猎奇文化",
+            "育儿争议",
+            "卡点变装"
+          ]
+        },
+        {
+          "video_id": "7675061818984910093",
+          "peak": 4100000,
+          "hashtag": "#bounceit",
+          "themes": [
+            "说唱录音棚",
+            "卡点律动",
+            "音乐现场",
+            "高光片段"
+          ]
+        }
+      ],
+      "top_hashtag": "#kehamilan",
+      "top_hashtag_videos": 2,
+      "top_hashtag_share": 0.111,
+      "top_hashtags": [
+        {
+          "hashtag": "#kehamilan",
+          "videos": 2
+        },
+        {
+          "hashtag": "#carline",
+          "videos": 2
+        },
+        {
+          "hashtag": "#septemberbaby",
+          "videos": 2
+        }
+      ],
+      "seasonal_tag_video_count": 5,
+      "seasonal_tag_share": 0.278,
+      "halloween_video_count": 1,
+      "halloween_share": 0.056,
+      "pure_seasonal_video_count": 0,
+      "pure_seasonal_share": 0.0,
+      "ex_seasonal_video_count": 18,
+      "ex_seasonal_peak_median": 2500000,
+      "seasonal_subset_median": 3100000,
+      "nonseasonal_subset_median": 2400000,
+      "hit10m_count": 0,
+      "hit10m_share": 0.0,
+      "themes": [
+        "911事件",
+        "全片纯享",
+        "八卦猎奇",
+        "医护日常",
+        "历史纪实",
+        "合规擦边猎奇",
+        "名人档案",
+        "奇闻异事",
+        "完整正片",
+        "幕后纪实",
+        "法庭纪实",
+        "游戏外挂",
+        "猎奇文化",
+        "电子贺卡",
+        "病毒流行预警",
+        "真实大案",
+        "真实影像",
+        "真实案件",
+        "社会猎奇",
+        "突发目击",
+        "突发社会热点",
+        "网红意外离世",
+        "罪案解说",
+        "赛博陪伴",
+        "高光片段"
+      ]
+    }
+  ],
+  "hooks": {
+    "反差/反转": {
+      "video_count": 64,
+      "share": 0.2222,
+      "peak_median": 2800000,
+      "theme_count": 46,
+      "theme_occurrences": 64,
+      "motif_breakdown": [
+        {
+          "motif": "家庭搞笑",
+          "videos": 42
+        },
+        {
+          "motif": "家庭情感与关系",
+          "videos": 32
+        },
+        {
+          "motif": "热梗音乐与二创",
+          "videos": 26
+        },
+        {
+          "motif": "萌娃治愈",
+          "videos": 24
+        },
+        {
+          "motif": "变装穿搭与视觉奇观",
+          "videos": 19
+        },
+        {
+          "motif": "身份共鸣",
+          "videos": 19
+        },
+        {
+          "motif": "节点借势",
+          "videos": 12
+        },
+        {
+          "motif": "育儿焦虑与痛点",
+          "videos": 11
+        },
+        {
+          "motif": "孕产喂养与护理",
+          "videos": 9
+        },
+        {
+          "motif": "生活方式与居家美学",
+          "videos": 8
+        },
+        {
+          "motif": "母婴好物种草",
+          "videos": 6
+        },
+        {
+          "motif": "其他",
+          "videos": 3
+        },
+        {
+          "motif": "实用教程与DIY",
+          "videos": 1
+        }
+      ]
+    },
+    "治愈/解压": {
+      "video_count": 34,
+      "share": 0.1181,
+      "peak_median": 3050000,
+      "theme_count": 27,
+      "theme_occurrences": 35,
+      "motif_breakdown": [
+        {
+          "motif": "家庭情感与关系",
+          "videos": 25
+        },
+        {
+          "motif": "萌娃治愈",
+          "videos": 17
+        },
+        {
+          "motif": "变装穿搭与视觉奇观",
+          "videos": 13
+        },
+        {
+          "motif": "节点借势",
+          "videos": 9
+        },
+        {
+          "motif": "身份共鸣",
+          "videos": 7
+        },
+        {
+          "motif": "热梗音乐与二创",
+          "videos": 7
+        },
+        {
+          "motif": "母婴好物种草",
+          "videos": 7
+        },
+        {
+          "motif": "实用教程与DIY",
+          "videos": 6
+        },
+        {
+          "motif": "家庭搞笑",
+          "videos": 6
+        },
+        {
+          "motif": "孕产喂养与护理",
+          "videos": 4
+        },
+        {
+          "motif": "育儿焦虑与痛点",
+          "videos": 3
+        },
+        {
+          "motif": "生活方式与居家美学",
+          "videos": 3
+        }
+      ]
+    },
+    "AI/3D": {
+      "video_count": 26,
+      "share": 0.0903,
+      "peak_median": 2650000,
+      "theme_count": 22,
+      "theme_occurrences": 28,
+      "motif_breakdown": [
+        {
+          "motif": "变装穿搭与视觉奇观",
+          "videos": 18
+        },
+        {
+          "motif": "热梗音乐与二创",
+          "videos": 16
+        },
+        {
+          "motif": "家庭搞笑",
+          "videos": 12
+        },
+        {
+          "motif": "萌娃治愈",
+          "videos": 11
+        },
+        {
+          "motif": "家庭情感与关系",
+          "videos": 6
+        },
+        {
+          "motif": "实用教程与DIY",
+          "videos": 5
+        },
+        {
+          "motif": "节点借势",
+          "videos": 5
+        },
+        {
+          "motif": "育儿焦虑与痛点",
+          "videos": 3
+        },
+        {
+          "motif": "其他",
+          "videos": 3
+        },
+        {
+          "motif": "身份共鸣",
+          "videos": 2
+        },
+        {
+          "motif": "母婴好物种草",
+          "videos": 2
+        },
+        {
+          "motif": "孕产喂养与护理",
+          "videos": 1
+        }
+      ]
+    },
+    "争议/审判": {
+      "video_count": 11,
+      "share": 0.0382,
+      "peak_median": 2400000,
+      "theme_count": 12,
+      "theme_occurrences": 15,
+      "motif_breakdown": [
+        {
+          "motif": "育儿焦虑与痛点",
+          "videos": 10
+        },
+        {
+          "motif": "孕产喂养与护理",
+          "videos": 4
+        },
+        {
+          "motif": "家庭搞笑",
+          "videos": 3
+        },
+        {
+          "motif": "热梗音乐与二创",
+          "videos": 3
+        },
+        {
+          "motif": "身份共鸣",
+          "videos": 3
+        },
+        {
+          "motif": "其他",
+          "videos": 2
+        },
+        {
+          "motif": "家庭情感与关系",
+          "videos": 2
+        },
+        {
+          "motif": "实用教程与DIY",
+          "videos": 2
+        },
+        {
+          "motif": "变装穿搭与视觉奇观",
+          "videos": 1
+        },
+        {
+          "motif": "生活方式与居家美学",
+          "videos": 1
+        },
+        {
+          "motif": "母婴好物种草",
+          "videos": 1
+        }
+      ]
+    }
+  },
+  "mapping": {
+    "3D动画": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:3D动画"
+    },
+    "3D动画儿歌": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "3D医学动画": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:医学"
+    },
+    "3D卡通萌娃": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "3D奇观": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:奇观"
+    },
+    "3D早教动画": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "911事件": {
+      "motif": "other",
+      "name": "其他",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "AI动画": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:AI动画"
+    },
+    "AI婴儿": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 2,
+      "assigned_by": "rule:婴儿"
+    },
+    "AI拟真视频": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:AI拟真"
+    },
+    "AI生成": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 2,
+      "assigned_by": "rule:AI生成"
+    },
+    "AI生成动画": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:AI生成"
+    },
+    "AI短剧": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "AI萌娃": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 3,
+      "assigned_by": "rule:萌娃"
+    },
+    "AI萌宝": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 1,
+      "assigned_by": "rule:萌宝"
+    },
+    "AI萌系动画": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:动画"
+    },
+    "AI视觉奇观": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 2,
+      "assigned_by": "rule:奇观"
+    },
+    "Cosplay": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 2,
+      "assigned_by": "rule:Cosplay"
+    },
+    "DIY灵感": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:DIY"
+    },
+    "DIY礼物灵感": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:礼物"
+    },
+    "IP衍生手作": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:手作"
+    },
+    "IP角色扮演": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:角色扮演"
+    },
+    "MJ街舞": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:街舞"
+    },
+    "OOTD变装": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:变装"
+    },
+    "POV日常": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:POV"
+    },
+    "Target好物": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:好物"
+    },
+    "Y2K穿搭": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:穿搭"
+    },
+    "Y2K风格": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:风格"
+    },
+    "一人分饰多角": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:一人分饰"
+    },
+    "万圣节": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:万圣节"
+    },
+    "万圣节DIY": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 5,
+      "assigned_by": "rule:万圣节"
+    },
+    "万圣节二创": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:万圣节"
+    },
+    "万圣节借势": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:万圣节"
+    },
+    "万圣节创意": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:万圣节"
+    },
+    "万圣节发型": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 2,
+      "assigned_by": "rule:万圣节"
+    },
+    "万圣节变装": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 6,
+      "assigned_by": "rule:万圣节"
+    },
+    "万圣节好物": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:万圣节"
+    },
+    "万圣节布置": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 3,
+      "assigned_by": "rule:万圣节"
+    },
+    "万圣节手工": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:万圣节"
+    },
+    "万圣节搞怪": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:万圣节"
+    },
+    "万圣节氛围": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:万圣节"
+    },
+    "万圣节派对": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:万圣节"
+    },
+    "万圣节狂欢": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:万圣节"
+    },
+    "万圣节礼盒": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 2,
+      "assigned_by": "rule:万圣节"
+    },
+    "万圣节礼篮": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 2,
+      "assigned_by": "rule:万圣节"
+    },
+    "万圣节穿搭": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 17,
+      "assigned_by": "rule:万圣节"
+    },
+    "万圣节童装": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:万圣节"
+    },
+    "万圣节节点": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:万圣节"
+    },
+    "万圣节装扮": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 13,
+      "assigned_by": "rule:万圣节"
+    },
+    "万圣节装饰": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:万圣节"
+    },
+    "万圣节限定": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:万圣节"
+    },
+    "三丽鸥": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "三丽鸥周边": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 2,
+      "assigned_by": "rule:周边"
+    },
+    "三人闺蜜舞": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:舞"
+    },
+    "世纪和解": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:和解"
+    },
+    "两性互动": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:两性"
+    },
+    "两性避孕": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:孕"
+    },
+    "乳房按摩手法": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:手法"
+    },
+    "争议吐槽": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "二次元梗": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:二次元"
+    },
+    "二胎争端": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "二胎日常": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "产前焦虑自嘲": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "产后心理": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 2,
+      "assigned_by": "manual"
+    },
+    "产后恢复": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 2,
+      "assigned_by": "rule:产后"
+    },
+    "产后护理": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 2,
+      "assigned_by": "rule:护理"
+    },
+    "产后日常": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:产后"
+    },
+    "产后焦虑": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "产后第一天": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:产后"
+    },
+    "产后胀奶": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:产后"
+    },
+    "产房日常": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "产房纪实": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "亲子DIY": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 3,
+      "assigned_by": "rule:DIY"
+    },
+    "亲子互动": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 3,
+      "assigned_by": "rule:亲子"
+    },
+    "亲子关系": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:亲子"
+    },
+    "亲子博弈": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:亲子"
+    },
+    "亲子卡点": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:卡点"
+    },
+    "亲子反差": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:亲子"
+    },
+    "亲子律动": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:律动"
+    },
+    "亲子情感": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:亲子"
+    },
+    "亲子手工": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 2,
+      "assigned_by": "rule:手工"
+    },
+    "亲子挑战": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "亲子整蛊": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 3,
+      "assigned_by": "rule:整蛊"
+    },
+    "亲子日常": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 5,
+      "assigned_by": "rule:亲子"
+    },
+    "亲子沟通": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 2,
+      "assigned_by": "rule:亲子"
+    },
+    "亲子穿搭": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:穿搭"
+    },
+    "亲子趣味": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:亲子"
+    },
+    "亲情共鸣": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 2,
+      "assigned_by": "rule:亲情"
+    },
+    "亲情情侣": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:情侣"
+    },
+    "亲情羁绊": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:亲情"
+    },
+    "人体奇观": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:奇观"
+    },
+    "人工流产": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:流产"
+    },
+    "人生格言": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:人生格言"
+    },
+    "人类幼崽": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 16,
+      "assigned_by": "rule:人类幼崽"
+    },
+    "人设反差": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "人间清醒": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:人间清醒"
+    },
+    "代际冲突": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:代际"
+    },
+    "仪式感": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "仪式感生活": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "仿妆挑战": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "伤感爱情": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "伦理争议": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "rule:争议"
+    },
+    "伴侣关系": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:伴侣"
+    },
+    "伴侣陪产": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "低幼启蒙": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:启蒙"
+    },
+    "低成本DIY": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 7,
+      "assigned_by": "rule:DIY"
+    },
+    "低成本手作": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:手作"
+    },
+    "低成本手工": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:手工"
+    },
+    "低成本搞怪": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "低成本改造": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 2,
+      "assigned_by": "rule:改造"
+    },
+    "低成本早教": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:早教"
+    },
+    "低成本育儿": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "体态纠正": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:纠正"
+    },
+    "倒数日历": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:倒数日历"
+    },
+    "假发打理": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "假哭撒娇": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:假哭"
+    },
+    "假唱对口型": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:对口型"
+    },
+    "健身日常": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:健身"
+    },
+    "催泪感动": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:感动"
+    },
+    "儿科急诊": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:儿科"
+    },
+    "儿童发型": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:发型"
+    },
+    "儿童喂药": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:喂药"
+    },
+    "儿童圣诞礼": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:圣诞"
+    },
+    "儿童安全": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:儿童安全"
+    },
+    "儿童房改造": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "儿童抗癌": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "儿童护肤": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "儿童换牙": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:换牙"
+    },
+    "儿童放电玩具": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:玩具"
+    },
+    "儿童早教": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:早教"
+    },
+    "儿童牙刷": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "儿童牙齿护理": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:护理"
+    },
+    "儿童玩具": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:玩具"
+    },
+    "儿童疾病速查": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:疾病"
+    },
+    "儿童编发": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 3,
+      "assigned_by": "rule:编发"
+    },
+    "儿童选美": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 5,
+      "assigned_by": "manual"
+    },
+    "兄弟社交": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:兄弟"
+    },
+    "免费绘本": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "入园焦虑": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "rule:焦虑"
+    },
+    "全片纯享": {
+      "motif": "other",
+      "name": "其他",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "八卦宝宝": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 1,
+      "assigned_by": "rule:宝宝"
+    },
+    "八卦猎奇": {
+      "motif": "other",
+      "name": "其他",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "公共场所争议": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "rule:争议"
+    },
+    "公益借势": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 2,
+      "assigned_by": "manual"
+    },
+    "公益项目": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "冬季保暖": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "冲奶神器": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "出行喂奶": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "出院第一晚": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "分娩报喜": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:分娩"
+    },
+    "分娩纪实": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "分娩计划": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:分娩"
+    },
+    "分房睡眠": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:睡眠"
+    },
+    "分离焦虑": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "rule:焦虑"
+    },
+    "创意DIY": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:DIY"
+    },
+    "创意道具互动": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "前后对比": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "剖腹产科普": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:剖腹"
+    },
+    "剪辑教程": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 2,
+      "assigned_by": "rule:教程"
+    },
+    "副驾礼物": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "力量美学": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "动作拆解": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:动作拆解"
+    },
+    "动作挑战": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:挑战"
+    },
+    "动漫Cosplay": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:Cosplay"
+    },
+    "动物流训练": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:训练"
+    },
+    "医学辟谣": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:医学"
+    },
+    "医护日常": {
+      "motif": "other",
+      "name": "其他",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "医疗纪实": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "十月仪式感": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 2,
+      "assigned_by": "manual"
+    },
+    "千禧怀旧": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "半脸拼接": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 2,
+      "assigned_by": "rule:半脸"
+    },
+    "卡点变装": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 4,
+      "assigned_by": "rule:变装"
+    },
+    "卡点律动": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:卡点"
+    },
+    "卡点舞蹈": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 2,
+      "assigned_by": "rule:卡点"
+    },
+    "卡点转场": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:卡点"
+    },
+    "卧室布置": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "印花T恤": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:T恤"
+    },
+    "卷发打理": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:打理"
+    },
+    "历史纪实": {
+      "motif": "other",
+      "name": "其他",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "双人卡点": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:卡点"
+    },
+    "双人默契挑战": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:挑战"
+    },
+    "反击母职审判": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "rule:审判"
+    },
+    "反向育儿": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:育儿"
+    },
+    "反差人设": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "反差创意": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "反差卡点": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:卡点"
+    },
+    "反差变装": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:变装"
+    },
+    "反差复仇": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "反差妆造": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:妆造"
+    },
+    "反差带娃": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:带娃"
+    },
+    "反差幽默": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 4,
+      "assigned_by": "rule:幽默"
+    },
+    "反差换装": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:换装"
+    },
+    "反差搞笑": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:搞笑"
+    },
+    "反差父爱": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "反差自嘲": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:自嘲"
+    },
+    "反差萌": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 11,
+      "assigned_by": "rule:萌"
+    },
+    "反差萌人设": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "反差萌卫衣": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:卫衣"
+    },
+    "反消费主义": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "反转动画": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:动画"
+    },
+    "反转搞笑": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:搞笑"
+    },
+    "发疯自嘲": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:自嘲"
+    },
+    "发质争议": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "发量王者": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "变废为宝": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 2,
+      "assigned_by": "rule:变废为宝"
+    },
+    "变美清单": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "变装反转": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:变装"
+    },
+    "变装挑战": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 2,
+      "assigned_by": "rule:变装"
+    },
+    "变装灵感": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:变装"
+    },
+    "司法争议": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "rule:争议"
+    },
+    "合规擦边猎奇": {
+      "motif": "other",
+      "name": "其他",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "名人档案": {
+      "motif": "other",
+      "name": "其他",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "吸奶器种草": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "品牌赞助": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:品牌"
+    },
+    "哄娃神器": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "哄睡崩溃": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 2,
+      "assigned_by": "manual"
+    },
+    "哄睡日常": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:哄睡"
+    },
+    "哄睡痛点": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "哥特风穿搭": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:穿搭"
+    },
+    "哭声免疫法": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "哭声破译": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "哺乳日常分享": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:哺乳"
+    },
+    "喂养异常": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:喂养"
+    },
+    "嘻哈潮流": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:潮流"
+    },
+    "器物拟人": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "囤货种草": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:种草"
+    },
+    "图鉴开箱": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:开箱"
+    },
+    "圈层对抗": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "rule:圈层对抗"
+    },
+    "圈层文化": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:圈层"
+    },
+    "圈层黑话": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:圈层"
+    },
+    "圣诞夜惊魂": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "圣诞宝宝": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:圣诞"
+    },
+    "圣诞礼品": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:圣诞"
+    },
+    "圣诞装饰": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:圣诞"
+    },
+    "地域梗": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "基因相似": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "处事哲学": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:处事哲学"
+    },
+    "备孕自测": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:孕"
+    },
+    "复仇爽剧": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "复古T恤": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 2,
+      "assigned_by": "rule:T恤"
+    },
+    "复古情怀": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "复古数码": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:数码"
+    },
+    "复古流行文化": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "复古潮流": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:潮流"
+    },
+    "多孩家庭": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 2,
+      "assigned_by": "rule:多孩"
+    },
+    "多孩育儿": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:多孩"
+    },
+    "多胎家庭": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:多胎"
+    },
+    "多胞胎分娩": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:分娩"
+    },
+    "多胞胎奇观": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:奇观"
+    },
+    "多胞胎日常": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "大动作发育": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:发育"
+    },
+    "大学开学": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "天使宝宝": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 1,
+      "assigned_by": "rule:宝宝"
+    },
+    "夫妻互动": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:夫妻"
+    },
+    "夫妻互坑": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:互坑"
+    },
+    "夫妻分工": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:夫妻"
+    },
+    "夫妻反差": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:夫妻"
+    },
+    "夫妻日常": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 2,
+      "assigned_by": "rule:夫妻"
+    },
+    "夫妻相处": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:夫妻"
+    },
+    "夫妻约会": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:夫妻"
+    },
+    "奇葩带娃": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 2,
+      "assigned_by": "rule:带娃"
+    },
+    "奇葩育儿": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:育儿"
+    },
+    "奇闻异事": {
+      "motif": "other",
+      "name": "其他",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "女性互助": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:女性"
+    },
+    "女性健康": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "女性力量": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:女性"
+    },
+    "女性困境": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 2,
+      "assigned_by": "rule:困境"
+    },
+    "女童打扮": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "奶爸审美": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:奶爸"
+    },
+    "奶瓶喂养": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:喂养"
+    },
+    "奶瓶横评": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "奶瓶清洗机": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "奶音互动": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 1,
+      "assigned_by": "rule:奶音"
+    },
+    "好友默契": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "好物测评": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:好物"
+    },
+    "好物种草": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 2,
+      "assigned_by": "rule:好物"
+    },
+    "好物组装": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:好物"
+    },
+    "如厕训练": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:如厕"
+    },
+    "姐妹亲情": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:亲情"
+    },
+    "婚礼名场面": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "婴儿哄睡": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 2,
+      "assigned_by": "rule:哄睡"
+    },
+    "婴儿哭闹": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "婴儿床": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:婴儿床"
+    },
+    "婴儿房装修": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "婴儿护理": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:婴儿护理"
+    },
+    "婴儿日常": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "婴儿服饰": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:服饰"
+    },
+    "婴儿萌态": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 1,
+      "assigned_by": "rule:萌"
+    },
+    "孕产知识": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:孕"
+    },
+    "孕产自嘲": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "孕产记录": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:孕"
+    },
+    "孕晚期痛点": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "孕期打卡": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:孕"
+    },
+    "孕期记录": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:孕"
+    },
+    "孕肚对比": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:孕"
+    },
+    "学业压力": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "rule:压力"
+    },
+    "学习Vlog": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "学步期育儿": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:育儿"
+    },
+    "学步神器": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "学生日常": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 2,
+      "assigned_by": "manual"
+    },
+    "学龄前育儿": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:育儿"
+    },
+    "完整正片": {
+      "motif": "other",
+      "name": "其他",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "定格动画": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:动画"
+    },
+    "定格动画挑战": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:动画"
+    },
+    "定格展示": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:定格"
+    },
+    "宝妈共鸣": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:宝妈"
+    },
+    "宝妈日常": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:宝妈"
+    },
+    "宝妈自嘲": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:自嘲"
+    },
+    "宝宝厌奶瓶": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:奶瓶"
+    },
+    "宝宝喂药": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:喂药"
+    },
+    "宝宝成长纪念": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "宝宝睡眠": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:睡眠"
+    },
+    "实用手法": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:手法"
+    },
+    "室内运动玩具": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:玩具"
+    },
+    "宫廷小丑妆": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:妆"
+    },
+    "家居DIY": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:DIY"
+    },
+    "家居改造": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:改造"
+    },
+    "家居装饰": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "家居软装": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "家居防护": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:防护"
+    },
+    "家庭喜剧": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 2,
+      "assigned_by": "rule:喜剧"
+    },
+    "家庭囤货": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:囤货"
+    },
+    "家庭地位": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "家庭幽默": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 7,
+      "assigned_by": "rule:幽默"
+    },
+    "家庭搞笑": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 6,
+      "assigned_by": "rule:搞笑"
+    },
+    "家庭日常": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:家庭"
+    },
+    "家庭治愈": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:家庭"
+    },
+    "家庭温情": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 2,
+      "assigned_by": "rule:家庭"
+    },
+    "家庭珍惜当下": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:家庭"
+    },
+    "家庭电影夜": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "家庭纪实": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:家庭"
+    },
+    "家庭育儿": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 3,
+      "assigned_by": "manual"
+    },
+    "家有男宝": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:男宝"
+    },
+    "宿舍日常": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:宿舍"
+    },
+    "小丑妆造": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:妆造"
+    },
+    "小众变装": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 2,
+      "assigned_by": "rule:变装"
+    },
+    "小众装扮": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:装扮"
+    },
+    "小马宝莉拟人": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "居家健身": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:健身"
+    },
+    "居家好物": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:好物"
+    },
+    "居家律动": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:律动"
+    },
+    "工位日常": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:工位"
+    },
+    "工装裤": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:工装裤"
+    },
+    "巨物奇观": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:奇观"
+    },
+    "市井烟火": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "带娃吐槽": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:吐槽"
+    },
+    "带娃崩溃": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "rule:崩溃"
+    },
+    "带娃应激": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "带娃挑战": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "带娃日常": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 4,
+      "assigned_by": "manual"
+    },
+    "带娃痛点": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "rule:痛点"
+    },
+    "带娃神器": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:神器"
+    },
+    "常服改造": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:改造"
+    },
+    "幕后纪实": {
+      "motif": "other",
+      "name": "其他",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "平价伴手礼": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:伴手礼"
+    },
+    "平价好物": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:好物"
+    },
+    "平价手作": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:手作"
+    },
+    "平替攻略": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:平替"
+    },
+    "年轻妈妈": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 2,
+      "assigned_by": "rule:妈妈"
+    },
+    "年轻孕妈": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:孕"
+    },
+    "幼小衔接": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:幼小衔接"
+    },
+    "幼教灵感": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:幼教"
+    },
+    "幽默印花": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:幽默"
+    },
+    "幽默自嘲": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:幽默"
+    },
+    "应季服饰": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:应季"
+    },
+    "废品改造": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:改造"
+    },
+    "庭院装饰": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "开学倒计时": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:开学"
+    },
+    "开学前夜": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:开学"
+    },
+    "开学季": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 8,
+      "assigned_by": "rule:开学"
+    },
+    "开学季打卡": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:开学"
+    },
+    "开学收心": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:开学"
+    },
+    "开学焦虑": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 2,
+      "assigned_by": "manual"
+    },
+    "开箱惊喜": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:开箱"
+    },
+    "开箱盲盒": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:开箱"
+    },
+    "开箱种草": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:种草"
+    },
+    "开髋拉伸": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:拉伸"
+    },
+    "当众社死": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:社死"
+    },
+    "影视IP联名": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:联名"
+    },
+    "影视仿妆": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "影视切片": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 2,
+      "assigned_by": "rule:影视"
+    },
+    "影视剪辑": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 2,
+      "assigned_by": "rule:影视"
+    },
+    "影视名场面复刻": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:影视"
+    },
+    "影视快剪": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:影视"
+    },
+    "影视梗对口型": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:影视"
+    },
+    "影视混剪": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 2,
+      "assigned_by": "rule:影视"
+    },
+    "待产备忘": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "待产清单": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 2,
+      "assigned_by": "manual"
+    },
+    "待产真实记录": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:待产"
+    },
+    "微缩场景还原": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:微缩"
+    },
+    "微缩手作": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:手作"
+    },
+    "心理健康": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "心虚抓包": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "快餐玩具": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:玩具"
+    },
+    "怀旧影视": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:影视"
+    },
+    "怀旧混剪": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:混剪"
+    },
+    "怕冷星人": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "急救个护": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:急救"
+    },
+    "怪兽电力公司": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "恋爱心动": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:恋爱"
+    },
+    "恋爱思念": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:恋爱"
+    },
+    "恐怖IP周边": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:周边"
+    },
+    "恐怖文化": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "恶作剧合辑": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "恶霸犬周边": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:周边"
+    },
+    "悬念吃瓜": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:吃瓜"
+    },
+    "悬浮射击": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "悬疑奇幻": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "情侣互动": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 4,
+      "assigned_by": "rule:情侣"
+    },
+    "情侣日常": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 3,
+      "assigned_by": "rule:情侣"
+    },
+    "情怀消费": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "情感共鸣": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 3,
+      "assigned_by": "rule:情感"
+    },
+    "情感反差": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:情感"
+    },
+    "情感治愈": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 2,
+      "assigned_by": "rule:情感"
+    },
+    "情绪共振": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:情绪"
+    },
+    "情绪共鸣": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:情绪"
+    },
+    "情绪反差": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:情绪"
+    },
+    "情绪反转": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 4,
+      "assigned_by": "rule:情绪"
+    },
+    "情绪唤醒": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:情绪"
+    },
+    "情绪嘴替": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "情绪失控": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "rule:失控"
+    },
+    "情绪宣泄": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "情绪崩溃": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "rule:崩溃"
+    },
+    "情绪模板": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "情绪治愈": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "情绪解压": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "情绪释放": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "惊悚仿妆": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "意外反转": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "意外怀孕": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:孕"
+    },
+    "感官玩具": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:玩具"
+    },
+    "懂事大宝": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 1,
+      "assigned_by": "rule:懂事"
+    },
+    "戏剧反差": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "成长仪式感": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 2,
+      "assigned_by": "manual"
+    },
+    "戒尿布指南": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:尿布"
+    },
+    "戴森测评": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:测评"
+    },
+    "戴森用法": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "户外装备": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:装备"
+    },
+    "房间布置": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "房间装饰": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "手作改造": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:手作"
+    },
+    "手势舞": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:舞"
+    },
+    "手印画教程": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:教程"
+    },
+    "手工教程": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 2,
+      "assigned_by": "rule:教程"
+    },
+    "手足情深": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:手足"
+    },
+    "打卡挑战": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:挑战"
+    },
+    "打脸逆袭": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "托特包收纳": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:收纳"
+    },
+    "扭扭棒手工": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:手工"
+    },
+    "抢玩具冲突": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "挑战赛借势": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:挑战"
+    },
+    "挫折沟通": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "换季仪式感": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "换季育儿防护": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:防护"
+    },
+    "接娃吐槽": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:吐槽"
+    },
+    "接娃日常": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "接送娃日常": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "握笔姿势": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:握笔"
+    },
+    "搞怪舞蹈": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:舞"
+    },
+    "搞笑二创": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:二创"
+    },
+    "搞笑动物": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:搞笑"
+    },
+    "搞笑反差": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 2,
+      "assigned_by": "rule:搞笑"
+    },
+    "搞笑反转": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:搞笑"
+    },
+    "搞笑合辑": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 2,
+      "assigned_by": "manual"
+    },
+    "搞笑整蛊": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:搞笑"
+    },
+    "搞笑日常": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:搞笑"
+    },
+    "搞笑模仿": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:搞笑"
+    },
+    "搞笑段子": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:搞笑"
+    },
+    "搞笑短剧": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:搞笑"
+    },
+    "搞笑自嘲": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:搞笑"
+    },
+    "搞笑萌娃": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:搞笑"
+    },
+    "搞笑表情包": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:表情包"
+    },
+    "搞钱思维": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:搞钱"
+    },
+    "撞衫撕逼": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "rule:撕逼"
+    },
+    "操作教程": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:教程"
+    },
+    "收养家庭": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:收养"
+    },
+    "放学日常": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 2,
+      "assigned_by": "manual"
+    },
+    "教程解密": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:教程"
+    },
+    "数码外设": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:外设"
+    },
+    "整蛊反差": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:整蛊"
+    },
+    "整蛊恶搞": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:整蛊"
+    },
+    "文具分享": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:文具"
+    },
+    "文化出海": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:文化"
+    },
+    "文化自豪": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:文化"
+    },
+    "新手奶爸": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:新手"
+    },
+    "新手妈妈": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 8,
+      "assigned_by": "rule:新手"
+    },
+    "新手父母": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 4,
+      "assigned_by": "rule:新手"
+    },
+    "新手爸妈": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 3,
+      "assigned_by": "rule:新手"
+    },
+    "新手育儿": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 2,
+      "assigned_by": "rule:新手"
+    },
+    "新生儿": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:新生儿"
+    },
+    "新生儿作息": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:作息"
+    },
+    "新生儿反射": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:新生儿"
+    },
+    "新生儿夜醒": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:夜醒"
+    },
+    "新生儿安抚": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:新生儿"
+    },
+    "新生儿护理": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 3,
+      "assigned_by": "rule:新生儿"
+    },
+    "新生儿摄影": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "新生儿日常": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "新生儿睡眠": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:睡眠"
+    },
+    "新生儿萌宠感": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "新生儿送礼": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "无厘头恶搞": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:无厘头"
+    },
+    "无痛带娃": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:带娃"
+    },
+    "无障碍育儿": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:育儿"
+    },
+    "旧物改造": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 2,
+      "assigned_by": "rule:改造"
+    },
+    "早产儿": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "早教启蒙": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 2,
+      "assigned_by": "rule:早教"
+    },
+    "早晨准备": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "早起上学": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "早鸟选品": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:选品"
+    },
+    "时令热点": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:时令"
+    },
+    "时尚穿搭": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:穿搭"
+    },
+    "时间管理": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "明星混剪": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:明星"
+    },
+    "明星热点": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 2,
+      "assigned_by": "rule:明星"
+    },
+    "明星访谈": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:明星"
+    },
+    "晚间仪式感": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "晨间准备": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "晨间日常": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 6,
+      "assigned_by": "rule:日常"
+    },
+    "晨间流程": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "暗黑动画": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 2,
+      "assigned_by": "rule:动画"
+    },
+    "暗黑小丑妆": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:妆"
+    },
+    "暗黑童话": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "暴力测评": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:测评"
+    },
+    "月份仪式感": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "月初打卡": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:月初"
+    },
+    "月度备忘": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "服饰平铺质感": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "服饰验货": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:验货"
+    },
+    "机舱带娃": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "极端情绪": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "极简卡点": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:卡点"
+    },
+    "极简穿搭": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:穿搭"
+    },
+    "极致反差": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "极限柔韧": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "极限自律": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:自律"
+    },
+    "校园吐槽": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:吐槽"
+    },
+    "校园手势舞": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:舞"
+    },
+    "校园搞怪": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:校园"
+    },
+    "校园日常": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:校园"
+    },
+    "校园暗恋": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:校园"
+    },
+    "校园模因": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:模因"
+    },
+    "核心训练": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:训练"
+    },
+    "桌面收纳": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:收纳"
+    },
+    "模因二创": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:模因"
+    },
+    "欧美老歌": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:老歌"
+    },
+    "正误对比": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "殿堂现场": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:现场"
+    },
+    "母乳喂养": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 5,
+      "assigned_by": "rule:母乳"
+    },
+    "母女日常": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:母女"
+    },
+    "母女羁绊": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:母女"
+    },
+    "母婴互助": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "母婴亲情": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:亲情"
+    },
+    "母婴健康": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:健康"
+    },
+    "母婴吸奶教程": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:吸奶"
+    },
+    "母婴哺乳": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:哺乳"
+    },
+    "母婴喂养": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:喂养"
+    },
+    "母婴好物": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 9,
+      "assigned_by": "rule:好物"
+    },
+    "母婴孕产": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:孕"
+    },
+    "母婴家居": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "母婴干货": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:干货"
+    },
+    "母婴情感": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 2,
+      "assigned_by": "rule:情感"
+    },
+    "母婴搞笑": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:搞笑"
+    },
+    "母婴日常": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 4,
+      "assigned_by": "rule:日常"
+    },
+    "母婴生活": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "rule:生活"
+    },
+    "母婴痛点": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "rule:痛点"
+    },
+    "母婴穿搭": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:穿搭"
+    },
+    "母婴纪实": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "母婴羊毛": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:羊毛"
+    },
+    "母婴育儿": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 9,
+      "assigned_by": "manual"
+    },
+    "母婴装备": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:装备"
+    },
+    "母爱叙事": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "母职告别": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "母职痛感共情": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "rule:母职"
+    },
+    "母职解脱": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "毒舌吐槽": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:吐槽"
+    },
+    "毒藤女变装": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:变装"
+    },
+    "民族认同": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:民族"
+    },
+    "气球手工": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:手工"
+    },
+    "氛围感种草": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:种草"
+    },
+    "汽车改装": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:汽车改装"
+    },
+    "沃尔玛探店": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:探店"
+    },
+    "沃尔玛采购": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:采购"
+    },
+    "沉浸式Vlog": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 3,
+      "assigned_by": "rule:Vlog"
+    },
+    "沉浸式带娃": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "沉浸式收纳": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:收纳"
+    },
+    "沉浸式现场": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:现场"
+    },
+    "沉浸式看房": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "沉浸式选品": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:选品"
+    },
+    "治愈励志": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:治愈"
+    },
+    "治愈吸娃": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "治愈带娃": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "治愈撒娇": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 1,
+      "assigned_by": "rule:撒娇"
+    },
+    "治愈温情": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 2,
+      "assigned_by": "rule:治愈"
+    },
+    "治愈系": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 2,
+      "assigned_by": "rule:治愈"
+    },
+    "治愈系ASMR": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "治愈系生活": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:治愈"
+    },
+    "治愈系陈列": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "治愈萌娃": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "治愈解压": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 4,
+      "assigned_by": "rule:治愈"
+    },
+    "治愈陪伴": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:治愈"
+    },
+    "法庭纪实": {
+      "motif": "other",
+      "name": "其他",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "洗脑叫醒": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:洗脑"
+    },
+    "洗脑神曲": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:洗脑"
+    },
+    "洗脑童谣": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:洗脑"
+    },
+    "派对灵感": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "流体塑形": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "浪漫被爱": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:浪漫"
+    },
+    "深夜emo": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 2,
+      "assigned_by": "rule:emo"
+    },
+    "深夜带娃": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "深情告白": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:告白"
+    },
+    "混血宝宝": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 1,
+      "assigned_by": "rule:宝宝"
+    },
+    "清空心愿单": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "游戏外挂": {
+      "motif": "other",
+      "name": "其他",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "漂发翻车": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:翻车"
+    },
+    "演唱会舞美": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:演唱会"
+    },
+    "潮流OOTD": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:OOTD"
+    },
+    "潮玩周边": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 2,
+      "assigned_by": "rule:周边"
+    },
+    "潮玩盲盒": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:盲盒"
+    },
+    "潮童街拍": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:街拍"
+    },
+    "灰姑娘出逃": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "热梗二创": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 2,
+      "assigned_by": "rule:热梗"
+    },
+    "热梗挑战": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:热梗"
+    },
+    "热梗跟练": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "热梗迷因": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:热梗"
+    },
+    "热歌挑战": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:挑战"
+    },
+    "热点借势": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:热点"
+    },
+    "热点卡点模因": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:卡点"
+    },
+    "热点玩法": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:热点"
+    },
+    "爆款测评": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:测评"
+    },
+    "爆笑反转": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:笑"
+    },
+    "爱国情怀": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "父亲家书": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "父女互动": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 2,
+      "assigned_by": "rule:父女"
+    },
+    "父女情感": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:父女"
+    },
+    "父女温情": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:父女"
+    },
+    "父子搞笑": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:搞笑"
+    },
+    "父母争宠": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "父爱表达": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "父职教育": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:父职"
+    },
+    "爸爸育儿": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:爸爸"
+    },
+    "爽剧解法": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "爽感逆袭": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "特效Meme": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "特效化妆": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:特效"
+    },
+    "特效道具": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:特效"
+    },
+    "特需家庭": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:特需"
+    },
+    "独自育儿": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:育儿"
+    },
+    "猎奇搞笑": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:搞笑"
+    },
+    "猎奇文化": {
+      "motif": "other",
+      "name": "其他",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "猫鼠喜剧": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:喜剧"
+    },
+    "现场狂欢": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:现场"
+    },
+    "珍惜眼前人": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:珍惜"
+    },
+    "瑜伽跟练": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:瑜伽"
+    },
+    "瓶喂困难": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:瓶喂"
+    },
+    "生命奇迹": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 2,
+      "assigned_by": "manual"
+    },
+    "生命治愈": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:治愈"
+    },
+    "生日伴手礼": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:生日"
+    },
+    "生日祝福": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "生日节点": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "生死离别": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "生活习惯": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "生活切片": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "生活喜剧": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:喜剧"
+    },
+    "生活妙招": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:妙招"
+    },
+    "生活挑战": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "生活搞笑": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:搞笑"
+    },
+    "生活美学": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "生活黑客": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:生活黑客"
+    },
+    "生理通感": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "生病护理": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:护理"
+    },
+    "生育共情": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "rule:共情"
+    },
+    "生育焦虑": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "rule:焦虑"
+    },
+    "生育观念": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "电子哄娃": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "电子设备管控": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "电子贺卡": {
+      "motif": "other",
+      "name": "其他",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "病毒挑战": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:挑战"
+    },
+    "病毒流行预警": {
+      "motif": "other",
+      "name": "其他",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "病童告别": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "监控搞笑": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:搞笑"
+    },
+    "盲盒开箱": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:开箱"
+    },
+    "真人秀争议": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "真人秀名场面": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "真实大案": {
+      "motif": "other",
+      "name": "其他",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "真实带娃": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "真实影像": {
+      "motif": "other",
+      "name": "其他",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "真实悼念": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "真实新手妈妈": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:新手"
+    },
+    "真实案件": {
+      "motif": "other",
+      "name": "其他",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "真实母婴": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "真实翻车": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:翻车"
+    },
+    "真实育儿": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 3,
+      "assigned_by": "manual"
+    },
+    "真实试错": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "睡前护肤": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "睡前流程": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "睡眠健康": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:睡眠"
+    },
+    "睡眠剥夺": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 2,
+      "assigned_by": "manual"
+    },
+    "睡眠训练": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 2,
+      "assigned_by": "rule:睡眠"
+    },
+    "硬核带娃": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 4,
+      "assigned_by": "rule:带娃"
+    },
+    "硬核户外风": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:户外"
+    },
+    "硬核芭蕾": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "硬汉奶爸": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:奶爸"
+    },
+    "硬汉柔情": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 2,
+      "assigned_by": "manual"
+    },
+    "礼物篮灵感": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "社交社死": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:社死"
+    },
+    "社交货币": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "社会伦理": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "rule:伦理"
+    },
+    "社会猎奇": {
+      "motif": "other",
+      "name": "其他",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "社媒排版": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "社死反转": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:社死"
+    },
+    "社群共鸣": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "祖孙亲情": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:亲情"
+    },
+    "神态反差": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "神曲卡点": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:卡点"
+    },
+    "神评吐槽": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:吐槽"
+    },
+    "福利裂变": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "秋冬保暖": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:秋冬"
+    },
+    "秋冬居家服": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:秋冬"
+    },
+    "秋冬流感季": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "秋冬送礼": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:秋冬"
+    },
+    "秋季新品": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:秋季"
+    },
+    "秋季氛围感": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:秋季"
+    },
+    "秋季礼篮": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:秋季"
+    },
+    "秋季穿搭": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:秋季"
+    },
+    "秋季美学": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:秋季"
+    },
+    "秋季节点": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:秋季"
+    },
+    "秋日仪式感": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "秋日氛围": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:秋日"
+    },
+    "穿戴毛毯": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:毛毯"
+    },
+    "穿搭反差": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:穿搭"
+    },
+    "穿搭拼贴": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:穿搭"
+    },
+    "穿搭拼贴板": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:穿搭"
+    },
+    "穿搭清单": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "穿搭灵感": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 4,
+      "assigned_by": "rule:穿搭"
+    },
+    "突发目击": {
+      "motif": "other",
+      "name": "其他",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "突发社会热点": {
+      "motif": "other",
+      "name": "其他",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "窒息育儿": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "rule:窒息"
+    },
+    "竞品对比": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:竞品"
+    },
+    "童书绘本": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "童年异化": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "童年治愈": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:治愈"
+    },
+    "童星现状": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "童装穿搭": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:童装"
+    },
+    "童言无忌": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 2,
+      "assigned_by": "rule:童言无忌"
+    },
+    "第一人称视角": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:第一人称"
+    },
+    "粉红丝带": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "精灵旅社": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "精灵高中": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "精神警示": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "精致生活": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "纸尿裤技巧": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:纸尿裤"
+    },
+    "纸艺改造": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:改造"
+    },
+    "经典IP": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:经典IP"
+    },
+    "经典IP混剪": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 2,
+      "assigned_by": "rule:经典IP"
+    },
+    "经典Meme": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:Meme"
+    },
+    "经典动画还原": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:动画"
+    },
+    "经典名曲": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:名曲"
+    },
+    "经典影视混剪": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:影视"
+    },
+    "经典情怀": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "经典整蛊": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:整蛊"
+    },
+    "经典电影": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 2,
+      "assigned_by": "rule:电影"
+    },
+    "经典英文儿歌": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "经典音乐": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:音乐"
+    },
+    "网红意外离世": {
+      "motif": "other",
+      "name": "其他",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "网络迷因": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:迷因"
+    },
+    "网络迷因梗": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:迷因"
+    },
+    "罪案解说": {
+      "motif": "other",
+      "name": "其他",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "美发工具实测": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "美发护理": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "美发教程": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "美发避雷": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "美妆奢品": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "美妆护肤": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 2,
+      "assigned_by": "rule:护肤"
+    },
+    "美妆教程": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 2,
+      "assigned_by": "rule:教程"
+    },
+    "美妆翻车": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "美式喜剧": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:喜剧"
+    },
+    "美式复古": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "美高生活": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "群聊表情包": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:表情包"
+    },
+    "职场吐槽": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "职场幽默": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "肢体幽默": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:幽默"
+    },
+    "肢体抽帧模仿": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "育儿争议": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 4,
+      "assigned_by": "rule:争议"
+    },
+    "育儿修罗场": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "rule:修罗场"
+    },
+    "育儿共情": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "rule:共情"
+    },
+    "育儿共鸣": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:育儿"
+    },
+    "育儿减负": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "育儿反思": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "rule:反思"
+    },
+    "育儿好物": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:好物"
+    },
+    "育儿好物推荐": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:好物"
+    },
+    "育儿妙招": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 4,
+      "assigned_by": "rule:妙招"
+    },
+    "育儿干货": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:干货"
+    },
+    "育儿幽默": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:幽默"
+    },
+    "育儿情感": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "育儿打脸": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "育儿搞笑": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 2,
+      "assigned_by": "rule:搞笑"
+    },
+    "育儿日常": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 7,
+      "assigned_by": "manual"
+    },
+    "育儿焦虑": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 3,
+      "assigned_by": "rule:焦虑"
+    },
+    "育儿疲惫": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "rule:疲惫"
+    },
+    "育儿痛点": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 6,
+      "assigned_by": "rule:痛点"
+    },
+    "育儿神器": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 3,
+      "assigned_by": "rule:神器"
+    },
+    "育儿福利": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "育儿科普": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:儿科"
+    },
+    "育儿答疑": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:答疑"
+    },
+    "育儿经验": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:经验"
+    },
+    "育儿翻车": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:翻车"
+    },
+    "育儿解压": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "背奶日常": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:背奶"
+    },
+    "脑洞短剧": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "自主进食": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:进食"
+    },
+    "自制风味零食": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:零食"
+    },
+    "自嘲幽默": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:幽默"
+    },
+    "自律生活": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:自律"
+    },
+    "自我安抚": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "自黑搞笑": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:搞笑"
+    },
+    "舞蹈教学": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "节庆热梗": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:节庆"
+    },
+    "节日仪式感": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 2,
+      "assigned_by": "rule:节日"
+    },
+    "节日仿妆": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:节日"
+    },
+    "节日借势": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:节日"
+    },
+    "节日变装": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:节日"
+    },
+    "节日布景": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 2,
+      "assigned_by": "rule:节日"
+    },
+    "节日抢跑": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:节日"
+    },
+    "节日氛围好物": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:节日"
+    },
+    "节日氛围感": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 2,
+      "assigned_by": "rule:节日"
+    },
+    "节日清单": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 3,
+      "assigned_by": "rule:节日"
+    },
+    "节日灵感": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 8,
+      "assigned_by": "rule:节日"
+    },
+    "节日灵感板": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:节日"
+    },
+    "节日热梗": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:节日"
+    },
+    "节日电商种草": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:节日"
+    },
+    "节日礼物清单": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:节日"
+    },
+    "节日祝福": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "节日种草": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:节日"
+    },
+    "节日穿搭灵感": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 2,
+      "assigned_by": "rule:节日"
+    },
+    "节日装饰": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 2,
+      "assigned_by": "rule:节日"
+    },
+    "节日谐音梗": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 2,
+      "assigned_by": "rule:节日"
+    },
+    "节日送礼": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 2,
+      "assigned_by": "rule:节日"
+    },
+    "节日预热": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:节日"
+    },
+    "节点借势": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 3,
+      "assigned_by": "rule:节点"
+    },
+    "节点带货": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:节点"
+    },
+    "节点营销": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:节点"
+    },
+    "荒诞动物": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:荒诞"
+    },
+    "荒诞喜剧": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:喜剧"
+    },
+    "荒诞幽默": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:幽默"
+    },
+    "荒诞短剧": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:荒诞"
+    },
+    "荒谬幽默": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:幽默"
+    },
+    "萌娃互动": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 1,
+      "assigned_by": "rule:萌娃"
+    },
+    "萌娃反应": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 1,
+      "assigned_by": "rule:萌娃"
+    },
+    "萌娃变脸": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 1,
+      "assigned_by": "rule:萌娃"
+    },
+    "萌娃变装": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 4,
+      "assigned_by": "rule:变装"
+    },
+    "萌娃吃播": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 1,
+      "assigned_by": "rule:萌娃"
+    },
+    "萌娃嘴替": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:嘴替"
+    },
+    "萌娃学步": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "萌娃成精": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 1,
+      "assigned_by": "rule:萌娃"
+    },
+    "萌娃才艺": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "萌娃搞怪": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 1,
+      "assigned_by": "rule:萌娃"
+    },
+    "萌娃搞笑": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 3,
+      "assigned_by": "rule:搞笑"
+    },
+    "萌娃日常": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 15,
+      "assigned_by": "manual"
+    },
+    "萌娃模仿": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 1,
+      "assigned_by": "rule:萌娃"
+    },
+    "萌娃治愈": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "萌娃翻车": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:翻车"
+    },
+    "萌娃装扮": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:装扮"
+    },
+    "萌娃解压": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 1,
+      "assigned_by": "rule:萌娃"
+    },
+    "萌娃配音": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "萌宝团宠": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 1,
+      "assigned_by": "rule:萌宝"
+    },
+    "萌宠互动": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 1,
+      "assigned_by": "rule:萌"
+    },
+    "萌宠整蛊": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:整蛊"
+    },
+    "萌宠服饰": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:服饰"
+    },
+    "萌宠萌娃": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 1,
+      "assigned_by": "rule:萌娃"
+    },
+    "萌系穿搭": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:穿搭"
+    },
+    "虐心情感": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:情感"
+    },
+    "街头快闪": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "街头恶作剧": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "街头抓拍": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:街头"
+    },
+    "街头齐舞": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "街拍恶搞": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "表情包素材": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:表情包"
+    },
+    "装酷翻车": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:翻车"
+    },
+    "观点嘴替": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "视觉卡点": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "视觉反差": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:视觉"
+    },
+    "视觉反差萌": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:视觉"
+    },
+    "视觉奇观": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 4,
+      "assigned_by": "rule:奇观"
+    },
+    "视觉幽默": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "视觉美学": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:视觉"
+    },
+    "视觉翻车": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:视觉"
+    },
+    "视觉解压": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 2,
+      "assigned_by": "rule:视觉"
+    },
+    "视错觉梗": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:视错觉"
+    },
+    "角色扮演": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 3,
+      "assigned_by": "rule:角色扮演"
+    },
+    "角色装扮": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:角色装扮"
+    },
+    "角色还原": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:角色还原"
+    },
+    "解压合辑": {
+      "motif": "cute",
+      "name": "萌娃治愈",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "解压玩具": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:玩具"
+    },
+    "解闷手工": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:手工"
+    },
+    "触觉解压": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "认知反差": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 2,
+      "assigned_by": "manual"
+    },
+    "说唱圈层": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:说唱"
+    },
+    "说唱录音棚": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:说唱"
+    },
+    "说唱文化": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:说唱"
+    },
+    "说唱现场": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:说唱"
+    },
+    "谐音梗设计": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:谐音梗"
+    },
+    "豪车接娃": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "货架探店": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:探店"
+    },
+    "资源白嫖": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "赛博陪伴": {
+      "motif": "other",
+      "name": "其他",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "走心情感": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:情感"
+    },
+    "超市带娃": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "超市抢购": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:抢购"
+    },
+    "超市省钱": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "超早产儿": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "超早孕反应": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:孕"
+    },
+    "趣味哄娃": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "跨文化体验": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:文化"
+    },
+    "跨界联名": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:联名"
+    },
+    "跨种族育儿": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:育儿"
+    },
+    "身份反差": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:身份"
+    },
+    "身份认同": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:身份"
+    },
+    "身材激励": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "身材焦虑": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "身高差暗爽": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "车内互怼": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:互怼"
+    },
+    "车内哺乳": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:哺乳"
+    },
+    "车内开箱": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "rule:开箱"
+    },
+    "转生奇幻": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "轮椅妈妈": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:妈妈"
+    },
+    "辣妈人设": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:辣妈"
+    },
+    "辣妈穿搭": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:穿搭"
+    },
+    "辣妹标签": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "过度刺激": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "返校季": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 5,
+      "assigned_by": "rule:返校"
+    },
+    "返校季穿搭": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:返校"
+    },
+    "返校穿搭": {
+      "motif": "seasonal",
+      "name": "节点借势",
+      "count": 1,
+      "assigned_by": "rule:返校"
+    },
+    "迷彩复古": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "迷惑行为": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "rule:迷惑行为"
+    },
+    "追星圆梦": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:追星"
+    },
+    "送礼仪式感": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "送礼暗示": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 2,
+      "assigned_by": "rule:送礼"
+    },
+    "送礼灵感": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 2,
+      "assigned_by": "rule:送礼"
+    },
+    "逆境希望": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "逆境突围": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "逆袭反差": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "通乳实测": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:通乳"
+    },
+    "道德审判": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "rule:审判"
+    },
+    "遗憾释怀": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "避坑指南": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:指南"
+    },
+    "避孕焦虑": {
+      "motif": "anxiety",
+      "name": "育儿焦虑与痛点",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "酷女孩审美": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "酷女孩风": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "错视道具": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:错视"
+    },
+    "闪光灯美学": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:美学"
+    },
+    "闺蜜双人Cos": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "闺蜜双人变装": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:变装"
+    },
+    "闺蜜合拍": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 2,
+      "assigned_by": "rule:闺蜜"
+    },
+    "闺蜜日常": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:闺蜜"
+    },
+    "闺蜜穿搭": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:穿搭"
+    },
+    "闺蜜组团穿搭": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:穿搭"
+    },
+    "防水耐磨": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "防沉迷替代": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "防漏实操": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "防胀气奶瓶": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "阶级反差": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:阶级"
+    },
+    "隐匿妊娠": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:妊娠"
+    },
+    "雨天氛围": {
+      "motif": "lifestyle",
+      "name": "生活方式与居家美学",
+      "count": 1,
+      "assigned_by": "rule:氛围"
+    },
+    "雪地浪漫": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:浪漫"
+    },
+    "青少年育儿": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:育儿"
+    },
+    "青春恋爱": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:恋爱"
+    },
+    "青春期育儿": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "rule:育儿"
+    },
+    "音乐现场": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:音乐"
+    },
+    "音乐踩点": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:音乐"
+    },
+    "音乐轶事": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:音乐"
+    },
+    "预产月共鸣": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "食物拟人": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "饭圈和解": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:饭圈"
+    },
+    "马桶安全锁": {
+      "motif": "product",
+      "name": "母婴好物种草",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "验孕反差": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "高中生日常": {
+      "motif": "identity",
+      "name": "身份共鸣",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "高光片段": {
+      "motif": "other",
+      "name": "其他",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "高危妊娠": {
+      "motif": "care",
+      "name": "孕产喂养与护理",
+      "count": 1,
+      "assigned_by": "rule:妊娠"
+    },
+    "高效备餐": {
+      "motif": "diy",
+      "name": "实用教程与DIY",
+      "count": 1,
+      "assigned_by": "rule:备餐"
+    },
+    "高燃混剪": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:混剪"
+    },
+    "高甜告白": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "rule:告白"
+    },
+    "高颜值CP": {
+      "motif": "family",
+      "name": "家庭情感与关系",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "鬼妈妈": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 2,
+      "assigned_by": "manual"
+    },
+    "鬼妈妈Cos": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "鬼妈妈同人": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "manual"
+    },
+    "魔性动作": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:魔性"
+    },
+    "魔性动画": {
+      "motif": "visual",
+      "name": "变装穿搭与视觉奇观",
+      "count": 1,
+      "assigned_by": "rule:动画"
+    },
+    "魔性卡点": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 2,
+      "assigned_by": "rule:卡点"
+    },
+    "魔性大笑": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:魔性"
+    },
+    "魔性洗脑": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:洗脑"
+    },
+    "魔性舞蹈": {
+      "motif": "meme",
+      "name": "热梗音乐与二创",
+      "count": 1,
+      "assigned_by": "rule:舞"
+    },
+    "黑色幽默": {
+      "motif": "comedy",
+      "name": "家庭搞笑",
+      "count": 4,
+      "assigned_by": "rule:幽默"
+    }
+  },
+  "method": {
+    "unit": "theme tag on a video; a video can belong to multiple motifs",
+    "assignment": "one theme -> exactly one motif; compounds routed by head concept; manual overrides recorded in mapping.assigned_by",
+    "seasonal_rule": "seasonal theme tags match 万圣/节日/开学/返校/秋季/生日/送礼/派对 etc. ex_seasonal = videos that still reach the motif after dropping seasonal tags",
+    "causality": "all videos are already viral; medians describe sample composition, not causal lift",
+    "sample": "392 tags x 43 days, last write 2026-10-28, October window"
+  }
+}
