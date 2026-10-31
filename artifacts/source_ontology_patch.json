@@ -1,0 +1,352 @@
+{
+ "objectTypes": [
+  {
+   "key": "COLLECTION_PROJECT",
+   "displayName": "采集项目",
+   "description": "Project 表实例；domain 属性取代码 8 值枚举"
+  },
+  {
+   "key": "PROJECT_DOMAIN",
+   "displayName": "项目业务域",
+   "description": "代码 8 值枚举节点（osint/ecommerce/social/competitor/agent/platform/governance/mixed），用于跨项目聚合；契约 v1.1 的 5 值待同步"
+  },
+  {
+   "key": "COLLECTION_SOURCE",
+   "displayName": "采集数据源",
+   "description": "数据源配置实例；与知识来源（kb 空间 SOURCE）、产品名 Source 三义分离"
+  },
+  {
+   "key": "COLLECTION_PLATFORM",
+   "displayName": "采集平台包",
+   "description": "platform_id 平台包，生产 2026-10-21 为 70 个"
+  },
+  {
+   "key": "COLLECTION_CAPABILITY",
+   "displayName": "能力视图",
+   "description": "capability_id，catalog 条目口径"
+  },
+  {
+   "key": "COLLECTION_ENDPOINT",
+   "displayName": "唯一采集端点",
+   "description": "endpoint_type 去重口径"
+  },
+  {
+   "key": "COLLECTION_COLLECTOR",
+   "displayName": "采集器实现",
+   "description": "collector_type 代码类；与端点（上游接口）是两类节点"
+  },
+  {
+   "key": "COLLECTION_PROVIDER",
+   "displayName": "采集 Provider",
+   "description": "上游供应商分组（15 个）"
+  },
+  {
+   "key": "COLLECTION_TASK",
+   "displayName": "采集任务",
+   "description": "task_runs 的调度主体（M04）"
+  },
+  {
+   "key": "COLLECTION_TASKRUN",
+   "displayName": "任务运行",
+   "description": "task_runs 表实例，采集任务执行"
+  },
+  {
+   "key": "RUN",
+   "displayName": "工作台运行",
+   "description": "runs 表实例（M10 编排），与任务运行区分"
+  },
+  {
+   "key": "RUN_STEP",
+   "displayName": "运行步骤",
+   "description": "run_steps 表实例"
+  },
+  {
+   "key": "RAW_RECORD",
+   "displayName": "原始记录",
+   "description": "采集落库原子单元"
+  },
+  {
+   "key": "DATASET",
+   "displayName": "数据集",
+   "description": "逻辑数据集"
+  },
+  {
+   "key": "DATASET_VERSION",
+   "displayName": "数据集版本",
+   "description": "版本化快照"
+  },
+  {
+   "key": "INSIGHT_REPORT",
+   "displayName": "洞察报告",
+   "description": "报告产物（M07 唯一报告入口）"
+  },
+  {
+   "key": "INSIGHT_CLAIM",
+   "displayName": "主张",
+   "description": "主 API claims 表；与 VOC 主张两套实现不互映射"
+  },
+  {
+   "key": "INSIGHT_EVIDENCE",
+   "displayName": "运行证据",
+   "description": "运行级五级 L0-L4 证据"
+  },
+  {
+   "key": "VOC_CLAIM",
+   "displayName": "VOC 主张",
+   "description": "VOC 六级证据体系的主张；与主 API claims 不互映射"
+  },
+  {
+   "key": "VOC_GATE",
+   "displayName": "VOC 交付门",
+   "description": "PASS/CONDITIONAL/BLOCKED/NOT_STARTED 四态"
+  },
+  {
+   "key": "DEPLOY_ENV",
+   "displayName": "部署环境",
+   "description": "A=scrapy.luteos.com / B=scrapy.lute-tlz-dddd.top / 本地"
+  },
+  {
+   "key": "OPS_RELEASE",
+   "displayName": "发布记录",
+   "description": "docs/ops/releases.jsonl 条目"
+  },
+  {
+   "key": "DIH_MODULE",
+   "displayName": "业务模块",
+   "description": "M01-M12 + K0 共享内核"
+  },
+  {
+   "key": "PRODUCT_AGENT",
+   "displayName": "产品内 Agent",
+   "description": "configs/agents/registry.json 登记（shusuo、tiktok_cdo）"
+  },
+  {
+   "key": "PITFALL",
+   "displayName": "坑点",
+   "description": "坑点库条目（scope/target/symptom/cause/workaround/failure_class）"
+  },
+  {
+   "key": "DOC_ASSET",
+   "displayName": "文档资产",
+   "description": "方案/规范/ADR/复盘/报告统一承载，doc_kind 属性区分"
+  }
+ ],
+ "linkTypes": [
+  {
+   "key": "BELONGS_TO_DOMAIN",
+   "displayName": "属于业务域",
+   "labels": {
+    "zh": "属于业务域（COLLECTION_PROJECT → PROJECT_DOMAIN）"
+   },
+   "directional": true
+  },
+  {
+   "key": "HAS_SOURCE",
+   "displayName": "配置数据源",
+   "labels": {
+    "zh": "配置数据源（COLLECTION_PROJECT → COLLECTION_SOURCE）"
+   },
+   "directional": true
+  },
+  {
+   "key": "TARGETS_SOURCE",
+   "displayName": "面向数据源",
+   "labels": {
+    "zh": "面向数据源（COLLECTION_TASK → COLLECTION_SOURCE）"
+   },
+   "directional": true
+  },
+  {
+   "key": "RUNS_ON_COLLECTOR",
+   "displayName": "由采集器执行",
+   "labels": {
+    "zh": "由采集器执行（COLLECTION_TASK → COLLECTION_COLLECTOR）"
+   },
+   "directional": true
+  },
+  {
+   "key": "PRODUCES_TASKRUN",
+   "displayName": "产生任务运行",
+   "labels": {
+    "zh": "产生任务运行（COLLECTION_TASK → COLLECTION_TASKRUN）"
+   },
+   "directional": true
+  },
+  {
+   "key": "DELEGATES_TO_TASKRUN",
+   "displayName": "委托任务运行",
+   "labels": {
+    "zh": "委托任务运行（RUN_STEP → COLLECTION_TASKRUN）"
+   },
+   "directional": true
+  },
+  {
+   "key": "INVOKES_ENDPOINT",
+   "displayName": "调用端点",
+   "labels": {
+    "zh": "调用端点（RUN_STEP → COLLECTION_ENDPOINT）"
+   },
+   "directional": true
+  },
+  {
+   "key": "EMITS_RECORD",
+   "displayName": "产出原始记录",
+   "labels": {
+    "zh": "产出原始记录（COLLECTION_TASKRUN → RAW_RECORD）"
+   },
+   "directional": true
+  },
+  {
+   "key": "RESOLVED_BY_COLLECTOR",
+   "displayName": "由采集器解析",
+   "labels": {
+    "zh": "由采集器解析（COLLECTION_ENDPOINT → COLLECTION_COLLECTOR）"
+   },
+   "directional": true
+  },
+  {
+   "key": "SERVED_BY_PROVIDER",
+   "displayName": "由 Provider 提供",
+   "labels": {
+    "zh": "由 Provider 提供（COLLECTION_ENDPOINT → COLLECTION_PROVIDER）"
+   },
+   "directional": true
+  },
+  {
+   "key": "PACKAGED_IN",
+   "displayName": "打包进平台",
+   "labels": {
+    "zh": "打包进平台（COLLECTION_CAPABILITY → COLLECTION_PLATFORM）"
+   },
+   "directional": true
+  },
+  {
+   "key": "MAPS_TO_ENDPOINT",
+   "displayName": "映射到端点",
+   "labels": {
+    "zh": "映射到端点（COLLECTION_CAPABILITY → COLLECTION_ENDPOINT）"
+   },
+   "directional": true
+  },
+  {
+   "key": "MATERIALIZES_DATASET",
+   "displayName": "物化为数据集",
+   "labels": {
+    "zh": "物化为数据集（RAW_RECORD → DATASET_VERSION）"
+   },
+   "directional": true
+  },
+  {
+   "key": "HAS_VERSION",
+   "displayName": "拥有版本",
+   "labels": {
+    "zh": "拥有版本（DATASET → DATASET_VERSION）"
+   },
+   "directional": true
+  },
+  {
+   "key": "SUPPORTS_CLAIM",
+   "displayName": "支撑主张",
+   "labels": {
+    "zh": "支撑主张（INSIGHT_EVIDENCE → INSIGHT_CLAIM）"
+   },
+   "directional": true
+  },
+  {
+   "key": "GROUNDS_IN_RECORD",
+   "displayName": "落在原始记录",
+   "labels": {
+    "zh": "落在原始记录（INSIGHT_EVIDENCE → RAW_RECORD）"
+   },
+   "directional": true
+  },
+  {
+   "key": "PUBLISHES_CLAIM",
+   "displayName": "发布主张",
+   "labels": {
+    "zh": "发布主张（INSIGHT_REPORT → INSIGHT_CLAIM）"
+   },
+   "directional": true
+  },
+  {
+   "key": "GATED_BY",
+   "displayName": "受门禁约束",
+   "labels": {
+    "zh": "受门禁约束（VOC_CLAIM → VOC_GATE）"
+   },
+   "directional": true
+  },
+  {
+   "key": "DEPLOYED_TO",
+   "displayName": "部署到",
+   "labels": {
+    "zh": "部署到（OPS_RELEASE → DEPLOY_ENV）"
+   },
+   "directional": true
+  },
+  {
+   "key": "RUNS_IN_ENV",
+   "displayName": "运行于",
+   "labels": {
+    "zh": "运行于（PRODUCT_AGENT → DEPLOY_ENV）"
+   },
+   "directional": true
+  },
+  {
+   "key": "OWNED_BY_MODULE",
+   "displayName": "归属模块",
+   "labels": {
+    "zh": "归属模块（COLLECTION_TASK → DIH_MODULE）"
+   },
+   "directional": true
+  },
+  {
+   "key": "DEPENDS_ON_MODULE",
+   "displayName": "依赖模块",
+   "labels": {
+    "zh": "依赖模块（DIH_MODULE → DIH_MODULE）"
+   },
+   "directional": true
+  },
+  {
+   "key": "QUERIES_CAPABILITY",
+   "displayName": "调用能力",
+   "labels": {
+    "zh": "调用能力（PRODUCT_AGENT → COLLECTION_CAPABILITY）"
+   },
+   "directional": true
+  },
+  {
+   "key": "AFFECTS_ENDPOINT",
+   "displayName": "影响端点",
+   "labels": {
+    "zh": "影响端点（PITFALL → COLLECTION_ENDPOINT）"
+   },
+   "directional": true
+  },
+  {
+   "key": "AFFECTS_PROVIDER",
+   "displayName": "影响 Provider",
+   "labels": {
+    "zh": "影响 Provider（PITFALL → COLLECTION_PROVIDER）"
+   },
+   "directional": true
+  },
+  {
+   "key": "MITIGATED_BY",
+   "displayName": "缓解方案在",
+   "labels": {
+    "zh": "缓解方案在（PITFALL → DOC_ASSET）"
+   },
+   "directional": true
+  },
+  {
+   "key": "SUPERSEDES",
+   "displayName": "取代",
+   "labels": {
+    "zh": "取代（DOC_ASSET → DOC_ASSET）"
+   },
+   "directional": true
+  }
+ ]
+}
