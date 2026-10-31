@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data Intelligence Hub 项目成果总结 · 2026-10</title>
+<style>
+  :root{
+    color-scheme: light;
+    --bg:#f9f9f7; --surface:#fcfcfb; --ink:#0b0b0b; --ink-2:#52514e; --ink-3:#898781;
+    --line:#e1e0d9; --baseline:#c3c2b7; --code-bg:#f4f3f0;
+    --s1:#2a78d6; --s1-soft:#cde2fb;
+    --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --critical:#d03b3b;
+    --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:where(:not([data-theme="light"])){
+      color-scheme: dark;
+      --bg:#0d0d0d; --surface:#1a1a19; --ink:#ffffff; --ink-2:#c3c2b7; --ink-3:#898781;
+      --line:#2c2c2a; --baseline:#383835; --code-bg:#222620;
+      --s1:#3987e5; --s1-soft:#104281;
+      --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --critical:#d03b3b;
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --bg:#0d0d0d; --surface:#1a1a19; --ink:#ffffff; --ink-2:#c3c2b7; --ink-3:#898781;
+    --line:#2c2c2a; --baseline:#383835; --code-bg:#222620;
+    --s1:#3987e5; --s1-soft:#104281;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.75;-webkit-font-smoothing:antialiased}
+  .wrap{display:flex;max-width:1280px;margin:0 auto}
+
+  /* ---------- 侧栏 ---------- */
+  nav{width:250px;flex:0 0 250px;position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto;padding:32px 20px 40px 24px;border-right:1px solid var(--line)}
+  nav .brand{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:18px;font-weight:600}
+  nav .theme{margin:0 0 16px}
+  nav .theme button{font:inherit;font-size:12.5px;padding:4px 10px;border-radius:5px;border:1px solid var(--baseline);background:var(--surface);color:var(--ink-2);cursor:pointer}
+  nav ol{list-style:none;margin:0;padding:0;counter-reset:s}
+  nav li{counter-increment:s;margin:0 0 2px}
+  nav a{display:block;padding:6px 10px 6px 30px;position:relative;color:var(--ink-2);text-decoration:none;font-size:13.5px;border-radius:5px;transition:background .12s,color .12s}
+  nav a::before{content:counter(s);position:absolute;left:8px;top:6px;font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+  nav a:hover{background:var(--s1-soft);color:var(--ink)}
+
+  /* ---------- 正文 ---------- */
+  main{flex:1;min-width:0;padding:44px 48px 120px;max-width:980px}
+  header.top{margin-bottom:40px;padding-bottom:26px;border-bottom:2px solid var(--ink)}
+  header.top h1{font-size:29px;line-height:1.3;margin:0 0 12px;letter-spacing:-.01em}
+  .sub{color:var(--ink-2);font-size:14.5px;margin:0 0 18px}
+  .meta{display:flex;flex-wrap:wrap;gap:8px}
+  .meta span{font-family:var(--mono);font-size:11.5px;padding:3px 9px;background:var(--surface);border:1px solid var(--baseline);border-radius:4px;color:var(--ink-2)}
+
+  section{margin:0 0 52px;scroll-margin-top:24px}
+  h2{font-size:20px;margin:0 0 18px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+  h3{font-size:16px;margin:26px 0 10px}
+  p{margin:0 0 12px}
+  ul,ol{margin:0 0 14px;padding-left:22px}
+  li{margin:0 0 6px}
+  li::marker{color:var(--ink-3)}
+  strong{font-weight:600}
+  code{font-family:var(--mono);font-size:.88em;background:var(--code-bg);padding:1px 5px;border-radius:4px}
+  .lead{font-size:16px;color:var(--ink)}
+  a{color:var(--s1)}
+
+  table{width:100%;border-collapse:collapse;margin:0 0 16px;font-size:13.5px}
+  th{font-weight:600;text-align:left;color:var(--ink-2);border-bottom:1px solid var(--baseline);padding:7px 10px;background:var(--surface)}
+  td{border-bottom:1px solid var(--line);padding:7px 10px;vertical-align:top}
+  tr:last-child td{border-bottom:1px solid var(--baseline)}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  .tbl-note{font-size:12.5px;color:var(--ink-3);margin:-8px 0 16px}
+
+  .status{display:inline-block;font-size:12px;padding:1px 8px;border-radius:99px;border:1px solid var(--baseline);color:var(--ink-2);white-space:nowrap}
+  .status.ok{border-color:var(--good);color:var(--ink)}
+  .status.warn{border-color:var(--warn)}
+  .status.bad{border-color:var(--critical)}
+
+  /* ---------- KPI ---------- */
+  .kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:0 0 24px}
+  .tile{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px 12px}
+  .tile .label{font-size:12.5px;color:var(--ink-2);margin:0 0 4px}
+  .tile .value{font-size:28px;font-weight:600;line-height:1.15;letter-spacing:-.01em}
+  .tile .note{font-size:11.5px;color:var(--ink-3);margin-top:4px}
+
+  /* ---------- 图表 ---------- */
+  figure.chart{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:18px 18px 12px;margin:0 0 22px}
+  figure.chart figcaption{font-size:13px;color:var(--ink-2);margin:6px 0 0}
+  .chart-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .chart-head .t{font-size:15px;font-weight:600}
+  .chart-head .toggle{font:inherit;font-size:12px;color:var(--ink-2);background:none;border:1px solid var(--baseline);border-radius:5px;padding:2px 10px;cursor:pointer}
+  .chart-head .toggle:hover{color:var(--ink);border-color:var(--ink-3)}
+  .barbox{position:relative;margin:14px 0 4px}
+  .barrow{display:grid;grid-template-columns:96px 1fr;align-items:center;gap:10px;margin:0 0 7px;position:relative}
+  .barrow .cat{font-size:13px;color:var(--ink-2);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .track{position:relative;height:22px}
+  .bar{position:absolute;left:0;top:0;height:22px;background:var(--s1);border-radius:0 4px 4px 0;min-width:2px;transition:filter .12s;outline:none}
+  .bar.baseline{border-radius:0}
+  .barrow:hover .bar,.barrow:focus-within .bar{filter:brightness(1.12)}
+  .bar:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
+  .val{position:absolute;left:calc(var(--w) + 8px);top:50%;transform:translateY(-50%);font-size:12.5px;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .colbox{position:relative;margin:14px 0 4px}
+  .colbox svg{display:block;width:100%;height:auto}
+  .colbox .hit{fill:transparent;cursor:default;outline:none}
+  .colbox .hit:hover + .colrect,.colbox .hit:focus + .colrect{filter:brightness(1.12)}
+  .colbox .hit:focus-visible{stroke:var(--ink);stroke-width:1.5}
+  .grid-lines{position:absolute;inset:0 0 0 0;pointer-events:none}
+  .grid-lines i{position:absolute;left:0;right:0;height:1px;background:var(--line)}
+  .tip{position:fixed;z-index:9;background:var(--surface);border:1px solid var(--baseline);border-radius:6px;padding:7px 10px;font-size:12.5px;color:var(--ink-2);box-shadow:0 4px 14px rgba(0,0,0,.14);pointer-events:none;display:none;max-width:260px;line-height:1.5}
+  .tip b{color:var(--ink);font-weight:600}
+  .tip .key{display:inline-block;width:12px;height:3px;border-radius:2px;background:var(--s1);vertical-align:middle;margin-right:6px}
+  .tblview{display:none;margin-top:12px}
+  figure.chart.showtable .tblview{display:block}
+  figure.chart.showtable .barbox,figure.chart.showtable .colbox{display:none}
+
+  footer{border-top:1px solid var(--line);margin-top:24px;padding-top:18px;font-size:12.5px;color:var(--ink-3)}
+
+  @media (max-width:900px){
+    .wrap{display:block}
+    nav{position:static;width:auto;height:auto;border-right:0;border-bottom:1px solid var(--line)}
+    main{padding:28px 20px 80px}
+  }
+  @media print{
+    nav{display:none}
+    main{max-width:none;padding:0}
+    .tip{display:none!important}
+    figure.chart{break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav>
+  <div class="brand">DIH 成果总结</div>
+  <div class="theme"><button id="themeBtn" type="button">切换深浅色</button></div>
+  <ol>
+    <li><a href="#summary">总结</a></li>
+    <li><a href="#numbers">数字总览</a></li>
+    <li><a href="#timeline">交付时间线</a></li>
+    <li><a href="#detail">成果明细</a></li>
+    <li><a href="#boundary">已知边界</a></li>
+    <li><a href="#terms">术语</a></li>
+    <li><a href="#evidence">证据与口径</a></li>
+  </ol>
+</nav>
+<main>
+<header class="top">
+  <h1>Data Intelligence Hub 项目成果总结</h1>
+  <p class="sub lead">多平台数据采集工作台。项目从 2026-06-12 建仓，到 2026-10-31 形成五层能力：采集目录、双生产环境、双前端控制台、洞察报告管线、治理与测试体系。</p>
+  <div class="meta">
+    <span>报告日期 2026-10-31</span>
+    <span>代码基线 main@0e76364</span>
+    <span>统计范围 2026-06-12 至 10-31（142 天）</span>
+    <span>按 ASD-STE100 等效规则撰写</span>
+  </div>
+</header>
+
+<section id="summary">
+  <h2>1. 总结</h2>
+  <p class="lead">10 月是交付高峰。全史 924 个提交中，10 月占 619 个（67.0%）。单日峰值 97 个提交（10-21）。13 次生产发布全部成功。</p>
+  <table>
+    <thead><tr><th>维度</th><th>关键成果</th></tr></thead>
+    <tbody>
+      <tr><td>采集能力</td><td>70 平台、311 能力视图、283 唯一端点，200 个 verified（2026-10-21 实测）</td></tr>
+      <tr><td>生产环境</td><td>A/B 双生产在线，发布门禁与回滚体系完整，13 次发布全部成功</td></tr>
+      <tr><td>产品界面</td><td>控制台 26 页 + 洞察应用 29 页，导航收敛为 4 个一级项</td></tr>
+      <tr><td>洞察管线</td><td>VOC 自动报告管线交付：六档证据、12 类禁写闸门、六级计数链</td></tr>
+      <tr><td>Agent</td><td>数说飞书机器人在生产 A 上线；MCP Runtime 注册 39 个工具</td></tr>
+      <tr><td>数据中心</td><td>ABI 外部数据中心交付：48 表、766 字段、上传审批导出闭环</td></tr>
+      <tr><td>质量</td><td>306 个测试文件、2807 个测试函数、CI 7 个 job、67 个迁移</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="numbers">
+  <h2>2. 数字总览</h2>
+
+  <div class="kpi">
+    <div class="tile"><div class="label">总提交数</div><div class="value">924</div><div class="note">至 2026-10-31</div></div>
+    <div class="tile"><div class="label">平台</div><div class="value">70</div><div class="note">2026-10-21 生产</div></div>
+    <div class="tile"><div class="label">能力视图</div><div class="value">311</div><div class="note">2026-10-21 生产</div></div>
+    <div class="tile"><div class="label">唯一端点</div><div class="value">283</div><div class="note">200 verified</div></div>
+    <div class="tile"><div class="label">测试函数</div><div class="value">2807</div><div class="note">306 个文件</div></div>
+    <div class="tile"><div class="label">生产发布</div><div class="value">13</div><div class="note">全部成功</div></div>
+  </div>
+
+  <h3>2.1 月度提交节奏</h3>
+  <figure class="chart" id="fig-month">
+    <div class="chart-head">
+      <span class="t">按月提交数（2026-06 至 2026-10）</span>
+      <button class="toggle" type="button" data-target="fig-month">表格视图</button>
+    </div>
+    <div class="colbox" id="monthChart" role="img" aria-label="柱状图：6 月 191，7 月 43，8 月 63，9 月 8，10 月 619 个提交"></div>
+    <div class="tblview">
+      <table>
+        <thead><tr><th>月份</th><th class="num">提交</th><th class="num">活跃日</th></tr></thead>
+        <tbody>
+          <tr><td>2026-06</td><td class="num">191</td><td class="num">15</td></tr>
+          <tr><td>2026-07</td><td class="num">43</td><td class="num">8</td></tr>
+          <tr><td>2026-08</td><td class="num">63</td><td class="num">7</td></tr>
+          <tr><td>2026-09</td><td class="num">8</td><td class="num">3</td></tr>
+          <tr><td>2026-10</td><td class="num">619</td><td class="num">22</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <figcaption>单系列，无需图例。峰值 10-21 单日 97 个提交，第二峰值 10-09 单日 93 个。</figcaption>
+  </figure>
+
+  <h3>2.2 端点实测状态分布</h3>
+  <figure class="chart" id="fig-status">
+    <div class="chart-head">
+      <span class="t">283 个唯一端点的实测状态（2026-10-21 生产 providers/status）</span>
+      <button class="toggle" type="button" data-target="fig-status">表格视图</button>
+    </div>
+    <div class="barbox" id="statusChart" role="img" aria-label="条形图：verified 200，config-gated 57，degraded 12，empty 10，untested 3，disabled 1"></div>
+    <div class="tblview">
+      <table>
+        <thead><tr><th>状态</th><th class="num">端点数</th><th>含义</th></tr></thead>
+        <tbody>
+          <tr><td>verified</td><td class="num">200</td><td>最近一次 test 运行成功且返回 ≥1 条记录</td></tr>
+          <tr><td>config-gated</td><td class="num">57</td><td>需要配置凭据或自建服务</td></tr>
+          <tr><td>degraded</td><td class="num">12</td><td>上游侧问题，功能受限</td></tr>
+          <tr><td>empty</td><td class="num">10</td><td>运行成功但返回 0 条</td></tr>
+          <tr><td>untested</td><td class="num">3</td><td>未执行 test</td></tr>
+          <tr><td>disabled</td><td class="num">1</td><td>已停用</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <figcaption>单系列，颜色不承担状态语义；状态含义由行名与表格承载。</figcaption>
+  </figure>
+
+  <h3>2.3 其他关键数字</h3>
+  <table>
+    <thead><tr><th>指标</th><th class="num">值</th><th>口径日期</th></tr></thead>
+    <tbody>
+      <tr><td>活跃天数</td><td class="num">55</td><td>10 月占 22 天；至 2026-10-31</td></tr>
+      <tr><td>数据库迁移</td><td class="num">67</td><td>head <code>202610290067</code>，2026-10-31 本地</td></tr>
+      <tr><td>MCP 工具注册数</td><td class="num">39</td><td>代码统计 10-31；文档快照 25 已过期</td></tr>
+      <tr><td>TikTok 工具</td><td class="num">16</td><td>8 内容 + 4 电商 + 2 商品关系 + 2 广告</td></tr>
+      <tr><td>平台 Playbook</td><td class="num">70</td><td>2026-10-31 统计</td></tr>
+      <tr><td>坑点库</td><td class="num">119 条 / 34 平台</td><td>catalog_digest <code>35ead4d9</code></td></tr>
+      <tr><td>ADR</td><td class="num">8</td><td>ADR-001 至 008</td></tr>
+      <tr><td>文档</td><td class="num">212 个 md，约 9.3 MB</td><td>2026-10-31 统计</td></tr>
+    </tbody>
+  </table>
+  <p class="tbl-note">同日锁文件已更新为 284 工具 / 226 可执行（新增 <code>exa_agent_research</code>）。当前值以生产 <code>GET /api/tool-catalog</code> 为准。</p>
+</section>
+
+<section id="timeline">
+  <h2>3. 交付时间线</h2>
+  <p>节奏呈「集中冲刺—停顿」。三段停更：07-15 至 08-12（29 天）、08-21 至 09-01（12 天）、09-05 至 10-07（33 天）。10 月连续 22 个活跃日。</p>
+  <h3>3.1 月度主题</h3>
+  <table>
+    <thead><tr><th>月份</th><th>主题</th></tr></thead>
+    <tbody>
+      <tr><td>2026-06</td><td>建仓、前端原型、部署资产、真实数据闭环（191 提交）</td></tr>
+      <tr><td>2026-07</td><td>能力目录契约、社媒自动化 PRD v2（43）</td></tr>
+      <tr><td>2026-08</td><td>采集器四批扩张、平台能力中心（63）</td></tr>
+      <tr><td>2026-09</td><td>采集器补齐：包管理端点 +18（8）</td></tr>
+      <tr><td>2026-10</td><td>全面爆发：能力实测、TikTok R1、双生产、VOC 管线、ABI（619）</td></tr>
+    </tbody>
+  </table>
+  <h3>3.2 10 月关键合并点</h3>
+  <table>
+    <thead><tr><th>日期</th><th>事件</th></tr></thead>
+    <tbody>
+      <tr><td>10-09</td><td>平台 Skill/MCP 打包、数据集工作区重设计（单日 93 提交）</td></tr>
+      <tr><td>10-13</td><td>六项采集器缺陷修复（79a054b）</td></tr>
+      <tr><td>10-14</td><td>Apify 十平台深挖合入：10 份方案卡、16 个新端点</td></tr>
+      <tr><td>10-15</td><td>目录收缩：摘除 8 端点、清理 31 幽灵端点，平台包 74→70</td></tr>
+      <tr><td>10-18</td><td>DIH P0 前端双生产上线</td></tr>
+      <tr><td>10-19</td><td>TikTok R1 收尾：16 工具、21 张 canonical 表</td></tr>
+      <tr><td>10-21</td><td>单日 97 提交：Exa P0、报告合同、MCP 密钥隔离</td></tr>
+      <tr><td>10-22</td><td>生产 B 发布门禁闭合（schema 053→056）</td></tr>
+      <tr><td>10-24</td><td>SP-12 确认卡、SP-36 发布前置检查合入</td></tr>
+      <tr><td>10-25</td><td>N1 授权治理修复（F1-F12）合入</td></tr>
+      <tr><td>10-26</td><td>S0 报告链合入（含 B4/B5 祖先）</td></tr>
+      <tr><td>10-28</td><td>Agent 台账与评测集合入；apps/web 挂 /insight；真实链路 E2E 落地</td></tr>
+      <tr><td>10-29</td><td>ABI 数据中心交付；单日 12 次发布全部成功</td></tr>
+      <tr><td>10-31</td><td>VOC 自动报告管线、gov-c2 契约冻结、导航收敛合入</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="detail">
+  <h2>4. 成果明细</h2>
+
+  <h3>4.1 平台能力与采集目录 <span class="status ok">已完成</span></h3>
+  <p>70 平台 × 36 collector group 的采集目录，含实测验收体系。</p>
+  <ul>
+    <li>能力视图 311 个、唯一端点 283 个（2026-10-21 生产实测，<code>catalog_digest=e5169ab2</code>）。</li>
+    <li>verified 语义收紧：「最近一次 test 运行成功且返回 ≥1 条记录」。此前 catalog 标 266 verified，实测仅 101 个返回数据（2026-10-09 全量测绘）。</li>
+    <li>目录收缩：摘除 8 个不可用端点，清理 31 个幽灵端点，平台包 74→70。</li>
+    <li>Apify 治理：10 平台方案卡；103 个 Actor 巡检（76 存活 / 25 下架 / 2 废弃）；主力按 30 天成功率更换（Reddit 87.2%→97.7%，Google Trends 56.6%→99.5%）；月检脚本覆盖 85 个 Actor。</li>
+    <li>六项采集器修复（79a054b）：aliens_eye 修复后 854 站点扫描 29.1 秒、461 条、0 错误；单测 1361 通过。</li>
+    <li>Exa 对齐：P0-A/B/C 已上线验收；P1 首批（搜索监控、用量成本、Contents 2.0）已验收；P1 后续已实现待发布。</li>
+  </ul>
+
+  <h3>4.2 生产环境与发布体系 <span class="status ok">已完成</span></h3>
+  <table>
+    <thead><tr><th>项</th><th>生产 A</th><th>生产 B</th></tr></thead>
+    <tbody>
+      <tr><td>域名</td><td>scrapy.luteos.com</td><td>scrapy.lute-tlz-dddd.top</td></tr>
+      <tr><td>主机</td><td>43.163.92.244</td><td>101.34.52.232</td></tr>
+      <tr><td>分支</td><td>main</td><td>deploy/tiktok-cdo-codex</td></tr>
+      <tr><td>定位</td><td>主生产</td><td>TikTok CDO 专用</td></tr>
+    </tbody>
+  </table>
+  <ul>
+    <li>发布账本 <code>docs/ops/releases.jsonl</code>：13 次 <code>deploy-p0.sh</code> 发布全部成功（10-28 至 10-29），其中 10-29 单日 12 次。</li>
+    <li>两层发布门禁：本地 <code>scripts/preflight-production.sh</code> 检查公网健康、容器状态、edge 固定 IP、密钥格式、工具数；失败在拉码前阻断。</li>
+    <li>回滚体系：7 条触发条件、4 条回滚路径、发布前数据库备份与 rollback packet。</li>
+    <li>生产 B 门禁 10-22 闭合：schema <code>202610210053→202610220056</code>，备份 2.58 MB / 981 TOC。</li>
+    <li>网络隔离：无 host 端口绑定；edge 固定 IP <code>172.20.0.16</code>；共享网关 reload 带 dry-run。</li>
+    <li>超时分层：quick-collect 1800s / 应用守卫 1700s / 采集子进程 1500s / MCP 3600s。</li>
+  </ul>
+
+  <h3>4.3 控制台与双前端 <span class="status ok">已完成</span></h3>
+  <ul>
+    <li>采集管理台 <code>apps/scraper-console</code>：26 个页面。覆盖能力目录、工作台、报告中心、项目/任务/运行/资产、ABI 看板、监控、用量、设置。</li>
+    <li>洞察应用 <code>apps/web</code>：29 个页面，10-28 起挂 <code>/insight</code> 子路径，生产容器独立运行。</li>
+    <li>导航收敛（b0b19b2）：13 个一级项收敛为 4 个（工作台/报告/连接器/设置），补移动抽屉、错误页与跨应用入口。</li>
+    <li>旧路径承接：7 条永久重定向冻结于 <code>routes.ts</code>。</li>
+    <li>工作台五步流程：问题→计划→采集→分析→报告；受阻步骤如实显示 blocked，不造假数据。</li>
+    <li>报告阅读页带证据等级门禁：等级不足时不显示「已确认」。</li>
+    <li>浏览器冒烟：<code>scripts/test_console_routes_e2e.sh</code> 覆盖 16 页面 + 7 条重定向，23 项通过。</li>
+  </ul>
+
+  <h3>4.4 TikTok R1 采集能力 <span class="status ok">已完成</span></h3>
+  <ul>
+    <li>数据模型：21 张 canonical 表（迁移 <code>202610190045</code>）。</li>
+    <li>工具面：16 个 <code>tiktok_*</code> 工具接入 MCP 与控制台工具台；2 个商品关系工具受创作者 Cookie 门控。</li>
+    <li>探测：TikHub 31 端点探测报告（2026-10-19）。</li>
+    <li>边界：创作者 Cookie 走工作区凭证 + 使用时弹窗；未把登录态伪装成 OAuth。跨项目实体冲突跳过并计数。</li>
+  </ul>
+
+  <h3>4.5 VOC 自动洞察报告管线 <span class="status ok">已完成</span></h3>
+  <p>从手工报告逆向为可执行管线，含三道防自欺闸门（7dab731，10-31 合入）。规模 311 文件、约 10.8 万行。</p>
+  <ul>
+    <li>六级计数链：raw_object → occurrence → canonical_record → frame_membership → annotation → metric_row，逐级对账，禁止跨帧相加。run-20261029 实测 430 raw objects 全链贯通。</li>
+    <li>六档证据：Not authorized &gt; Blocked &gt; Evidence gap &gt; Confirmed &gt; Directional &gt; Supported hypothesis。Directional 需同帧 ≥8 条、≥2 作者、方向一致度 ≥70%。</li>
+    <li>禁写闸门：12 类禁止结论（FC-01..FC-12），机器检测，命中即构建失败。提交信息写 14 条，以 spec 与代码的 12 条为准。</li>
+    <li>另两道闸门：精度按信源分列；小样本（n&lt;8）禁出统计量。</li>
+    <li>视频层：141 个视频、124 个达人；样本不足时只出计数。</li>
+    <li>交付物：单文件 HTML 报告，零外部依赖；每图带 Basis / Unit / Limit / Status 四键图注。</li>
+    <li>质量：报告校验 34/34、spec 13/13、单测 139/139。已修 7 类实质缺陷（词典编码 recall 30.6%→LLM 编码）。</li>
+  </ul>
+
+  <h3>4.6 Agent 与飞书集成 <span class="status ok">已完成</span></h3>
+  <ul>
+    <li>数说飞书机器人在生产 A 端到端验收：<code>/api/agents/shusuo/health</code> 返回 ready，allowlist 8 个群。</li>
+    <li>事件订阅必须用 v7 config 接口；3 秒回执 + BackgroundTasks；event_id 去重（10 分钟）。</li>
+    <li>群 mention 闸门：群聊仅被 @ 时回复；config-gated、策略拦截、disabled 一律拒绝采集。</li>
+    <li>SP-12 确认卡（10-24）：自由文本不执行采集；提案 token 300 秒过期、单次消费。</li>
+    <li>Agent 台账 <code>configs/agents/registry.json</code>：登记 2 个 live Agent，CI 校验 entry/health/env_keys/sha256。</li>
+    <li>评测集：shusuo p0 170 行 + tiktok_cdo p0 386 行，runner 381 行。</li>
+    <li>意图图谱：258 个端点（10-15 快照）编排为四类意图目录，首期只用 verified 端点。</li>
+    <li>MCP Runtime：代码注册 39 个工具（发现、采集、报告、监控、Exa 四件套、16 个 TikTok 工具）。</li>
+  </ul>
+
+  <h3>4.7 ABI 外部数据中心 <span class="status ok">已完成</span></h3>
+  <p>Apify 数据的独立 Postgres 数据中心，含上传、审批、导出闭环（10-29 交付）。</p>
+  <ul>
+    <li>Schema：48 张表、766 字段（真实 PG16 <code>information_schema</code> 清单，非代码推断）。meta / raw / abi 三 schema。</li>
+    <li>迁移：060–064 与 066–067（字段遮罩、导出策略唯一约束）。</li>
+    <li>部署面：Compose 三个服务 <code>abi-migrate</code> / <code>abi-ingest</code> / <code>abi-export</code>；控制台 <code>/abi</code> 看板。</li>
+    <li>数据接入：<code>scripts/apify_lake/</code> 工具链 13 个文件、3520 行。推送、隧道、归因、入库、过期 dataset 抢救、飞书同步。实测 8383 dataset / 247263 item。token 不硬编码。</li>
+    <li>导出治理：双人审批闭环；PII 降级保护与遮罩统一；撤权后不可下载；导出策略管理面。已修 5 类实质缺陷。</li>
+    <li><span class="status warn">注意</span> 方案文档头仍标「待批准」，与 10-29 交付事实不一致。文档滞后，以代码与 Compose 为准。</li>
+  </ul>
+
+  <h3>4.8 治理、测试与文档体系 <span class="status ok">已完成</span></h3>
+  <ul>
+    <li>采集外访安全边界（10-18）：默认 offline，无 unrestricted 模式；批准须精确主机、时区有效期、请求预算 1-50 次。</li>
+    <li>测试：306 文件 / 2807 函数（unit 2404、integration 290、postgres 113）；console 15 个测试文件。</li>
+    <li>CI：7 个 job；API 门禁 8 道检查；含 web 真实链路 E2E 与 console 路由 E2E。</li>
+    <li>ADR-008 真实链路 E2E 门禁（10-28 采纳）：五服务一次性本地栈，真实采集两次，5 个真实 HTTP 响应证明非 mock。</li>
+    <li>文档资产：212 个 md；8 条 ADR；70 份平台 Playbook；坑点库 119 条 / 34 平台；21 个 workflow；5 篇复盘。</li>
+    <li>复盘机制：近一周复盘沉淀 14 个事件、8 项资产、19 条待办 ticket。SP-Agent-TODO 65 条，同步飞书多维表格。</li>
+    <li>Monid 竞品研究：3 份逆向与差距分析（约 113K），75 行差距矩阵，P0-P4 路线 52.5-87 人日。</li>
+    <li>Governed Task Platform：17 份切片计划全部写完；C1 契约 v1.1 已合入（10-31，registry 8057 行 + 冻结守卫）；其余切片未开始。</li>
+    <li>写作标准：ASD-STE100 等效规则成文；ste-zh skill 已安装并与上游仓库一致（10-31 diff 核验）。</li>
+  </ul>
+</section>
+
+<section id="boundary">
+  <h2>5. 已知边界与未完成</h2>
+  <p>范围截至 2026-10-31。状态词按固定口径。</p>
+  <table>
+    <thead><tr><th>事项</th><th>状态</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>生产 A 当前 schema</td><td><span class="status">未确认</span></td><td>最后文档口径 <code>202610220056</code>（10-22）；本地 head 已到 067；13 次发布是否含迁移未记录</td></tr>
+      <tr><td>B 与主线的代码差</td><td><span class="status">未确认</span></td><td>B 在 <code>deploy/tiktok-cdo-codex@bf7a281</code>，与 main 差距未盘点</td></tr>
+      <tr><td>工作台计划/分析两步</td><td><span class="status bad">阻塞</span></td><td>后端端点未挂载，页面如实显示 blocked</td></tr>
+      <tr><td>快速采集表单契约</td><td><span class="status warn">部分完成</span></td><td>126 个端点无表项；52 个端点会静默采回测试数据</td></tr>
+      <tr><td>VOC G7 双盲编码</td><td><span class="status">未开始</span></td><td>metric rows 恒为 0；结论最高停在 Directional</td></tr>
+      <tr><td>视频层证据</td><td><span class="status warn">部分完成</span></td><td>仅 10 条 exact 基线；无层满足 n≥8 双侧条件</td></tr>
+      <tr><td>Governed Task Platform C2-C14</td><td><span class="status">未开始</span></td><td>计划 17/17 已写，代码除 C1 外 0/15</td></tr>
+      <tr><td>外访批准主机超上限</td><td><span class="status bad">阻塞</span></td><td>public_feed 21 个，超每类 5 个上限，须分批改配置</td></tr>
+      <tr><td>STE 标准自动校验</td><td><span class="status">未开始</span></td><td>CI 无 STE 检查，依赖人工</td></tr>
+      <tr><td>版本号发布 tag</td><td><span class="status">未开始</span></td><td>6 个 tag 全为归档/备份；追溯靠发布账本提交</td></tr>
+      <tr><td>飞书机器人生产 B</td><td><span class="status">未开始</span></td><td>webhook 200 但凭证为空；按 10-19 决定暂缓</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="terms">
+  <h2>6. 术语</h2>
+  <table>
+    <tbody>
+      <tr><td>能力视图</td><td>工具在某平台分类下的展示条目（catalog 条目）</td></tr>
+      <tr><td>端点</td><td>endpoint，一个可调用的采集入口</td></tr>
+      <tr><td>verified</td><td>最近一次 test 运行成功且返回 ≥1 条记录</td></tr>
+      <tr><td>config-gated</td><td>端点可用，但需要配置凭据或自建服务</td></tr>
+      <tr><td>平台包</td><td>platform package（Skill），平台采集能力的封装</td></tr>
+      <tr><td>工具</td><td>用户可调用的最小单元（<code>tool_id</code>）</td></tr>
+      <tr><td>运行</td><td>一次调用的执行记录（采集类由 <code>TaskRun</code> 承载）</td></tr>
+      <tr><td>MCP</td><td>Model Context Protocol。共享工具入口在 <code>/mcp/</code></td></tr>
+      <tr><td>VOC</td><td>Voice of Customer，用户声音洞察</td></tr>
+      <tr><td>ABI</td><td>外部数据中心，Apify 原始数据的独立 Postgres 库</td></tr>
+      <tr><td>禁写闸门</td><td>报告渲染前的机器检查。命中禁止结论即构建失败</td></tr>
+      <tr><td>ADR</td><td>Architecture Decision Record，架构决策记录</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="evidence">
+  <h2>7. 证据与口径说明</h2>
+  <ul>
+    <li>数字一律标注口径日期。不同日期的数字不比较、不平均。</li>
+    <li>仓库内冲突口径已在正文标注（MCP 25/39、禁写清单 12/14、工具目录 283/284）。</li>
+    <li>本报告由 8 个并行代理读取仓库材料后汇总，另有完整性复核。证据格式为 <code>路径:行号</code> 或提交号。</li>
+    <li>主要证据文件：<code>README.md</code>；<code>docs/【运维手册】生产环境基线.md</code>；<code>docs/architecture/【能力总账】DIH-平台能力现状与维护手册.md</code>；<code>docs/architecture/【能力图谱】DIH-控制台能力地图.md</code>；<code>docs/ops/releases.jsonl</code>；<code>docs/retro/2026-10-21-近一周复盘.md</code>；<code>voc_pipeline/</code>；<code>docs/plans/abi-schema-manifest.md</code>。</li>
+  </ul>
+  <footer> companion 文档：<a href="./项目成果总结-2026-10.md">项目成果总结-2026-10.md</a>（同目录 Markdown 版）</footer>
+</section>
+</main>
+</div>
+
+<div class="tip" id="tip" role="status" aria-hidden="true"></div>
+
+<script>
+(function(){
+  'use strict';
+  var tip = document.getElementById('tip');
+  var surface = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim();
+
+  function showTip(evt, title, body){
+    tip.textContent = '';
+    var t = document.createElement('b'); t.textContent = title;
+    tip.appendChild(t);
+    if(body){ var s = document.createElement('div'); s.textContent = body; tip.appendChild(s); }
+    tip.style.display = 'block';
+    moveTip(evt);
+  }
+  function moveTip(evt){
+    var pad = 14, w = tip.offsetWidth, h = tip.offsetHeight;
+    var x = evt.clientX + pad, y = evt.clientY + pad;
+    if(x + w > window.innerWidth - 8) x = evt.clientX - w - pad;
+    if(y + h > window.innerHeight - 8) y = evt.clientY - h - pad;
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  }
+  function hideTip(){ tip.style.display = 'none'; }
+
+  function mark(bar, label, value, note){
+    bar.tabIndex = 0;
+    function fire(e){ showTip(e, label, value + (note ? ' · ' + note : '')); }
+    bar.addEventListener('pointermove', fire);
+    bar.addEventListener('pointerleave', hideTip);
+    bar.addEventListener('focus', function(e){ showTip({clientX:bar.getBoundingClientRect().right, clientY:bar.getBoundingClientRect().top}, label, value); });
+    bar.addEventListener('blur', hideTip);
+  }
+
+  /* ---- 图 1：月度提交（SVG 柱状） ---- */
+  (function(){
+    var data = [
+      {m:'2026-06', v:191, d:'15 活跃日'},
+      {m:'2026-07', v:43,  d:'8 活跃日'},
+      {m:'2026-08', v:63,  d:'7 活跃日'},
+      {m:'2026-09', v:8,   d:'3 活跃日'},
+      {m:'2026-10', v:619, d:'22 活跃日'}
+    ];
+    var W = 560, H = 300, padL = 44, padR = 12, padT = 26, padB = 34;
+    var plotW = W - padL - padR, plotH = H - padT - padB;
+    var max = 640;
+    var NS = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    svg.setAttribute('role', 'presentation');
+    function el(name, attrs){
+      var e = document.createElementNS(NS, name);
+      for(var k in attrs) e.setAttribute(k, attrs[k]);
+      return e;
+    }
+    // colors via CSS custom properties so SVG follows the theme toggle
+    function svgColor(name){ return 'var(' + name + ')'; }
+    // gridlines at 0/200/400/600
+    [0,200,400,600].forEach(function(g){
+      var y = padT + plotH - g/max*plotH;
+      var ln = el('line', {x1:padL, y1:y, x2:W-padR, y2:y, 'stroke-width':1});
+      ln.style.stroke = (g===0 ? 'var(--baseline)' : 'var(--line)');
+      svg.appendChild(ln);
+      var t = el('text', {x:padL-8, y:y+4, 'text-anchor':'end', 'font-size':11, style:'fill:var(--ink-3);font-variant-numeric:tabular-nums'});
+      t.textContent = g;
+      svg.appendChild(t);
+    });
+    var slot = plotW / data.length;
+    var barW = 24;
+    data.forEach(function(d, i){
+      var cx = padL + slot*i + slot/2;
+      var h = Math.max(2, d.v/max*plotH);
+      var y = padT + plotH - h;
+      var col = el('rect', {x:cx-barW/2, y:y, width:barW, height:h, rx:4});
+      col.style.fill = 'var(--s1)';
+      col.style.transition = 'filter .12s';
+      svg.appendChild(col);
+      var hit = el('rect', {x:padL+slot*i, y:padT, width:slot, height:plotH, 'class':'hit', tabindex:0, role:'graphics-symbol', 'aria-label': d.m + '：' + d.v + ' 个提交，' + d.d});
+      // value label above bar
+      var vt = el('text', {x:cx, y:y-7, 'text-anchor':'middle', 'font-size':12.5, style:'fill:var(--ink);font-variant-numeric:tabular-nums'});
+      vt.textContent = d.v;
+      svg.appendChild(vt);
+      // month label below baseline
+      var ml = el('text', {x:cx, y:H-10, 'text-anchor':'middle', 'font-size':12.5, style:'fill:var(--ink-2)'});
+      ml.textContent = d.m;
+      svg.appendChild(ml);
+      function fire(e){ showTip(e, d.m, d.v + ' 个提交 · ' + d.d); }
+      hit.addEventListener('pointermove', fire);
+      hit.addEventListener('pointerleave', hideTip);
+      hit.addEventListener('focus', function(e){ var r = hit.getBoundingClientRect(); showTip({clientX:r.left+r.width/2, clientY:r.top}, d.m, d.v + ' 个提交 · ' + d.d); });
+      hit.addEventListener('blur', hideTip);
+      hit.addEventListener('pointerenter', function(){ col.style.filter = 'brightness(1.12)'; });
+      hit.addEventListener('pointerleave', function(){ col.style.filter = ''; });
+      svg.appendChild(hit);
+    });
+    document.getElementById('monthChart').appendChild(svg);
+  })();
+
+  /* ---- 图 2：端点状态（条形） ---- */
+  (function(){
+    var data = [
+      {k:'verified', v:200, note:'test 成功且 ≥1 条'},
+      {k:'config-gated', v:57, note:'需凭据或自建服务'},
+      {k:'degraded', v:12, note:'上游侧问题'},
+      {k:'empty', v:10, note:'成功但 0 条'},
+      {k:'untested', v:3, note:'未执行 test'},
+      {k:'disabled', v:1, note:'已停用'}
+    ];
+    var max = 200, box = document.getElementById('statusChart');
+    data.forEach(function(d){
+      var row = document.createElement('div'); row.className = 'barrow';
+      var cat = document.createElement('div'); cat.className = 'cat'; cat.textContent = d.k;
+      var track = document.createElement('div'); track.className = 'track';
+      var bar = document.createElement('div'); bar.className = 'bar';
+      var w = Math.max(0.6, d.v/max*100);
+      bar.style.width = w + '%';
+      var val = document.createElement('span'); val.className = 'val';
+      val.style.setProperty('--w', w + '%');
+      val.textContent = d.v;
+      track.appendChild(bar); track.appendChild(val);
+      row.appendChild(cat); row.appendChild(track);
+      mark(bar, d.k, d.v + ' 个端点', d.note);
+      row.appendChild(cat === null ? track : track); /* keep order */
+      box.appendChild(row);
+    });
+  })();
+
+  /* ---- 表格视图切换 ---- */
+  document.querySelectorAll('.chart-head .toggle').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var fig = document.getElementById(btn.getAttribute('data-target'));
+      var on = fig.classList.toggle('showtable');
+      btn.textContent = on ? '图表视图' : '表格视图';
+    });
+  });
+
+  /* ---- 深浅色切换 ---- */
+  var btn = document.getElementById('themeBtn');
+  btn.addEventListener('click', function(){
+    var root = document.documentElement;
+    var cur = root.getAttribute('data-theme');
+    var dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var effectiveDark = cur === 'dark' || (cur !== 'light' && dark);
+    root.setAttribute('data-theme', effectiveDark ? 'light' : 'dark');
+  });
+})();
+</script>
+</body>
+</html>
