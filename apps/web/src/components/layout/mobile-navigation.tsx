@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { AppSwitchLink } from "@/components/layout/app-switch-link";
 import {
   isNavigationChildActive,
   isNavigationItemActive,
@@ -184,6 +185,10 @@ export function MobileNavigation() {
                 );
               })}
             </nav>
+
+            <div className="mt-6 border-t border-[var(--border-subtle)] pt-4">
+              <AppSwitchLink onNavigate={close} />
+            </div>
           </aside>
         </>
       ) : null}

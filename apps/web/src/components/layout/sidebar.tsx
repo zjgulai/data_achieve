@@ -4,6 +4,7 @@ import { ChartNoAxesCombined } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
+import { AppSwitchLink } from "@/components/layout/app-switch-link";
 import {
   isNavigationChildActive,
   isNavigationItemActive,
@@ -80,6 +81,10 @@ export function Sidebar() {
           );
         })}
       </nav>
+
+      <div className="mt-auto border-t border-[var(--border-subtle)] pt-4">
+        <AppSwitchLink />
+      </div>
     </aside>
   );
 }

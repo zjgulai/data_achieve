@@ -23,6 +23,7 @@ import type { Project } from "@/lib/api/projects";
 import type { CollectionTask } from "@/lib/api/tasks";
 import { fetchWorkbenchSnapshot, previewWorkbenchPlan } from "@/lib/api/workbench";
 import type { WorkbenchPlanDraft } from "@/lib/api/workbench";
+import { AppShell } from "@/components/layout/app-shell";
 import { hrefWithParams, mergeParams } from "@/lib/url-state";
 import {
   buildWorkbenchSteps,
@@ -98,10 +99,6 @@ const STEP_STATUS_META: Record<
   },
 };
 
-/** 顶栏的链接样式。 */
-const TOP_LINK_CLASS =
-  "rounded-[var(--radius-2)] px-2.5 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]";
-
 /** 格式化时间。无法解析时返回短横线。 */
 function formatTime(value: string | null): string {
   if (value === null || value === "") return "—";
@@ -122,76 +119,6 @@ function planErrorMessage(error: unknown): string {
     return `计划预览接口未实现（${detail}）。后端缺 ${MISSING_WORKBENCH_ENDPOINTS.previewPlan}。`;
   }
   return `计划预览失败：${detail}`;
-}
-
-/* ─────────────────────────────────────────────────────────────
-   Top bar
-───────────────────────────────────────────────────────────── */
-
-function WorkbenchTopBar({
-  projects,
-  projectId,
-  onProjectChange,
-  tasks,
-}: {
-  projects: Project[];
-  projectId: string;
-  onProjectChange: (value: string) => void;
-  tasks: CollectionTask[];
-}) {
-  const summary = summarizeTasks(tasks);
-  return (
-    <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-[var(--border-subtle)] bg-[var(--surface-primary)] px-4 sm:px-6">
-      <Link
-        href="/"
-        className="flex shrink-0 items-center gap-2 text-sm font-bold text-[var(--text-primary)]"
-      >
-        <span className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-2)] bg-[var(--action-primary)] text-xs font-bold text-[var(--text-inverse)]">
-          DI
-        </span>
-        <span className="hidden sm:inline">洞察工作台</span>
-      </Link>
-      <span
-        className="hidden h-5 w-px bg-[var(--border-subtle)] sm:block"
-        aria-hidden="true"
-      />
-      <div className="flex min-w-0 items-center gap-2">
-        <label
-          htmlFor="workbench-project"
-          className="shrink-0 text-xs font-medium text-[var(--text-tertiary)]"
-        >
-          项目
-        </label>
-        <select
-          id="workbench-project"
-          value={projectId}
-          onChange={event => onProjectChange(event.target.value)}
-          className="h-9 max-w-[13rem] rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] px-2 text-sm text-[var(--text-primary)]"
-        >
-          <option value="">全部项目</option>
-          {projects.map(project => (
-            <option key={project.id} value={project.id}>
-              {project.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      <p className="ml-auto hidden text-xs tabular-nums text-[var(--text-tertiary)] md:block">
-        任务 {summary.total} · 启用 {summary.enabled}
-      </p>
-      <nav aria-label="辅助导航" className="flex shrink-0 items-center gap-1">
-        <Link href="/projects" className={TOP_LINK_CLASS}>
-          项目
-        </Link>
-        <Link href="/runs" className={TOP_LINK_CLASS}>
-          运行
-        </Link>
-        <Link href="/tools" className={TOP_LINK_CLASS}>
-          能力目录
-        </Link>
-      </nav>
-    </header>
-  );
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -240,7 +167,7 @@ function LeftRail({
   return (
     <aside
       aria-label="项目与任务"
-      className="min-w-0 border-b border-[var(--border-subtle)] bg-[var(--surface-primary)] lg:h-[calc(100dvh-3.5rem)] lg:overflow-y-auto lg:border-b-0 lg:border-r"
+      className="min-w-0 border-b border-[var(--border-subtle)] bg-[var(--surface-primary)] xl:h-full xl:overflow-y-auto xl:border-b-0 xl:border-r"
     >
       <section className="p-4">
         <div className="flex items-center justify-between">
@@ -746,7 +673,7 @@ function RightRail() {
   return (
     <aside
       aria-label="门禁与成本说明"
-      className="min-w-0 space-y-5 border-t border-[var(--border-subtle)] bg-[var(--surface-primary)] p-4 lg:h-[calc(100dvh-3.5rem)] lg:overflow-y-auto lg:border-l lg:border-t-0"
+      className="min-w-0 space-y-5 border-t border-[var(--border-subtle)] bg-[var(--surface-primary)] p-4 xl:h-full xl:overflow-y-auto xl:border-l xl:border-t-0"
     >
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
@@ -848,6 +775,7 @@ function WorkbenchContent() {
     snapshot !== null && snapshot.reports.length > 0
       ? snapshot.reports[0]
       : null;
+  const summary = summarizeTasks(tasks);
 
   const steps = buildWorkbenchSteps({ question, latestRun, latestReport });
   const hasData =
@@ -873,42 +801,60 @@ function WorkbenchContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--surface-canvas)] text-[var(--text-primary)]">
-      <WorkbenchTopBar
+    <AppShell
+      title="工作台"
+      description="选择项目，从问题走到报告。"
+      fillViewport
+      mainClassName="mx-auto grid min-h-0 w-full max-w-[1600px] flex-1 xl:grid-cols-[17.5rem_minmax(0,1fr)_22.5rem]"
+    >
+      <LeftRail
         projects={projects}
-        projectId={projectId}
-        onProjectChange={onProjectChange}
         tasks={tasks}
+        projectId={projectId}
+        onSelectProject={onProjectChange}
+        taskSearch={taskSearch}
+        onTaskSearchChange={setTaskSearch}
+        isLoading={query.isLoading}
+        hasError={query.isError}
       />
 
-      <main
+      <section
+        aria-label="五步流程"
         aria-busy={query.isLoading}
-        className="mx-auto grid w-full max-w-[1600px] lg:grid-cols-[17.5rem_minmax(0,1fr)_22.5rem]"
+        className="min-w-0 space-y-5 px-4 py-6 sm:px-6 xl:h-full xl:overflow-y-auto xl:border-r xl:border-[var(--border-subtle)]"
       >
-        <LeftRail
-          projects={projects}
-          tasks={tasks}
-          projectId={projectId}
-          onSelectProject={onProjectChange}
-          taskSearch={taskSearch}
-          onTaskSearchChange={setTaskSearch}
-          isLoading={query.isLoading}
-          hasError={query.isError}
-        />
-
-        <section
-          aria-label="五步流程"
-          className="min-w-0 space-y-5 px-4 py-6 sm:px-6 lg:h-[calc(100dvh-3.5rem)] lg:overflow-y-auto lg:border-r lg:border-[var(--border-subtle)]"
-        >
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h1 className="text-xl font-bold text-[var(--text-primary)]">
-                从问题到报告
-              </h1>
-              <p className="mt-1 text-sm leading-relaxed text-[var(--text-secondary)]">
-                五步流程。每步状态来自后端接口。
-              </p>
-            </div>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-bold text-[var(--text-primary)]">
+              从问题到报告
+            </h2>
+            <p className="mt-1 text-sm leading-relaxed text-[var(--text-secondary)]">
+              五步流程。每步状态来自后端接口。
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <label
+              htmlFor="workbench-project"
+              className="shrink-0 text-xs font-medium text-[var(--text-tertiary)]"
+            >
+              项目
+            </label>
+            <select
+              id="workbench-project"
+              value={projectId}
+              onChange={event => onProjectChange(event.target.value)}
+              className="h-9 max-w-[13rem] rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] px-2 text-sm text-[var(--text-primary)]"
+            >
+              <option value="">全部项目</option>
+              {projects.map(project => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+            <p className="hidden text-xs tabular-nums text-[var(--text-tertiary)] md:block">
+              任务 {summary.total} · 启用 {summary.enabled}
+            </p>
             <button
               type="button"
               onClick={() => void query.refetch()}
@@ -922,50 +868,47 @@ function WorkbenchContent() {
               刷新
             </button>
           </div>
+        </div>
 
-          <QuestionForm
-            question={question}
-            onQuestionChange={setQuestion}
-            projectId={projectId}
-          />
+        <QuestionForm
+          question={question}
+          onQuestionChange={setQuestion}
+          projectId={projectId}
+        />
 
-          <DataStateBlock
-            state={viewState}
-            errorMessage={errorMessage}
-            onRetry={() => void query.refetch()}
-            isFetching={query.isFetching}
-          />
+        <DataStateBlock
+          state={viewState}
+          errorMessage={errorMessage}
+          onRetry={() => void query.refetch()}
+          isFetching={query.isFetching}
+        />
 
-          <StepList steps={steps} />
+        <StepList steps={steps} />
 
-          {viewState === "ready" ? (
-            <LatestActivity latestRun={latestRun} latestReport={latestReport} />
-          ) : null}
-        </section>
+        {viewState === "ready" ? (
+          <LatestActivity latestRun={latestRun} latestReport={latestReport} />
+        ) : null}
+      </section>
 
-        <RightRail />
-      </main>
-    </div>
+      <RightRail />
+    </AppShell>
   );
 }
 
 /** 页面骨架。`useSearchParams` 需要 Suspense 边界。 */
 function WorkbenchFallback() {
   return (
-    <div className="min-h-screen bg-[var(--surface-canvas)] text-[var(--text-primary)]">
-      <div className="flex h-14 items-center border-b border-[var(--border-subtle)] bg-[var(--surface-primary)] px-6">
-        <span className="text-sm font-bold">洞察工作台</span>
-      </div>
-      <main
-        aria-busy="true"
-        className="mx-auto flex w-full max-w-[1600px] items-center justify-center px-6 py-24"
-      >
-        <p className="flex items-center gap-2 text-sm text-[var(--text-tertiary)]">
-          <Loader2 size={16} className="animate-spin" aria-hidden="true" />
-          正在加载工作台。
-        </p>
-      </main>
-    </div>
+    <AppShell
+      title="工作台"
+      description="选择项目，从问题走到报告。"
+      fillViewport
+      mainClassName="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 items-center justify-center px-6 py-24"
+    >
+      <p className="flex items-center gap-2 text-sm text-[var(--text-tertiary)]">
+        <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+        正在加载工作台。
+      </p>
+    </AppShell>
   );
 }
 

@@ -156,7 +156,7 @@ export function buildRedirects(): {
   }));
 }
 
-/** 侧栏导航项。 */
+/** 侧栏导航链接。最末一层。 */
 export type NavigationItem = {
   /** 显示文字。 */
   readonly name: string;
@@ -164,43 +164,115 @@ export type NavigationItem = {
   readonly href: string;
 };
 
+/** 二级分组。例如「监测与采集」。 */
+export type NavigationGroup = {
+  /** 分组小标题。 */
+  readonly name: string;
+  /** 组内链接。 */
+  readonly items: readonly NavigationItem[];
+};
+
 /**
- * 侧栏一级导航。
+ * 一级导航项。
  *
- * UI 规格 §0.1：/workbench 是唯一任务入口。
- * /dashboard 不得作为一级入口。
- * 项目列表仍在一级导航，但它不是任务入口。
- * 图标不在这里。图标是视图层的事。
+ * 契约冻结：一级导航只有四项：工作台、报告、连接器、设置。
+ * href 可省略。省略时该项只作分组标题，不跳转。
  */
-export const PRIMARY_NAVIGATION: readonly NavigationItem[] = [
-  { name: "工作台", href: "/workbench" },
-  { name: "能力目录", href: "/capabilities" },
-  { name: "报告", href: "/reports" },
-  { name: "运行记录", href: "/runs" },
-  { name: "监控", href: "/monitors" },
-  { name: "工具", href: "/tools" },
-  { name: "TikTok 工作台", href: "/tools/tiktok" },
-  { name: "项目", href: "/projects" },
-  { name: "任务", href: "/tasks" },
-  { name: "资产", href: "/assets" },
-  { name: "ABI 看板", href: "/abi" },
-  { name: "接入", href: "/connect" },
-  { name: "文档", href: "/docs" },
-];
+export type NavigationSection = {
+  /** 显示文字。 */
+  readonly name: string;
+  /** 目标路径。只作分组标题时省略。 */
+  readonly href?: string;
+  /** 带小标题的二级分组。 */
+  readonly groups?: readonly NavigationGroup[];
+  /** 不带小标题的二级链接。 */
+  readonly items?: readonly NavigationItem[];
+};
 
 /**
  * 侧栏二级导航。
  *
- * /dashboard 页面保留，入口降到这里。
- * 它不再是「工作台」，也不再是一级入口。
+ * 旧版侧栏底部的辅助链接，现在归入「设置」一级项。
+ * /dashboard 页面保留，入口在这里，不再是一级入口。
  */
-export const SECONDARY_NAVIGATION: readonly NavigationItem[] = [
-  { name: "用量与成本", href: "/usage" },
-  { name: "旧版概览", href: "/dashboard" },
-  { name: "凭证设置", href: "/settings/credentials" },
-  { name: "提供方状态", href: "/settings/providers" },
-  { name: "成员与工作区", href: "/settings/members" },
+export const SECONDARY_NAVIGATION: readonly NavigationSection[] = [
+  {
+    name: "设置",
+    items: [
+      { name: "用量与成本", href: "/usage" },
+      { name: "凭证", href: "/settings/credentials" },
+      { name: "提供方状态", href: "/settings/providers" },
+      { name: "成员与工作区", href: "/settings/members" },
+      { name: "旧版概览", href: "/dashboard" },
+    ],
+  },
 ];
+
+/**
+ * 侧栏一级导航。
+ *
+ * 契约冻结：一级只有四项：工作台、报告、连接器、设置。
+ * /projects、/runs、/assets 不得作为一级入口。它们是工作台的下钻。
+ * UI 规格 §0.1：/workbench 是唯一任务入口。
+ *
+ * 图标不在这里。图标是视图层的事。
+ */
+export const PRIMARY_NAVIGATION: readonly NavigationSection[] = [
+  {
+    name: "工作台",
+    href: "/workbench",
+    groups: [
+      {
+        name: "监测与采集",
+        items: [
+          { name: "项目", href: "/projects" },
+          { name: "任务", href: "/tasks" },
+          { name: "监控", href: "/monitors" },
+          { name: "运行记录", href: "/runs" },
+        ],
+      },
+      {
+        name: "数据与资产",
+        items: [
+          { name: "资产", href: "/assets" },
+          { name: "原始记录", href: "/assets/records" },
+          { name: "ABI 看板", href: "/abi" },
+        ],
+      },
+    ],
+  },
+  {
+    name: "报告",
+    href: "/reports",
+  },
+  {
+    name: "连接器",
+    items: [
+      { name: "能力目录", href: "/capabilities" },
+      { name: "平台目录", href: "/tools" },
+      { name: "TikTok 工作台", href: "/tools/tiktok" },
+      { name: "接入", href: "/connect" },
+      { name: "文档", href: "/docs" },
+    ],
+  },
+  // 设置沿用旧的辅助导航列表。
+  ...SECONDARY_NAVIGATION,
+];
+
+/** 展开导航里所有可点击的路径。用于活跃态最长匹配。 */
+export function navigationHrefs(
+  navigation: readonly NavigationSection[],
+): string[] {
+  const hrefs: string[] = [];
+  for (const section of navigation) {
+    if (section.href) hrefs.push(section.href);
+    for (const group of section.groups ?? []) {
+      for (const item of group.items) hrefs.push(item.href);
+    }
+    for (const item of section.items ?? []) hrefs.push(item.href);
+  }
+  return hrefs;
+}
 
 /** 路径是否命中导航项。子路径也算命中。 */
 export function isActiveRoute(pathname: string, href: string): boolean {

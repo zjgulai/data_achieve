@@ -10,16 +10,54 @@ type AppShellProps = {
   description?: string;
   brief?: string;
   breadcrumbs?: Crumb[];
+  /**
+   * 覆盖内容区样式。
+   *
+   * 工作台用全宽三栏，其余页面保持默认的 max-w-7xl 单列。
+   */
+  mainClassName?: string;
+  /**
+   * 让页面在 xl 及以上锁住视口高度，内容区内部滚动。
+   *
+   * 默认关闭。开启后低于 xl 的断点仍按普通文档流滚动，
+   * 因为工作台的三栏只在 xl 才展开。
+   */
+  fillViewport?: boolean;
   children: React.ReactNode;
 };
 
-export function AppShell({ title, description, brief, breadcrumbs, children }: AppShellProps) {
+export function AppShell({
+  title,
+  description,
+  brief,
+  breadcrumbs,
+  mainClassName,
+  fillViewport = false,
+  children,
+}: AppShellProps) {
   return (
-    <div className="min-h-screen overflow-x-clip bg-[var(--surface-canvas)] text-[var(--text-primary)]">
+    <div
+      className={`overflow-x-clip bg-[var(--surface-canvas)] text-[var(--text-primary)] ${
+        fillViewport
+          ? "flex min-h-dvh flex-col xl:h-dvh xl:overflow-hidden"
+          : "min-h-screen"
+      }`}
+    >
       <Sidebar />
-      <div className="min-h-screen pl-0 lg:pl-[17rem]">
+      <div
+        className={
+          fillViewport
+            ? "flex min-h-0 flex-1 flex-col pl-0 lg:pl-[17rem]"
+            : "min-h-screen pl-0 lg:pl-[17rem]"
+        }
+      >
         <TopBar title={title} description={description} />
-        <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+        <main
+          className={
+            mainClassName ??
+            "mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8"
+          }
+        >
 
           {breadcrumbs && breadcrumbs.length > 0 && (
             <nav aria-label="面包屑" className="flex items-center gap-1.5 text-xs text-[var(--text-tertiary)]">

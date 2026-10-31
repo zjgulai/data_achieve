@@ -9,7 +9,7 @@ import {
   deleteCredential,
 } from "@/lib/api/credentials";
 import type { PlatformCredential } from "@/lib/api/credentials";
-import { Key, CheckCircle, AlertCircle, Trash2, Loader2, Eye, EyeOff } from "lucide-react";
+import { Key, CheckCircle, AlertCircle, Trash2, Loader2, Eye, EyeOff, RefreshCw } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 
 /* ── Platform badge (matches platforms/page.tsx PlatformLogo) ── */
@@ -225,7 +225,7 @@ function PlatformCard({
 
 /* ── Page ── */
 export default function CredentialsPage() {
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["credentials"],
     queryFn: fetchCredentials,
   });
@@ -268,8 +268,18 @@ export default function CredentialsPage() {
       ) : error ? (
         <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--danger-soft)] p-8 text-center">
           <p className="text-sm text-[var(--state-danger)]">
-            加载失败：{(error as Error).message}
+            凭证列表加载失败：
+            {error instanceof Error ? error.message : "未知错误"}
           </p>
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            disabled={isFetching}
+            className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-subtle)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] disabled:opacity-50"
+          >
+            <RefreshCw size={12} aria-hidden="true" />
+            重试
+          </button>
         </div>
       ) : (
         <div className="grid gap-3">

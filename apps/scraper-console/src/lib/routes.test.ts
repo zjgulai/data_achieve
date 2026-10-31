@@ -13,6 +13,7 @@ import {
   activeNavigationHref,
   buildRedirects,
   isActiveRoute,
+  navigationHrefs,
   openToolDetail,
   parametersOf,
   resolveToolDetailState,
@@ -193,48 +194,120 @@ test("each redirect states its purpose", () => {
   for (const r of ROUTE_REDIRECTS) assert.ok(r.note.length > 0, `${r.source} 缺说明`);
 });
 
+test("the primary navigation has exactly four top-level entries", () => {
+  // 契约冻结：一级导航只有 4 个：工作台、报告、连接器、设置。
+  assert.deepEqual(
+    PRIMARY_NAVIGATION.map(section => section.name),
+    ["工作台", "报告", "连接器", "设置"]
+  );
+});
+
 test("the sidebar primary navigation starts at the workbench", () => {
   // UI 规格 §0.1：/workbench 是唯一任务入口。
   assert.equal(PRIMARY_NAVIGATION[0]?.name, "工作台");
   assert.equal(PRIMARY_NAVIGATION[0]?.href, "/workbench");
 });
 
+test("only workbench and reports are clickable top-level entries", () => {
+  // 连接器与设置只作分组标题，不跳转。
+  assert.deepEqual(
+    PRIMARY_NAVIGATION.filter(section => section.href !== undefined).map(
+      section => section.href
+    ),
+    ["/workbench", "/reports"]
+  );
+  assert.equal(PRIMARY_NAVIGATION[2]?.href, undefined);
+  assert.equal(PRIMARY_NAVIGATION[3]?.href, undefined);
+});
+
+test("the workbench groups its drill-down pages", () => {
+  const workbench = PRIMARY_NAVIGATION[0];
+  assert.ok(workbench);
+  assert.deepEqual(
+    workbench.groups?.map(group => group.name),
+    ["监测与采集", "数据与资产"]
+  );
+  const hrefs =
+    workbench.groups?.flatMap(group => group.items.map(item => item.href)) ?? [];
+  assert.deepEqual(hrefs, [
+    "/projects",
+    "/tasks",
+    "/monitors",
+    "/runs",
+    "/assets",
+    "/assets/records",
+    "/abi",
+  ]);
+});
+
+test("projects, runs and assets are not primary entries", () => {
+  // 契约明令禁止把这三个做成一级导航。它们是工作台的下钻。
+  const primaryHrefs = PRIMARY_NAVIGATION.flatMap(section =>
+    section.href ? [section.href] : []
+  );
+  const allHrefs = navigationHrefs(PRIMARY_NAVIGATION);
+  for (const route of ["/projects", "/runs", "/assets"]) {
+    assert.equal(primaryHrefs.includes(route), false, `${route} 不得作为一级入口`);
+    assert.equal(allHrefs.includes(route), true, `${route} 应保留为二级入口`);
+  }
+});
+
 test("the sidebar links the three B5 pages", () => {
-  const hrefs = PRIMARY_NAVIGATION.map(item => item.href);
+  const hrefs = navigationHrefs(PRIMARY_NAVIGATION);
   for (const route of B5_ROUTES) {
-    assert.equal(hrefs.includes(route), true, `一级导航缺少 ${route}`);
+    assert.equal(hrefs.includes(route), true, `导航缺少 ${route}`);
   }
 });
 
 test("the dashboard is not a primary entry", () => {
   assert.equal(
-    PRIMARY_NAVIGATION.some(item => item.href === "/dashboard"),
+    PRIMARY_NAVIGATION.some(section => section.href === "/dashboard"),
     false,
     "/dashboard 不得作为一级入口"
   );
-  // 页面保留。入口降为二级。
+  // 页面保留。入口在「设置」分组下。
   assert.equal(
-    SECONDARY_NAVIGATION.some(item => item.href === "/dashboard"),
+    navigationHrefs(SECONDARY_NAVIGATION).includes("/dashboard"),
     true,
-    "/dashboard 页面保留，应出现在二级导航"
+    "/dashboard 页面保留，应出现在设置分组"
   );
 });
 
-test("the sidebar source renders the shared navigation config", () => {
-  // 导航数据在 routes.ts。侧栏必须从那里取，不能另抄一份。
-  const file = fileURLToPath(
+test("the settings section reuses the secondary navigation", () => {
+  // 旧的辅助导航列表并入「设置」一级项，不另抄一份。
+  assert.equal(SECONDARY_NAVIGATION.length, 1);
+  const settings = PRIMARY_NAVIGATION.find(section => section.name === "设置");
+  assert.ok(settings);
+  assert.deepEqual(settings, SECONDARY_NAVIGATION[0]);
+  assert.deepEqual(
+    settings.items?.map(item => item.name),
+    ["用量与成本", "凭证", "提供方状态", "成员与工作区", "旧版概览"]
+  );
+});
+
+test("the sidebar renders the shared navigation config", () => {
+  // 导航数据在 routes.ts。侧栏与移动抽屉共用 NavigationSections，不能另抄一份。
+  const sidebarFile = fileURLToPath(
     new URL("../components/layout/sidebar.tsx", import.meta.url)
   );
-  const source = readFileSync(file, "utf8");
-  assert.equal(source.includes("PRIMARY_NAVIGATION.map"), true);
-  assert.equal(source.includes("SECONDARY_NAVIGATION.map"), true);
-  assert.equal(source.includes("usePathname()"), true);
+  const sidebar = readFileSync(sidebarFile, "utf8");
+  assert.equal(sidebar.includes("NavigationSections"), true);
+  assert.equal(sidebar.includes("usePathname()"), true);
   // 旧的「工作台 → /dashboard」硬编码必须消失。
   assert.equal(
-    /name:\s*"工作台",\s*href:\s*"\/dashboard"/.test(source),
+    /name:\s*"工作台",\s*href:\s*"\/dashboard"/.test(sidebar),
     false,
     "工作台不得再指向 /dashboard"
   );
+
+  const menuFile = fileURLToPath(
+    new URL("../components/layout/navigation-sections.tsx", import.meta.url)
+  );
+  const menu = readFileSync(menuFile, "utf8");
+  assert.equal(menu.includes("PRIMARY_NAVIGATION.map"), true);
+  assert.equal(menu.includes("navigationHrefs(PRIMARY_NAVIGATION)"), true);
+  assert.equal(menu.includes("section.groups"), true);
+  assert.equal(menu.includes("section.items"), true);
 });
 
 test("a deep capability link highlights the capability entry", () => {
@@ -242,16 +315,16 @@ test("a deep capability link highlights the capability entry", () => {
   assert.equal(isActiveRoute("/capabilities/exa_search", "/capabilities"), true);
   // 相邻路径不得误判。
   assert.equal(isActiveRoute("/capabilities-archive", "/capabilities"), false);
-  const hrefs = [
-    ...PRIMARY_NAVIGATION.map(item => item.href),
-    ...SECONDARY_NAVIGATION.map(item => item.href),
-  ];
+  const hrefs = navigationHrefs(PRIMARY_NAVIGATION);
   assert.equal(activeNavigationHref("/capabilities/exa_search", hrefs), "/capabilities");
   assert.equal(activeNavigationHref("/capabilities", hrefs), "/capabilities");
   assert.equal(activeNavigationHref("/workbench", hrefs), "/workbench");
   // 更具体的路径只高亮最长匹配。工具有子页时二者不再同时高亮。
   assert.equal(activeNavigationHref("/tools/tiktok", hrefs), "/tools/tiktok");
   assert.equal(activeNavigationHref("/tools", hrefs), "/tools");
+  // 资产页的子路径只高亮「原始记录」。
+  assert.equal(activeNavigationHref("/assets/records", hrefs), "/assets/records");
+  assert.equal(activeNavigationHref("/assets/records/123", hrefs), "/assets/records");
   assert.equal(activeNavigationHref("/unknown", hrefs), null);
 });
 

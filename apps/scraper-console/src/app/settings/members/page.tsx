@@ -180,9 +180,23 @@ export default function MembersPage() {
               {workspaces.isLoading ? (
                 <p className="mt-4 text-xs text-[var(--text-tertiary)]">加载中...</p>
               ) : workspaces.error ? (
-                <p className="mt-4 text-xs text-[var(--state-danger)]">
-                  加载失败：{(workspaces.error as Error).message}
-                </p>
+                <div className="mt-4 rounded-lg border border-[var(--border-subtle)] bg-[var(--danger-soft)] px-4 py-4 text-center">
+                  <p className="text-xs text-[var(--state-danger)]">
+                    工作区列表加载失败：
+                    {workspaces.error instanceof Error
+                      ? workspaces.error.message
+                      : "未知错误"}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void workspaces.refetch()}
+                    disabled={workspaces.isFetching}
+                    className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-subtle)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] disabled:opacity-50"
+                  >
+                    <RefreshCw size={12} aria-hidden="true" />
+                    重试
+                  </button>
+                </div>
               ) : (
                 <ul className="mt-3 grid gap-2">
                   {(workspaces.data ?? []).map((workspace) => {
@@ -236,9 +250,23 @@ export default function MembersPage() {
             {members.isLoading ? (
               <p className="mt-4 text-xs text-[var(--text-tertiary)]">加载中...</p>
             ) : members.error ? (
-              <p className="mt-4 text-xs text-[var(--state-danger)]">
-                加载失败：{(members.error as Error).message}
-              </p>
+              <div className="mt-4 rounded-lg border border-[var(--border-subtle)] bg-[var(--danger-soft)] px-4 py-4 text-center">
+                <p className="text-xs text-[var(--state-danger)]">
+                  成员列表加载失败：
+                  {members.error instanceof Error
+                    ? members.error.message
+                    : "未知错误"}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void members.refetch()}
+                  disabled={members.isFetching}
+                  className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-subtle)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] disabled:opacity-50"
+                >
+                  <RefreshCw size={12} aria-hidden="true" />
+                  重试
+                </button>
+              </div>
             ) : (
               <ul className="mt-3 grid gap-2">
                 {(members.data ?? []).map((member) => (

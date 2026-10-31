@@ -10,6 +10,7 @@ import {
   Loader2,
   Printer,
 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { getToolkitOverview } from "@/lib/api/toolkit";
@@ -108,13 +109,13 @@ export function ToolkitCoursePackPage() {
       <CoursePackPrintStyles />
 
       <div className="mb-5 flex flex-col gap-3 print:hidden sm:flex-row sm:items-center sm:justify-between">
-        <a
+        <Link
           className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#EDE6DF] bg-white px-3 text-sm font-semibold text-[#7A625A] transition hover:border-[#C25B6E] hover:text-[#A24D61]"
           href="/toolkit"
         >
           <ArrowLeft size={16} aria-hidden="true" />
           返回工具库
-        </a>
+        </Link>
         <div className="flex flex-wrap gap-2">
           <button
             className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#EDE6DF] bg-white px-3 text-sm font-semibold text-[#7A625A] transition hover:border-[#C25B6E] hover:text-[#A24D61]"

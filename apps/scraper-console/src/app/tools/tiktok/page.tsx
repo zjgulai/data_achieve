@@ -9,6 +9,7 @@ import {
   KeyRound,
   Loader2,
   Play,
+  RefreshCw,
   Search,
   TrendingUp,
   Users,
@@ -470,6 +471,29 @@ export default function TikTokWorkbenchPage() {
       breadcrumbs={[{ label: "工具" }, { label: "TikTok" }]}
     >
       <section className="flex flex-wrap items-end gap-3 rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] px-5 py-4">
+        {projectsQuery.error ? (
+          <div
+            role="alert"
+            className="flex w-full flex-wrap items-center gap-2 rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--danger-soft)] px-3 py-2 text-xs text-[var(--state-danger)]"
+          >
+            <AlertCircle size={14} aria-hidden="true" />
+            <span className="min-w-0 flex-1">
+              项目列表加载失败：
+              {projectsQuery.error instanceof Error
+                ? projectsQuery.error.message
+                : "未知错误"}
+            </span>
+            <button
+              type="button"
+              onClick={() => void projectsQuery.refetch()}
+              disabled={projectsQuery.isFetching}
+              className="inline-flex items-center gap-1 rounded-[var(--radius-2)] border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] disabled:opacity-50"
+            >
+              <RefreshCw size={12} aria-hidden="true" />
+              重试
+            </button>
+          </div>
+        ) : null}
         <label className="grid gap-1 text-xs font-semibold text-[var(--text-secondary)]">
           项目
           <select

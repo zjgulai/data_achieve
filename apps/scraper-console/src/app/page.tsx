@@ -86,7 +86,7 @@ const FOOTER_COLUMNS = [
   {
     title: "控制台",
     links: [
-      { label: "工作台", href: "/dashboard" },
+      { label: "旧版概览", href: "/dashboard" },
       { label: "运行记录", href: "/runs" },
       { label: "数据集", href: "/assets" },
     ],

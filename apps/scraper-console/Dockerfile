@@ -19,7 +19,9 @@ WORKDIR /app/apps/scraper-console
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ARG NEXT_PUBLIC_API_URL=https://scrapy.lute-tlz-dddd.top
+ARG NEXT_PUBLIC_INSIGHT_URL=/insight
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_INSIGHT_URL=$NEXT_PUBLIC_INSIGHT_URL
 
 COPY --from=deps /app/apps/scraper-console/node_modules ./node_modules
 COPY apps/scraper-console ./

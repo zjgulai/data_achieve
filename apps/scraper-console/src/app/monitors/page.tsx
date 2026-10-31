@@ -9,7 +9,7 @@ import {
   fetchMonitors,
   setMonitorStatus,
 } from "@/lib/api/monitors";
-import { Loader2, Radar } from "lucide-react";
+import { Loader2, Radar, RefreshCw } from "lucide-react";
 
 const ENDPOINT_HINTS = [
   "exa_search_lite",
@@ -115,6 +115,24 @@ export default function MonitorsPage() {
           {monitors.isLoading ? (
             <div className="flex justify-center py-6">
               <Loader2 size={18} className="animate-spin text-[var(--text-tertiary)]" />
+            </div>
+          ) : monitors.error ? (
+            <div className="mt-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--danger-soft)] px-4 py-6 text-center">
+              <p className="text-sm text-[var(--state-danger)]">
+                监控列表加载失败：
+                {monitors.error instanceof Error
+                  ? monitors.error.message
+                  : "未知错误"}
+              </p>
+              <button
+                type="button"
+                onClick={() => void monitors.refetch()}
+                disabled={monitors.isFetching}
+                className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-subtle)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] disabled:opacity-50"
+              >
+                <RefreshCw size={12} aria-hidden="true" />
+                重试
+              </button>
             </div>
           ) : (monitors.data ?? []).length === 0 ? (
             <p className="mt-3 text-xs text-[var(--text-tertiary)]">还没有监控。</p>

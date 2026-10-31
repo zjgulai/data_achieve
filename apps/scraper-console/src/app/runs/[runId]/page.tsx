@@ -14,7 +14,7 @@ import {
 } from "@/lib/run-status";
 import type { RunStatusIconName } from "@/lib/run-status";
 import {
-  AlertCircle, CheckCircle, Clock, FileText, Inbox, Loader2,
+  AlertCircle, CheckCircle, Clock, FileText, Inbox, Loader2, RefreshCw,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -225,7 +225,13 @@ export default function CollectResultPage({ params }: Props) {
     enabled: !!runId,
   });
 
-  const { data: records, isLoading: recordsLoading } = useQuery({
+  const {
+    data: records,
+    isLoading: recordsLoading,
+    isFetching: recordsFetching,
+    error: recordsError,
+    refetch: refetchRecords,
+  } = useQuery({
     queryKey: ["run-records", runId],
     queryFn: () => fetchRunRecords(runId),
     enabled: !!runId,
@@ -387,7 +393,30 @@ export default function CollectResultPage({ params }: Props) {
         </div>
       )}
 
-      {!recordsLoading && !hasRecords && !runLoading && (
+      {!recordsLoading && recordsError ? (
+        <div className="rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-8 text-center">
+          <AlertCircle size={28} className="mx-auto text-[var(--state-danger)]" />
+          <p className="mt-3 text-sm font-medium text-[var(--state-danger)]">
+            原始记录加载失败
+          </p>
+          <p className="mt-1 text-xs text-[var(--text-secondary)]">
+            {recordsError instanceof Error
+              ? recordsError.message
+              : "请检查 API 连接后重试。"}
+          </p>
+          <button
+            type="button"
+            onClick={() => void refetchRecords()}
+            disabled={recordsFetching}
+            className="mt-3 inline-flex items-center gap-1.5 rounded-[var(--radius-2)] border border-[var(--border-subtle)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] disabled:opacity-50"
+          >
+            <RefreshCw size={12} aria-hidden="true" />
+            重试
+          </button>
+        </div>
+      ) : null}
+
+      {!recordsLoading && !recordsError && !hasRecords && !runLoading && (
         <div className="rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-8 text-center">
           {isFailed && run ? (
             <>

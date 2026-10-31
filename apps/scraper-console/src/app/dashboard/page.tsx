@@ -47,8 +47,8 @@ export default function DashboardPage() {
 
   return (
     <AppShell
-      title="工作台"
-      description="采集控制台总览"
+      title="旧版概览"
+      description="旧版指标页，主入口是工作台"
       brief="采集健康度、失败任务与最新情报"
     >
       <div className="grid gap-6">

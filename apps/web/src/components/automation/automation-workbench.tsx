@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -3776,13 +3777,13 @@ function StructurePreflightResult({
               <Fact label="Collector" value={genericWebRun.task.collectorType} />
               <Fact label="任务状态" value={formatTaskRunStatus(genericWebRun.run?.status ?? genericWebRun.task.status)} />
               <Fact label="本次记录" value={String(genericWebRun.run?.recordsCount ?? 0)} />
-              <a
+              <Link
                 className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-[#D7E8D7] bg-[#F3FBF3] px-3 text-xs font-semibold text-[#2F6B3A] hover:border-[#4F7F56]"
                 href="/tasks"
               >
                 <ExternalLink size={13} aria-hidden="true" />
                 查看任务页
-              </a>
+              </Link>
             </div>
           </Panel>
         ) : null}

@@ -23,6 +23,7 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 import {
@@ -925,20 +926,20 @@ export function ToolkitWorkspace() {
                 目标不是堆工具名，而是让学员掌握“公开来源识别、工具选择、安装验收、字段契约、风险复核”的完整闭环。
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <a
+                <Link
                   className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#C25B6E] bg-[#C25B6E] px-3 text-sm font-semibold text-white transition hover:bg-[#A24D61]"
                   href="/toolkit/course-pack"
                 >
                   <BookOpenCheck size={16} aria-hidden="true" />
                   打开课程包
-                </a>
-                <a
+                </Link>
+                <Link
                   className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#EDE6DF] bg-white px-3 text-sm font-semibold text-[#7A625A] transition hover:border-[#C25B6E] hover:text-[#A24D61]"
                   href="/toolkit/course-pack"
                 >
                   <ArrowUpRight size={16} aria-hidden="true" />
                   全量讲义导出
-                </a>
+                </Link>
               </div>
             </div>
           </div>

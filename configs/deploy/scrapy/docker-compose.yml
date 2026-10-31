@@ -272,6 +272,7 @@ services:
         NEXT_PUBLIC_API_URL: ${SCRAPY_PUBLIC_URL:-https://scrapy.luteos.com}
         NEXT_PUBLIC_MOCK_API: "false"
         NEXT_PUBLIC_BASE_PATH: ${SCRAPY_WEB_BASE_PATH:-/insight}
+        NEXT_PUBLIC_CONSOLE_URL: ${SCRAPY_CONSOLE_URL:-/}
         NPM_CONFIG_REGISTRY: ${SCRAPY_NPM_REGISTRY:-https://registry.npmjs.org/}
         COREPACK_NPM_REGISTRY: ${SCRAPY_NPM_REGISTRY:-https://registry.npmjs.org/}
     container_name: data_achieve_scrapy_web
@@ -309,6 +310,7 @@ services:
       dockerfile: apps/scraper-console/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${SCRAPY_PUBLIC_URL:-https://scrapy.luteos.com}
+        NEXT_PUBLIC_INSIGHT_URL: ${SCRAPY_INSIGHT_URL:-/insight}
         NPM_CONFIG_REGISTRY: ${SCRAPY_NPM_REGISTRY:-https://registry.npmjs.org/}
     container_name: data_achieve_scrapy_console
     image: data_achieve_scrapy_console:latest
