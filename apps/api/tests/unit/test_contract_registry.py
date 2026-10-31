@@ -1,0 +1,1458 @@
+from __future__ import annotations
+
+import importlib.util
+import json
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[4]
+SCRIPT_PATH = PROJECT_ROOT / "scripts/contract_registry.py"
+
+BEGIN = "<!-- contract-registry:begin -->"
+END = "<!-- contract-registry:end -->"
+
+
+def load_module():
+    spec = importlib.util.spec_from_file_location("contract_registry", SCRIPT_PATH)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def minimal_registry() -> dict:
+    return {
+        "registry_version": "contract-registry.v1",
+        "contract_version": "v1.1",
+        "status": "frozen",
+        "source_document": "contract.md",
+        "source_section": "附录 A",
+        "generated_at": "2026-10-22",
+        "canonical_profile": {
+            "profile_id": "dih-canonical-json-v1",
+            "encoding": "UTF-8",
+            "json_rules": "RFC 8785",
+            "digest_algorithm": "sha256",
+            "digest_encoding": "lowercase-hex",
+            "excluded_top_level_keys": ["generated_at", "artifact"],
+            "timestamp_format": "RFC3339-UTC-Z",
+            "number_rules": "finite-only",
+            "unicode_rules": "preserve scalar values",
+            "forbidden_language": {
+                "profile_id": "dih-descriptive-language-v1",
+                "profile_version": "1.0.0",
+                "source": (
+                    "docs/superpowers/specs/2026-10-21-tikhub-governed-task-platform-design.md#5.7"
+                ),
+                "causal_terms_zh": ["导致", "驱动", "提升", "降低", "造成", "证明"],
+                "causal_terms_en": [
+                    "cause",
+                    "causes",
+                    "caused",
+                    "drive",
+                    "drives",
+                    "driven",
+                    "improve",
+                    "improves",
+                    "increase",
+                    "increases",
+                    "decrease",
+                    "decreases",
+                    "reduce",
+                    "reduces",
+                    "lead to",
+                    "leads to",
+                    "prove",
+                    "proves",
+                ],
+                "prediction_terms_zh": ["预测", "预计", "将会"],
+                "prediction_terms_en": [
+                    "predict",
+                    "predicts",
+                    "forecast",
+                    "forecasts",
+                    "projection",
+                    "projections",
+                ],
+                "prediction_objects_zh": ["销量", "市场份额", "转化率", "营收"],
+                "prediction_objects_en": ["sales", "market share", "conversion rate", "revenue"],
+                "allowed_relations_zh": ["共同出现", "相关", "描述性差异"],
+                "allowed_relations_en": [
+                    "co-occurrence",
+                    "correlation",
+                    "descriptive difference",
+                ],
+            },
+        },
+        "audit_actions": {
+            "version": "audit-actions.v1",
+            "actions": [
+                {
+                    "name": "project.created",
+                    "owner": "C2",
+                    "status": "new",
+                    "phase": "C2",
+                }
+            ],
+        },
+        "phases": [
+            {
+                "id": f"C{index}",
+                "name": f"Phase {index}",
+                "scope": "scope",
+                "objects": [],
+            }
+            for index in range(2, 15)
+        ],
+        "tables": [
+            {
+                "name": "runs",
+                "module": "M10",
+                "status": "existing",
+                "phase": "C2",
+                "purpose": "run",
+                "primary_key": ["id"],
+                "columns": [
+                    {
+                        "name": "id",
+                        "type": "uuid",
+                        "nullable": False,
+                        "status": "existing",
+                        "phase": "C2",
+                    }
+                ],
+            }
+        ],
+        "enums": [
+            {
+                "name": "runs.status",
+                "values": ["queued"],
+                "status": "frozen",
+                "phase": "C2",
+                "source": "contract",
+            }
+        ],
+        "paths": [
+            {
+                "id": "runs.list",
+                "method": "GET",
+                "path": "/api/runs",
+                "audience": "session",
+                "status": "existing",
+                "phase": "C2",
+                "auth": "session",
+                "idempotent": False,
+                "error_codes": [],
+            }
+        ],
+        "page_routes": [
+            {
+                "id": "home",
+                "path": "/",
+                "area": "public",
+                "enabled": True,
+                "kind": "static",
+                "phase": "C14",
+            },
+            {
+                "id": "capabilities",
+                "path": "/capabilities",
+                "area": "public",
+                "enabled": True,
+                "kind": "static",
+                "phase": "C14",
+            },
+            {
+                "id": "capabilities.detail",
+                "path": "/capabilities/[toolId]",
+                "area": "public",
+                "enabled": True,
+                "kind": "dynamic",
+                "dynamic_segment": "toolId",
+                "phase": "C14",
+            },
+            {
+                "id": "reports.public.detail",
+                "path": "/reports/public/[id]",
+                "area": "public",
+                "enabled": False,
+                "kind": "dynamic",
+                "dynamic_segment": "id",
+                "phase": "C14",
+            },
+            {
+                "id": "docs",
+                "path": "/docs",
+                "area": "public",
+                "enabled": True,
+                "kind": "static",
+                "phase": "C14",
+            },
+            {
+                "id": "workbench",
+                "path": "/workbench",
+                "area": "authorized",
+                "enabled": True,
+                "kind": "static",
+                "phase": "C14",
+            },
+            {
+                "id": "workbench.detail",
+                "path": "/workbench/[taskId]",
+                "area": "authorized",
+                "enabled": True,
+                "kind": "dynamic",
+                "dynamic_segment": "taskId",
+                "phase": "C14",
+            },
+            {
+                "id": "reports",
+                "path": "/reports",
+                "area": "authorized",
+                "enabled": True,
+                "kind": "static",
+                "phase": "C14",
+            },
+            {
+                "id": "reports.detail",
+                "path": "/reports/[artifactId]",
+                "area": "authorized",
+                "enabled": True,
+                "kind": "dynamic",
+                "dynamic_segment": "artifactId",
+                "phase": "C14",
+            },
+            {
+                "id": "connectors",
+                "path": "/connectors",
+                "area": "authorized",
+                "enabled": True,
+                "kind": "static",
+                "phase": "C14",
+            },
+            {
+                "id": "settings",
+                "path": "/settings",
+                "area": "authorized",
+                "enabled": True,
+                "kind": "static",
+                "phase": "C14",
+            },
+        ],
+        "primary_nav": [
+            {
+                "id": "workbench",
+                "label": "工作台",
+                "path": "/workbench",
+                "order": 1,
+                "phase": "C14",
+            },
+            {"id": "reports", "label": "报告", "path": "/reports", "order": 2, "phase": "C14"},
+            {
+                "id": "connectors",
+                "label": "连接器",
+                "path": "/connectors",
+                "order": 3,
+                "phase": "C14",
+            },
+            {"id": "settings", "label": "设置", "path": "/settings", "order": 4, "phase": "C14"},
+        ],
+        "mcp": {
+            "endpoint": "/mcp/customer",
+            "transport": "streamable-http",
+            "tools_version": "customer-mcp.v1",
+            "schema_file": "customer_mcp.schema.json",
+            "tools": [
+                {
+                    "name": f"tool_{index}",
+                    "status": "new",
+                    "phase": "C10",
+                    "audience": "customer",
+                    "read_only": True,
+                    "input_ref": f"customer_mcp.schema.json#/$defs/Tool{index}Input",
+                    "output_ref": f"customer_mcp.schema.json#/$defs/Tool{index}Output",
+                    "error_codes": [],
+                }
+                for index in range(8)
+            ],
+            "forbidden_tools": ["collect_endpoint"],
+        },
+        "error_codes": [
+            {
+                "code": "tool_not_allowed",
+                "kind": "error",
+                "http_status": 403,
+                "retryable": False,
+                "phase": "C10",
+                "meaning": "tool not allowed",
+            }
+        ],
+        "schemas": [
+            {
+                "id": "registry",
+                "path": "configs/contracts/v1.1.0/registry.schema.json",
+                "kind": "registry",
+                "profile": "dih-canonical-json-v1",
+                "digest_algorithm": "sha256",
+            },
+            {
+                "id": "registry_copy",
+                "path": "configs/contracts/v1.1.0/registry.schema.json",
+                "kind": "registry",
+                "profile": "dih-canonical-json-v1",
+                "digest_algorithm": "sha256",
+            },
+        ],
+        "documents": [
+            {
+                "path": "docs/design/contract.md",
+                "role": "authority",
+                "version": "v1.1",
+                "must_contain": ["runs"],
+            },
+            {
+                "path": "docs/product/prd.md",
+                "role": "derived",
+                "version": "v1.1",
+                "must_contain": ["runs"],
+            },
+            {
+                "path": "docs/product/playbook.md",
+                "role": "derived",
+                "version": "v1.1",
+                "must_contain": ["runs"],
+            },
+        ],
+        "deferred": [],
+    }
+
+
+def test_extract_registry_block_returns_object() -> None:
+    module = load_module()
+    payload = minimal_registry()
+    markdown = (
+        f"# Contract\n\n{BEGIN}\n```json\n{json.dumps(payload, ensure_ascii=False)}\n```\n{END}\n"
+    )
+    assert module.extract_registry_block(markdown) == payload
+
+
+def test_extract_registry_block_rejects_missing_markers() -> None:
+    module = load_module()
+    try:
+        module.extract_registry_block("# Contract\n")
+    except module.RegistryError as exc:
+        assert str(exc) == "registry_block_missing"
+    else:
+        raise AssertionError("expected RegistryError")
+
+
+def test_extract_registry_block_rejects_duplicate_markers() -> None:
+    module = load_module()
+    markdown = f"{BEGIN}\n```json\n{{}}\n```\n{END}\n{BEGIN}\n```json\n{{}}\n```\n{END}\n"
+    try:
+        module.extract_registry_block(markdown)
+    except module.RegistryError as exc:
+        assert str(exc) == "registry_block_duplicate"
+    else:
+        raise AssertionError("expected RegistryError")
+
+
+def test_validate_registry_accepts_minimal_object() -> None:
+    module = load_module()
+    schema = json.loads(
+        (PROJECT_ROOT / "configs/contracts/v1.1.0/registry.schema.json").read_text(encoding="utf-8")
+    )
+    assert module.validate_registry(minimal_registry(), schema) == []
+
+
+def test_validate_registry_rejects_wrong_mcp_tool_count() -> None:
+    module = load_module()
+    schema = json.loads(
+        (PROJECT_ROOT / "configs/contracts/v1.1.0/registry.schema.json").read_text(encoding="utf-8")
+    )
+    payload = minimal_registry()
+    payload["mcp"]["tools"] = payload["mcp"]["tools"][:7]
+    errors = module.validate_registry(payload, schema)
+    assert any("mcp" in error and "tools" in error for error in errors)
+
+
+def test_validate_registry_rejects_audit_action_name_over_max_length() -> None:
+    module = load_module()
+    schema = json.loads(
+        (PROJECT_ROOT / "configs/contracts/v1.1.0/registry.schema.json").read_text(encoding="utf-8")
+    )
+    payload = minimal_registry()
+    payload["audit_actions"]["actions"][0]["name"] = "a" * 81
+    errors = module.validate_registry(payload, schema)
+    assert any("maxLength" in error for error in errors), errors
+
+
+def test_validate_registry_rejects_primary_nav_order_out_of_range() -> None:
+    module = load_module()
+    schema = json.loads(
+        (PROJECT_ROOT / "configs/contracts/v1.1.0/registry.schema.json").read_text(encoding="utf-8")
+    )
+    payload = minimal_registry()
+    payload["primary_nav"][0]["order"] = 9
+    errors = module.validate_registry(payload, schema)
+    assert any("maximum" in error for error in errors), errors
+
+
+def test_validate_registry_rejects_error_code_http_status_out_of_range() -> None:
+    module = load_module()
+    schema = json.loads(
+        (PROJECT_ROOT / "configs/contracts/v1.1.0/registry.schema.json").read_text(encoding="utf-8")
+    )
+    payload = minimal_registry()
+    payload["error_codes"][0]["http_status"] = 99999
+    errors = module.validate_registry(payload, schema)
+    assert any("maximum" in error for error in errors), errors
+
+
+CONTRACT_PATH = PROJECT_ROOT / "docs/design/【契约冻结】v1-表名-枚举-接口.md"
+SCHEMA_PATH = PROJECT_ROOT / "configs/contracts/v1.1.0/registry.schema.json"
+REGISTRY_PATH = PROJECT_ROOT / "configs/contracts/v1.1.0/registry.json"
+
+
+def load_contract_registry() -> dict:
+    module = load_module()
+    return module.extract_registry_block(CONTRACT_PATH.read_text(encoding="utf-8"))
+
+
+def _table(registry: dict, name: str) -> dict:
+    return next(item for item in registry["tables"] if item["name"] == name)
+
+
+def test_registry_contains_execution_and_budget_tables() -> None:
+    registry = load_contract_registry()
+    names = {table["name"] for table in registry["tables"]}
+    assert {
+        "workbench_tasks",
+        "workflow_versions",
+        "runs",
+        "run_steps",
+        "authorizations",
+        "task_runs",
+        "run_step_attempts",
+        "tool_prices",
+        "quota_accounts",
+        "tool_calls",
+    } <= names
+
+
+def test_tool_prices_matches_c5_pricing_contract() -> None:
+    registry = load_contract_registry()
+    table = _table(registry, "tool_prices")
+    assert {column["name"] for column in table["columns"]} == {
+        "id",
+        "tool_id",
+        "currency",
+        "price_book_version",
+        "unit_price",
+        "unit",
+        "quantity_basis",
+        "confidence",
+        "source",
+        "effective_from",
+        "effective_to",
+        "created_at",
+        "updated_at",
+    }
+    assert {
+        "uq_tool_prices_tool_currency_version",
+        "ck_tool_prices_unit_price_nonnegative",
+        "ck_tool_prices_confidence",
+        "ck_tool_prices_effective_window",
+        "fk_tool_prices_tool_id_tool_catalog",
+    } <= set(table["constraints"])
+    indexes = {index["name"]: index for index in table["indexes"]}
+    assert indexes["uq_tool_prices_tool_currency_version"]["columns"] == [
+        "tool_id",
+        "currency",
+        "price_book_version",
+    ]
+    assert indexes["uq_tool_prices_tool_currency_version"]["unique"] is True
+    assert indexes["ix_tool_prices_tool_effective"]["columns"] == [
+        "tool_id",
+        "effective_from",
+    ]
+
+
+def test_deferred_customer_lease_is_not_registered_as_table() -> None:
+    registry = load_contract_registry()
+    names = {table["name"] for table in registry["tables"]}
+    deferred = {(item["kind"], item["name"]) for item in registry["deferred"]}
+    assert ("table", "mcp_customer_request_leases") in deferred
+    assert ("table", "report_shares") in deferred
+    assert "mcp_customer_request_leases" not in names
+    assert "report_shares" not in names
+    assert ("table", "tool_prices") not in deferred
+
+
+def test_workbench_tasks_matches_c4_seven_slots() -> None:
+    registry = load_contract_registry()
+    columns = {column["name"] for column in _table(registry, "workbench_tasks")["columns"]}
+    assert {
+        "workspace_id",
+        "project_id",
+        "created_by_user_id",
+        "owner_id",
+        "brand",
+        "category",
+        "competitors",
+        "markets",
+        "locale_by_market",
+        "window_start",
+        "window_end",
+        "decision_question",
+        "does_not_answer",
+        "task_type",
+        "task_type_confidence",
+        "status",
+    } <= columns
+
+
+def test_workbench_tasks_persist_package_type_and_market_roles() -> None:
+    registry = load_contract_registry()
+    table = _table(registry, "workbench_tasks")
+    columns = {column["name"]: column for column in table["columns"]}
+    assert {
+        "package_type",
+        "primary_market",
+        "comparison_markets",
+        "acceptance_contact_id",
+        "max_cost_usd",
+        "max_pages",
+        "max_records",
+        "seed_products",
+        "target_price_band",
+        "idempotency_key_hash",
+    } <= set(columns)
+    assert columns["package_type"]["enum"] == "workbench_tasks.package_type"
+    assert columns["primary_market"]["enum"] == "market_code"
+    assert columns["comparison_markets"]["type"] == "json"
+    assert columns["seed_products"]["type"] == "json"
+    assert columns["seed_products"]["nullable"] is False
+    assert columns["target_price_band"]["type"] == "json"
+    assert columns["target_price_band"]["nullable"] is True
+    assert columns["idempotency_key_hash"]["type"] == "string(64)"
+    assert columns["idempotency_key_hash"]["nullable"] is True
+    assert "owner" in columns["acceptance_contact_id"]["notes"]
+    assert "admin" in columns["acceptance_contact_id"]["notes"]
+    assert {
+        "ck_workbench_tasks_package_type",
+        "ck_workbench_tasks_primary_market",
+        "ck_workbench_tasks_budget_nonnegative",
+        "fk_workbench_tasks_acceptance_contact_member",
+    } <= set(table["constraints"])
+    indexes = {index["name"]: index for index in table["indexes"]}
+    assert indexes["uq_workbench_tasks_workspace_idempotency"] == {
+        "name": "uq_workbench_tasks_workspace_idempotency",
+        "columns": ["workspace_id", "idempotency_key_hash"],
+        "unique": True,
+        "where": "idempotency_key_hash IS NOT NULL",
+    }
+    versions = {
+        column["name"]: column for column in _table(registry, "workflow_versions")["columns"]
+    }
+    assert "plan_payload" in versions
+    assert "execution_steps" in versions["plan_payload"]["notes"]
+    assert "不可变" in versions["plan_payload"]["notes"]
+    assert versions["workbench_task_id"]["nullable"] is True
+    version_table = _table(registry, "workflow_versions")
+    assert "fk_workflow_versions_workbench_task_tenant" in version_table["constraints"]
+
+
+def test_runs_uses_market_code_and_authorization_binds_run_id() -> None:
+    registry = load_contract_registry()
+    run_columns = {column["name"] for column in _table(registry, "runs")["columns"]}
+    authorization = _table(registry, "authorizations")
+    authorization_columns = {column["name"] for column in authorization["columns"]}
+    assert "market_code" in run_columns
+    assert "market_role" not in run_columns
+    assert "package_type" not in run_columns
+    assert "run_id" in authorization_columns
+    assert "gate_id" in authorization_columns
+    assert "uq_authorizations_run_gate" in authorization["constraints"]
+    assert {
+        "name": "uq_authorizations_run_gate",
+        "columns": ["run_id", "gate_id"],
+        "unique": True,
+        "where": "run_id IS NOT NULL",
+    } in authorization["indexes"]
+
+
+def test_run_step_attempts_matches_c6_columns() -> None:
+    registry = load_contract_registry()
+    attempt = _table(registry, "run_step_attempts")
+    assert {column["name"] for column in attempt["columns"]} == {
+        "id",
+        "run_id",
+        "step_index",
+        "attempt_number",
+        "status",
+        "task_run_id",
+        "error_reason_code",
+        "error_message",
+        "started_at",
+        "finished_at",
+        "created_at",
+    }
+    assert {
+        "uq_run_step_attempts_run_step_attempt",
+        "uq_run_step_attempts_task_run_id",
+        "ck_run_step_attempts_attempt_number_positive",
+        "ck_run_step_attempts_status",
+        "fk_run_step_attempts_run_id_runs",
+        "fk_run_step_attempts_task_run_id_task_runs",
+    } <= set(attempt["constraints"])
+    assert {
+        "name": "ix_run_step_attempts_run_step",
+        "columns": ["run_id", "step_index"],
+        "unique": False,
+    } in attempt["indexes"]
+
+
+def test_run_steps_has_c6_extension_columns() -> None:
+    registry = load_contract_registry()
+    table = _table(registry, "run_steps")
+    columns = {column["name"]: column for column in table["columns"]}
+    assert {
+        "attempt_no",
+        "depends_on",
+        "tool_id",
+        "provider_run_id",
+        "idempotency_key_hash",
+        "evidence_grade",
+        "stage",
+    } <= set(columns)
+    assert columns["attempt_no"]["nullable"] is False
+    assert columns["attempt_no"]["default"] == 1
+    assert {
+        "name": "uq_run_steps_task_run_id",
+        "columns": ["task_run_id"],
+        "unique": True,
+        "where": "task_run_id IS NOT NULL",
+    } in table["indexes"]
+
+
+def test_registry_contains_identity_audit_key_tables() -> None:
+    registry = load_contract_registry()
+    names = {table["name"] for table in registry["tables"]}
+    assert {
+        "workspace_members",
+        "project_members",
+        "audit_events",
+        "project_api_keys",
+        "platform_credential_bundles",
+    } <= names
+
+
+def test_audit_events_has_sequence_and_hash_chain() -> None:
+    registry = load_contract_registry()
+    columns = {column["name"] for column in _table(registry, "audit_events")["columns"]}
+    assert {"sequence_number", "prev_hash", "event_hash", "actor_type", "result"} <= columns
+
+
+def test_project_api_keys_matches_c3_rotation_columns() -> None:
+    registry = load_contract_registry()
+    columns = {column["name"] for column in _table(registry, "project_api_keys")["columns"]}
+    assert {
+        "tool_allowlist",
+        "capability_allowlist",
+        "daily_budget_usd",
+        "status",
+        "rotation_group_id",
+        "superseded_by_key_id",
+        "last_rotated_at",
+        "expires_at",
+    } <= columns
+
+
+def test_c3_constraints_are_registered() -> None:
+    registry = load_contract_registry()
+    project_key_constraints = set(_table(registry, "project_api_keys").get("constraints", []))
+    credential_constraints = set(
+        _table(registry, "platform_credential_bundles").get("constraints", [])
+    )
+    assert "fk_project_api_keys_workspace_project_projects" in project_key_constraints
+    assert "uq_project_api_keys_active_project" in project_key_constraints
+    assert {
+        "uq_platform_credential_bundles_workspace_provider",
+        "uq_platform_credential_bundles_project_provider",
+        "fk_platform_credential_bundles_workspace_project_projects",
+    } <= credential_constraints
+
+
+def test_platform_credentials_has_project_scope() -> None:
+    registry = load_contract_registry()
+    columns = {
+        column["name"] for column in _table(registry, "platform_credential_bundles")["columns"]
+    }
+    assert {"project_id", "creator_cookie_metadata"} <= columns
+
+
+def test_registry_contains_claim_quality_dataset_tables() -> None:
+    registry = load_contract_registry()
+    names = {table["name"] for table in registry["tables"]}
+    assert {
+        "claims",
+        "claim_evidence",
+        "evidences",
+        "data_gaps",
+        "market_assessments",
+        "dataset_versions",
+    } <= names
+    assert "task_templates" not in names
+
+
+def test_claims_has_review_and_risk_columns() -> None:
+    registry = load_contract_registry()
+    columns = {column["name"] for column in _table(registry, "claims")["columns"]}
+    assert {
+        "text_en",
+        "scope_window_start",
+        "scope_window_end",
+        "risk_flags",
+        "review_status",
+        "reviewed_by",
+        "reviewed_payload_sha256",
+        "second_reviewed_by",
+        "content_version",
+        "independent_source_count",
+        "blocked_reason",
+        "review_history",
+    } <= columns
+
+
+def test_claim_tables_register_c7_constraint_guards() -> None:
+    registry = load_contract_registry()
+    claims = set(_table(registry, "claims")["constraints"])
+    assert {
+        "ck_claims_evidence_grade_min",
+        "ck_claims_state_grade_ceiling",
+        "ck_claims_review_status",
+        "ck_claims_review_coherence",
+        "ck_claims_confirmed_review",
+        "ck_claims_content_version",
+        "ck_claims_reviewed_version",
+        "ck_claims_independent_count",
+        "ck_claims_scope_window",
+        "ck_claims_scope_days",
+        "ck_claims_scope_sample",
+        "ck_claims_blocked_reason",
+        "ck_claims_blocked_state",
+        "ck_claims_second_review_pair",
+        "ck_claims_reviewer_differ",
+        "ck_claims_state",
+        "ck_claims_evidence_grade",
+        "ck_claims_confidence_range",
+        "fk_claims_workspace_id_workspaces",
+        "fk_claims_project_id_projects",
+        "fk_claims_run_id_runs",
+        "fk_claims_owner_users",
+        "fk_claims_reviewed_by_users",
+        "fk_claims_second_reviewed_by_users",
+    } <= claims
+    assert {
+        "ck_claim_evidence_role",
+        "ck_claim_evidence_evidence_grade",
+        "ck_claim_evidence_source_cluster_basis",
+        "ck_claim_evidence_independent_cluster",
+        "fk_claim_evidence_claim_id_claims",
+        "fk_claim_evidence_evidence_id_evidences",
+    } <= set(_table(registry, "claim_evidence")["constraints"])
+    assert {
+        "ck_evidences_evidence_grade",
+        "ck_evidences_source_cluster_basis",
+        "ck_evidences_source_cluster_coherence",
+        "ck_evidences_workspace_project_pair",
+        "fk_evidences_intelligence_id_intelligence_items",
+        "fk_evidences_signal_id_signals",
+        "fk_evidences_entity_id_entities",
+        "fk_evidences_raw_record_id_raw_records",
+        "fk_evidences_workspace_id_workspaces",
+        "fk_evidences_project_id_projects",
+    } <= set(_table(registry, "evidences")["constraints"])
+
+
+def test_data_gaps_and_market_assessments_match_c8() -> None:
+    registry = load_contract_registry()
+    gap_columns = {column["name"] for column in _table(registry, "data_gaps")["columns"]}
+    assessment_columns = {
+        column["name"] for column in _table(registry, "market_assessments")["columns"]
+    }
+    assert {
+        "market",
+        "data_domain",
+        "reason_code",
+        "severity",
+        "step_id",
+        "resolved_at",
+    } <= gap_columns
+    assert {
+        "task_id",
+        "market",
+        "market_role",
+        "quality_status",
+        "conclusion_standard",
+        "conclusion_quick",
+        "evidence_grade",
+        "core_domain_coverage",
+        "gap_ids",
+    } <= assessment_columns
+
+
+def test_dataset_versions_has_quality_and_hash_columns() -> None:
+    registry = load_contract_registry()
+    columns = {column["name"] for column in _table(registry, "dataset_versions")["columns"]}
+    assert {
+        "task_id",
+        "market",
+        "schema_hash",
+        "content_sha256",
+        "license_class",
+        "quality_status",
+    } <= columns
+
+
+def test_registry_contains_report_lifecycle_tables() -> None:
+    registry = load_contract_registry()
+    names = {table["name"] for table in registry["tables"]}
+    assert {"report_artifacts", "report_audit_events"} <= names
+
+
+def test_report_artifacts_has_publication_and_delivery_columns() -> None:
+    registry = load_contract_registry()
+    table = _table(registry, "report_artifacts")
+    columns = {column["name"] for column in table["columns"]}
+    assert {
+        "status",
+        "created_by",
+        "published_at",
+        "published_by",
+        "supersedes_id",
+        "superseded_at",
+        "delivery_status",
+        "delivery_class",
+        "manifest_json",
+        "manifest_sha256",
+        "manifest_sidecar_sha256",
+        "public_contract_json",
+        "acceptance_snapshot_json",
+        "acceptance_deadline",
+        "delivered_at",
+        "delivered_by",
+        "supersedes_delivery_id",
+        "quick_draft_of_artifact_id",
+        "publish_idempotency_key_hash",
+    } <= columns
+    assert {
+        "ck_report_artifacts_status",
+        "uq_report_artifacts_current_published",
+        "ck_report_artifacts_delivery_status",
+        "ck_report_artifacts_delivery_class",
+        "ck_report_artifacts_delivery_fields",
+        "uq_report_artifacts_publish_idempotency",
+    } <= set(table["constraints"])
+    index_predicates = {index["name"]: index.get("where") for index in table["indexes"]}
+    assert index_predicates["uq_report_artifacts_current_published"] == ("status = 'published'")
+    assert index_predicates["uq_report_artifacts_publish_idempotency"] == (
+        "publish_idempotency_key_hash IS NOT NULL"
+    )
+
+
+def test_report_audit_events_has_artifact_id() -> None:
+    registry = load_contract_registry()
+    table = _table(registry, "report_audit_events")
+    columns = {column["name"] for column in table["columns"]}
+    assert {"artifact_id", "report_id", "metadata_json"} <= columns
+    metadata = next(column for column in table["columns"] if column["name"] == "metadata_json")
+    assert "reviewer_role" in metadata["notes"]
+    assert "reviewed_claim_digest" in metadata["notes"]
+    assert "reviewer_assignment_id" in metadata["notes"]
+
+
+def test_internal_reviewer_assignment_is_registered() -> None:
+    registry = load_contract_registry()
+    table = _table(registry, "report_reviewer_assignments")
+    columns = {column["name"] for column in table["columns"]}
+    assert {
+        "id",
+        "workspace_id",
+        "project_id",
+        "report_id",
+        "artifact_id",
+        "reviewer_user_id",
+        "assignment_scope",
+        "status",
+        "assigned_by",
+        "assigned_at",
+        "expires_at",
+        "revoked_at",
+    } <= columns
+    expires_at = next(column for column in table["columns"] if column["name"] == "expires_at")
+    assert expires_at["nullable"] is False
+    enums = {item["name"]: item["values"] for item in registry["enums"]}
+    assert enums["report_reviewer_assignments.assignment_scope"] == [
+        "report_read",
+        "report_review",
+    ]
+    assert enums["report_reviewer_assignments.status"] == ["active", "revoked"]
+    assert "reviewer" not in enums["workspace_members.role"]
+
+
+def test_owner_admin_inline_approval_actions_are_registered() -> None:
+    registry = load_contract_registry()
+    table = _table(registry, "workbench_approval_actions")
+    columns = {column["name"] for column in table["columns"]}
+    assert {
+        "id",
+        "workspace_id",
+        "project_id",
+        "task_id",
+        "action_type",
+        "requester_user_id",
+        "approver_user_id",
+        "status",
+        "payload_json",
+        "idempotency_key_hash",
+        "created_at",
+        "expires_at",
+        "decided_at",
+    } <= columns
+    assert "ck_workbench_approval_actions_self_approval" in table["constraints"]
+    enums = {item["name"]: item["values"] for item in registry["enums"]}
+    assert enums["workbench_approval_actions.action_type"] == [
+        "budget_overage",
+        "package_addon",
+        "project_key_change",
+    ]
+
+
+def test_registry_contains_privacy_tables() -> None:
+    registry = load_contract_registry()
+    names = {table["name"] for table in registry["tables"]}
+    assert {
+        "workspace_pseudonym_salts",
+        "legal_holds",
+        "retention_cleanup_runs",
+        "retention_tombstones",
+        "deletion_requests",
+        "deletion_tombstones",
+        "deletion_subprocessor_receipts",
+        "deletion_proofs",
+        "deletion_replay_runs",
+        "deletion_replay_items",
+        "dsr_cases",
+        "privacy_audit_events",
+    } <= names
+    assert "mcp_customer_request_leases" not in names
+
+
+def test_c11_privacy_tables_match_c11_plan() -> None:
+    registry = load_contract_registry()
+    salt = _table(registry, "workspace_pseudonym_salts")
+    hold = _table(registry, "legal_holds")
+    cleanup = _table(registry, "retention_cleanup_runs")
+    assert {column["name"] for column in salt["columns"]} == {
+        "id",
+        "workspace_id",
+        "salt_version",
+        "salt_b64",
+        "created_at",
+    }
+    assert {
+        "uq_workspace_pseudonym_salts_workspace_id",
+        "ck_workspace_pseudonym_salts_salt_version",
+        "fk_workspace_pseudonym_salts_workspace_id_workspaces",
+    } <= set(salt["constraints"])
+    assert {column["name"] for column in hold["columns"]} == {
+        "id",
+        "workspace_id",
+        "project_id",
+        "data_class",
+        "status",
+        "reason",
+        "requested_by_user_id",
+        "requested_at",
+        "released_by_user_id",
+        "released_at",
+        "release_reason",
+        "created_at",
+    }
+    assert {
+        "ck_legal_holds_status",
+        "ck_legal_holds_data_class",
+        "ck_legal_holds_release_fields",
+    } <= set(hold["constraints"])
+    assert {index["name"] for index in hold["indexes"]} == {
+        "ix_legal_holds_workspace_status",
+        "ix_legal_holds_scope",
+    }
+    assert {column["name"] for column in cleanup["columns"]} == {
+        "id",
+        "mode",
+        "status",
+        "policy_version",
+        "requested_by_user_id",
+        "started_at",
+        "finished_at",
+        "cutoffs",
+        "counts",
+        "samples",
+        "blocked",
+        "error_message",
+        "created_at",
+    }
+    assert {
+        "ck_retention_cleanup_runs_mode",
+        "ck_retention_cleanup_runs_status",
+    } <= set(cleanup["constraints"])
+    assert {index["name"] for index in cleanup["indexes"]} == {
+        "ix_retention_cleanup_runs_created_at",
+    }
+    request = _table(registry, "deletion_requests")
+    assert {"created_at", "updated_at"} <= {column["name"] for column in request["columns"]}
+    assert {
+        "ck_deletion_requests_target_type",
+        "ck_deletion_requests_requested_by_role",
+        "ck_deletion_requests_status",
+        "ck_deletion_requests_target_scope",
+        "fk_deletion_requests_workspace_id_workspaces",
+        "fk_deletion_requests_project_id_projects",
+        "fk_deletion_requests_requested_by_user_id_users",
+        "fk_deletion_requests_approved_by_user_id_users",
+        "fk_deletion_requests_confirmed_by_user_id_users",
+    } <= set(request["constraints"])
+    assert {
+        "name": "uq_deletion_requests_active_target",
+        "columns": ["workspace_id", "target_type", "target_id"],
+        "unique": True,
+        "where": "status IN ('pending_owner_approval', 'pending_confirmation', 'ready', 'blocked_legal_hold', 'executing')",  # noqa: E501
+    } in request["indexes"]
+    assert {
+        "fk_deletion_tombstones_deletion_request_id_deletion_requests",
+        "fk_deletion_tombstones_workspace_id_workspaces",
+        "fk_deletion_tombstones_project_id_projects",
+    } <= set(_table(registry, "deletion_tombstones")["constraints"])
+    receipt = _table(registry, "deletion_subprocessor_receipts")
+    assert {"created_at", "updated_at"} <= {column["name"] for column in receipt["columns"]}
+    assert {
+        "uq_deletion_subprocessor_receipts_request_name",
+        "ck_deletion_subprocessor_receipts_status",
+        "fk_deletion_subprocessor_receipts_deletion_request_id_deletion_requests",
+        "fk_deletion_subprocessor_receipts_workspace_id_workspaces",
+    } <= set(receipt["constraints"])
+    assert {
+        "uq_deletion_proofs_request",
+        "uq_deletion_proofs_number",
+        "fk_deletion_proofs_deletion_request_id_deletion_requests",
+        "fk_deletion_proofs_workspace_id_workspaces",
+    } <= set(_table(registry, "deletion_proofs")["constraints"])
+    assert {
+        "ck_deletion_replay_runs_status",
+        "fk_deletion_replay_runs_workspace_id_workspaces",
+    } <= set(_table(registry, "deletion_replay_runs")["constraints"])
+    assert {
+        "uq_deletion_replay_items_run_target",
+        "ck_deletion_replay_items_status",
+        "fk_deletion_replay_items_run_id_deletion_replay_runs",
+    } <= set(_table(registry, "deletion_replay_items")["constraints"])
+    dsr = _table(registry, "dsr_cases")
+    assert {"created_at", "updated_at"} <= {column["name"] for column in dsr["columns"]}
+    assert {
+        "uq_dsr_cases_number",
+        "ck_dsr_cases_request_type",
+        "ck_dsr_cases_status",
+        "ck_dsr_cases_responsibility",
+        "fk_dsr_cases_workspace_id_workspaces",
+        "fk_dsr_cases_project_id_projects",
+        "fk_dsr_cases_deletion_request_id_deletion_requests",
+    } <= set(dsr["constraints"])
+    assert {
+        "uq_privacy_audit_events_stream_sequence",
+        "uq_privacy_audit_events_stream_digest",
+        "ck_privacy_audit_events_sequence",
+        "ck_privacy_audit_events_predecessor",
+        "ck_privacy_audit_events_actor_kind",
+        "fk_privacy_audit_events_workspace_id_workspaces",
+        "fk_privacy_audit_events_actor_user_id_users",
+        "fk_privacy_audit_events_predecessor",
+    } <= set(_table(registry, "privacy_audit_events")["constraints"])
+
+
+def test_customer_lease_is_deferred() -> None:
+    registry = load_contract_registry()
+    deferred = {(item["kind"], item["name"]) for item in registry["deferred"]}
+    assert ("table", "mcp_customer_request_leases") in deferred
+
+
+def test_every_column_enum_reference_resolves() -> None:
+    registry = load_contract_registry()
+    enum_names = {item["name"] for item in registry["enums"]}
+    missing = {
+        column["enum"]
+        for table in registry["tables"]
+        for column in table["columns"]
+        if "enum" in column and column["enum"] not in enum_names
+    }
+    assert missing == set()
+
+
+def test_entry_kind_values_and_sign_rule() -> None:
+    registry = load_contract_registry()
+    item = next(enum for enum in registry["enums"] if enum["name"] == "entry_kind")
+    assert item["values"] == [
+        "estimate",
+        "reserve",
+        "accrued",
+        "settle",
+        "release",
+        "block",
+    ]
+    assert item["rule"] == "settle must be positive; release must be negative"
+
+
+def test_run_status_bans_held_degraded_partial() -> None:
+    registry = load_contract_registry()
+    item = next(enum for enum in registry["enums"] if enum["name"] == "runs.status")
+    assert item["values"] == ["queued", "running", "completed", "failed", "cancelled"]
+    assert set(item["banned_values"]) == {"held", "degraded", "partial"}
+
+
+def test_market_code_has_eleven_formal_markets() -> None:
+    registry = load_contract_registry()
+    item = next(enum for enum in registry["enums"] if enum["name"] == "market_code")
+    assert item["values"] == [
+        "US",
+        "GB",
+        "DE",
+        "FR",
+        "IT",
+        "ES",
+        "IE",
+        "NL",
+        "BE",
+        "AT",
+        "PL",
+    ]
+
+
+def test_claim_review_and_report_status_values() -> None:
+    registry = load_contract_registry()
+    review = next(
+        enum for enum in registry["enums"] if enum["name"] == "claim_review_status"
+    )
+    report = next(
+        enum for enum in registry["enums"] if enum["name"] == "report_artifacts.status"
+    )
+    delivery = next(
+        enum
+        for enum in registry["enums"]
+        if enum["name"] == "report_artifacts.delivery_status"
+    )
+    assert review["values"] == ["draft", "pending", "approved", "rejected", "stale"]
+    assert report["values"] == ["draft", "published", "superseded"]
+    assert delivery["values"] == ["pending", "delivered", "superseded"]
+    assert delivery["values"] != report["values"]
+
+
+def test_internal_reviewer_and_inline_approval_enums() -> None:
+    registry = load_contract_registry()
+    enums = {item["name"]: item["values"] for item in registry["enums"]}
+    assert enums["report_reviewer_assignments.assignment_scope"] == [
+        "report_read",
+        "report_review",
+    ]
+    assert enums["report_reviewer_assignments.status"] == ["active", "revoked"]
+    assert enums["workbench_approval_actions.action_type"] == [
+        "budget_overage",
+        "package_addon",
+        "project_key_change",
+    ]
+    assert enums["workbench_approval_actions.status"] == [
+        "pending",
+        "approved",
+        "rejected",
+        "expired",
+    ]
+    assert enums["workspace_members.role"] == ["owner", "admin", "member"]
+
+
+def test_deletion_status_has_nine_values() -> None:
+    registry = load_contract_registry()
+    item = next(
+        enum for enum in registry["enums"] if enum["name"] == "deletion_requests.status"
+    )
+    assert item["values"] == [
+        "pending_owner_approval",
+        "pending_confirmation",
+        "ready",
+        "blocked_legal_hold",
+        "executing",
+        "completed",
+        "failed",
+        "rejected",
+        "cancelled",
+    ]
+
+
+def test_customer_mcp_has_exactly_eight_named_tools() -> None:
+    registry = load_contract_registry()
+    assert registry["mcp"]["endpoint"] == "/mcp/customer"
+    names = [tool["name"] for tool in registry["mcp"]["tools"]]
+    assert names == [
+        "discover_capabilities",
+        "estimate_task",
+        "create_task",
+        "get_task",
+        "cancel_task",
+        "get_delivery_manifest",
+        "get_evidence",
+        "collect",
+    ]
+
+
+def test_customer_mcp_forbids_endpoint_level_tools() -> None:
+    registry = load_contract_registry()
+    forbidden = set(registry["mcp"]["forbidden_tools"])
+    assert {"collect_endpoint", "raw_provider_call", "tiktok_creator_cookie"} <= forbidden
+
+
+def test_customer_mcp_path_is_registered() -> None:
+    registry = load_contract_registry()
+    paths = {(item["method"], item["path"]) for item in registry["paths"]}
+    assert ("POST", "/mcp/customer") in paths
+    assert ("GET", "/mcp/customer") in paths
+
+
+def test_c2_c3_c4_paths_are_registered() -> None:
+    registry = load_contract_registry()
+    paths = {item["path"] for item in registry["paths"]}
+    assert {
+        "/api/projects/{project_id}/members",
+        "/api/projects/{project_id}/members/{user_id}",
+        "/api/workspaces/current/members/{user_id}",
+        "/api/audit-events",
+        "/api/audit-events/verify",
+        "/api/projects/{project_id}/keys",
+        "/api/projects/{project_id}/keys/{key_id}/rotate",
+        "/api/workbench/tasks",
+        "/api/runs",
+    } <= paths
+    audit_actions = registry["audit_actions"]
+    assert audit_actions["version"] == "audit-actions.v1"
+    actions = {item["name"] for item in audit_actions["actions"]}
+    assert {
+        "auth.login.succeeded",
+        "auth.login.failed",
+        "auth.logout.succeeded",
+        "task.created",
+        "task.cancelled",
+        "task.retried",
+        "budget.price.changed",
+        "budget.limit.changed",
+        "budget.blocked",
+        "claim.review.submitted",
+        "claim.review.approved",
+        "claim.review.rejected",
+        "claim.review.overridden",
+        "claim.blocked",
+        "claim.unblocked",
+        "config.switch.changed",
+        "delivery.published",
+        "delivery.projection.viewed",
+        "privacy.projection.applied",
+        "reviewer.access.granted",
+        "reviewer.access.denied",
+        "reviewer.assignment.created",
+        "reviewer.assignment.revoked",
+    } <= actions
+    assert len(actions) == len(audit_actions["actions"])
+
+
+def test_report_and_privacy_paths_are_registered() -> None:
+    registry = load_contract_registry()
+    paths = {item["path"] for item in registry["paths"]}
+    assert {
+        "/api/reports/{report_id}/contract",
+        "/api/reports/{report_id}/publish",
+        "/api/reports/{artifact_id}/delivery",
+        "/api/privacy/deletion-requests",
+        "/api/privacy/dsr-cases",
+        "/api/privacy/audit-events",
+    } <= paths
+
+
+def test_report_lifecycle_paths_and_internal_reviewer_are_registered() -> None:
+    registry = load_contract_registry()
+    paths = {(item["method"], item["path"]) for item in registry["paths"]}
+    assert ("POST", "/api/reports/drafts") in paths
+    assert ("POST", "/api/reports/{report_id}/reviewers") in paths
+    assert ("DELETE", "/api/reports/{report_id}/reviewers/{user_id}") in paths
+    reviews = next(
+        item for item in registry["paths"] if item["id"] == "reports.reviews.create"
+    )
+    assert reviews["audience"] == "internal"
+    assert reviews["auth"] == "internal"
+    assert {
+        "reviewer_assignment_required",
+        "reviewer_assignment_expired",
+        "reviewer_self_review_forbidden",
+        "reviewer_assignment_invalid",
+        "state_conflict",
+    } <= set(reviews["error_codes"])
+    by_id = {item["id"]: item for item in registry["paths"]}
+    for path_id in (
+        "reports.contract",
+        "reports.artifact",
+        "reports.sop",
+        "reports.revisions",
+    ):
+        assert {
+            "reviewer_assignment_required",
+            "reviewer_assignment_expired",
+        } <= set(by_id[path_id]["error_codes"])
+    for path_id in ("reports.reviewers.assign", "reports.reviewers.revoke"):
+        assert "reviewer_assignment_expired" in by_id[path_id]["error_codes"]
+
+
+def test_inline_approval_paths_are_registered() -> None:
+    registry = load_contract_registry()
+    paths = {(item["method"], item["path"]) for item in registry["paths"]}
+    assert ("POST", "/api/workbench/tasks/{task_id}/approvals") in paths
+    assert (
+        "POST",
+        "/api/workbench/tasks/{task_id}/approvals/{approval_id}",
+    ) in paths
+    decide = next(
+        item
+        for item in registry["paths"]
+        if item["id"] == "workbench.tasks.approvals.decide"
+    )
+    assert "approval_self_approval_forbidden" in decide["error_codes"]
+
+
+def test_report_lifecycle_error_codes_are_registered() -> None:
+    registry = load_contract_registry()
+    codes = {item["code"] for item in registry["error_codes"]}
+    assert {
+        "report_quality_not_ready",
+        "delivery_not_publishable",
+        "delivery_input_invalid",
+        "publish_forbidden",
+        "idempotency_key_required",
+        "dataset_export_internal_isolated_source",
+        "report_contract_not_published",
+        "report_contract_hash_mismatch",
+        "report_contract_invalid",
+        "report_artifact_not_draft",
+        "report_artifact_incomplete",
+        "report_artifact_integrity_failed",
+        "report_review_required",
+        "report_publish_gate_blocked",
+        "report_revision_target_invalid",
+        "reviewer_assignment_required",
+        "reviewer_self_review_forbidden",
+        "reviewer_assignment_invalid",
+        "reviewer_assignment_expired",
+        "audit_action_unregistered",
+        "report_forbidden_language",
+    } <= codes
+    publish = next(
+        item for item in registry["paths"] if item["id"] == "delivery.publish"
+    )
+    assert {
+        "publish_forbidden",
+        "delivery_not_publishable",
+        "delivery_input_invalid",
+        "idempotency_key_required",
+        "gate_failed",
+    } <= set(publish["error_codes"])
+    export = next(
+        item for item in registry["paths"] if item["id"] == "datasets.export.create"
+    )
+    assert "dataset_export_internal_isolated_source" in export["error_codes"]
+
+
+def test_report_shares_is_deferred() -> None:
+    registry = load_contract_registry()
+    deferred = {(item["kind"], item["name"]) for item in registry["deferred"]}
+    tables = {table["name"] for table in registry["tables"]}
+    assert ("table", "report_shares") in deferred
+    assert ("path", "reports.share") in deferred
+    assert ("path", "reports.public.access") in deferred
+    assert "report_shares" not in tables
+    paths = {item["path"] for item in registry["paths"]}
+    assert "/api/reports/{report_id}/share" not in paths
+    assert "/api/reports/public/{token}" not in paths
+
+
+def test_design_failure_codes_are_registered() -> None:
+    registry = load_contract_registry()
+    codes = {item["code"] for item in registry["error_codes"]}
+    assert {
+        "tool_not_allowed",
+        "quota_exceeded",
+        "approval_required",
+        "tool_not_executable",
+        "tool_not_priced",
+        "market_unsupported",
+        "cookie_not_accepted",
+        "project_access_forbidden",
+        "workspace_owner_required",
+        "workspace_role_invalid",
+        "workspace_last_owner_required",
+        "task_locked",
+        "workflow_version_already_submitted",
+        "taxonomy_unavailable",
+        "idempotency_conflict",
+        "quota_account_missing",
+        "package_type_invalid",
+        "comparison_markets_exceeded",
+        "acceptance_contact_not_member",
+        "budget_invalid",
+    } <= codes
+    assert "mfa_required" not in codes
+
+
+def test_c4_c5_c6_paths_are_registered() -> None:
+    registry = load_contract_registry()
+    paths = {(item["method"], item["path"]) for item in registry["paths"]}
+    assert ("PATCH", "/api/workbench/tasks/{task_id}") in paths
+    assert ("GET", "/api/workbench/tasks/{task_id}/gates") in paths
+    assert ("GET", "/api/quota") in paths
+    assert ("GET", "/api/quota/projects/{project_id}") in paths
+    create = next(
+        item for item in registry["paths"] if item["id"] == "workbench.tasks.create"
+    )
+    assert create["idempotent"] is True
+    assert create["idempotency"] == {
+        "header": "Idempotency-Key",
+        "required": True,
+        "replay_status": 200,
+        "replay_header": "Idempotent-Replay",
+        "conflict_error": "idempotency_conflict",
+    }
+    assert "idempotency_conflict" in create["error_codes"]
+    assert "invalid_request" in create["error_codes"]
+
+
+def test_delivery_publish_path_does_not_shadow_report_publish() -> None:
+    registry = load_contract_registry()
+    paths = {(item["method"], item["path"]) for item in registry["paths"]}
+    assert ("POST", "/api/reports/{report_id}/publish") in paths
+    assert ("POST", "/api/reports/{artifact_id}/delivery/publish") in paths
+    assert ("POST", "/api/reports/{artifact_id}/publish") not in paths
+
+
+def test_every_path_error_code_exists() -> None:
+    registry = load_contract_registry()
+    codes = {item["code"] for item in registry["error_codes"]}
+    missing = {
+        code
+        for path in registry["paths"]
+        for code in path["error_codes"]
+        if code not in codes
+    }
+    assert missing == set()

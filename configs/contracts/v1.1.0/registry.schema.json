@@ -1,0 +1,574 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dih.local/contracts/v1.1.0/registry.schema.json",
+  "title": "DIH Contract Registry v1.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "registry_version",
+    "contract_version",
+    "status",
+    "source_document",
+    "source_section",
+    "generated_at",
+    "canonical_profile",
+    "audit_actions",
+    "phases",
+    "tables",
+    "enums",
+    "paths",
+    "page_routes",
+    "primary_nav",
+    "mcp",
+    "error_codes",
+    "schemas",
+    "documents",
+    "deferred"
+  ],
+  "properties": {
+    "registry_version": {"const": "contract-registry.v1"},
+    "contract_version": {"const": "v1.1"},
+    "status": {"enum": ["draft", "frozen"]},
+    "source_document": {"type": "string", "minLength": 1},
+    "source_section": {"type": "string", "minLength": 1},
+    "generated_at": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "canonical_profile": {"$ref": "#/$defs/canonical_profile"},
+    "capability_profiles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/capability_profile"}
+    },
+    "audit_actions": {"$ref": "#/$defs/audit_actions"},
+    "phases": {
+      "type": "array",
+      "minItems": 13,
+      "maxItems": 13,
+      "items": {"$ref": "#/$defs/phase"}
+    },
+    "tables": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/table"}},
+    "enums": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/enum"}},
+    "paths": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/path"}},
+    "page_routes": {
+      "type": "array",
+      "minItems": 11,
+      "maxItems": 11,
+      "items": {"$ref": "#/$defs/page_route"}
+    },
+    "primary_nav": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {"$ref": "#/$defs/primary_nav_item"}
+    },
+    "mcp": {"$ref": "#/$defs/mcp"},
+    "error_codes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/error_code"}
+    },
+    "schemas": {
+      "type": "array",
+      "minItems": 2,
+      "items": {"$ref": "#/$defs/schema_ref"}
+    },
+    "documents": {
+      "type": "array",
+      "minItems": 3,
+      "items": {"$ref": "#/$defs/document"}
+    },
+    "deferred": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/deferred_object"}
+    }
+  },
+  "$defs": {
+    "canonical_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile_id",
+        "encoding",
+        "json_rules",
+        "digest_algorithm",
+        "digest_encoding",
+        "excluded_top_level_keys",
+        "timestamp_format",
+        "number_rules",
+        "unicode_rules",
+        "forbidden_language"
+      ],
+      "properties": {
+        "profile_id": {"const": "dih-canonical-json-v1"},
+        "encoding": {"const": "UTF-8"},
+        "json_rules": {"const": "RFC 8785"},
+        "digest_algorithm": {"const": "sha256"},
+        "digest_encoding": {"const": "lowercase-hex"},
+        "excluded_top_level_keys": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "timestamp_format": {"const": "RFC3339-UTC-Z"},
+        "number_rules": {"type": "string", "minLength": 1},
+        "unicode_rules": {"type": "string", "minLength": 1},
+        "null_policy": {"type": "string", "minLength": 1},
+        "line_endings": {"type": "string", "minLength": 1},
+        "trailing_newline": {"type": "string", "minLength": 1},
+        "known_deviations": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
+        },
+        "forbidden_language": {"$ref": "#/$defs/forbidden_language_profile"},
+        "pii_scan": {"$ref": "#/$defs/pii_scan_profile"}
+      }
+    },
+    "capability_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile_id",
+        "profile_version",
+        "registry_source",
+        "schema_path",
+        "entrypoint",
+        "digest_function",
+        "digest_profile",
+        "digest_algorithm",
+        "digest_includes",
+        "empty_allowlist_policy",
+        "unknown_template",
+        "storage",
+        "excluded_capability_ids"
+      ],
+      "properties": {
+        "profile_id": {"const": "dih-template-capability-v1"},
+        "profile_version": {"const": "1.0.0"},
+        "registry_source": {"const": "apps/api/src/data_intelligence_hub/services/workbench_templates.py"},
+        "schema_path": {"const": "configs/contracts/v1.1.0/template_capability_profile.schema.json"},
+        "entrypoint": {"const": "template_capability_ids"},
+        "digest_function": {"const": "template_registry_digest"},
+        "digest_profile": {"const": "dih-canonical-json-v1"},
+        "digest_algorithm": {"const": "sha256"},
+        "digest_includes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "empty_allowlist_policy": {"const": "deny_all"},
+        "unknown_template": {"const": "KeyError"},
+        "storage": {"const": "code_registry_not_table"},
+        "excluded_capability_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "pii_scan_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile_id",
+        "owner",
+        "module",
+        "scanner",
+        "value_scanner",
+        "finding_type",
+        "finding_codes",
+        "c9_error",
+        "c10_error",
+        "shared_by",
+        "no_second_ruleset"
+      ],
+      "properties": {
+        "profile_id": {"const": "export_policy.v1"},
+        "owner": {"const": "C11"},
+        "module": {"const": "apps/api/src/data_intelligence_hub/services/export_policy.py"},
+        "scanner": {"const": "scan_export_policy"},
+        "value_scanner": {"const": "scan_export_value"},
+        "finding_type": {"const": "PiiHit"},
+        "finding_codes": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {"enum": ["contact", "profile_link", "avatar", "tracking"]}
+        },
+        "c9_error": {"const": "report_publish_gate_blocked"},
+        "c10_error": {"const": "delivery_pii_detected"},
+        "shared_by": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {"enum": ["C9", "C10"]}
+        },
+        "no_second_ruleset": {"const": true}
+      }
+    },
+    "forbidden_language_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile_id",
+        "profile_version",
+        "source",
+        "causal_terms_zh",
+        "causal_terms_en",
+        "prediction_terms_zh",
+        "prediction_terms_en",
+        "prediction_objects_zh",
+        "prediction_objects_en",
+        "allowed_relations_zh",
+        "allowed_relations_en"
+      ],
+      "properties": {
+        "profile_id": {"const": "dih-descriptive-language-v1"},
+        "profile_version": {"const": "1.0.0"},
+        "source": {"const": "docs/superpowers/specs/2026-10-21-tikhub-governed-task-platform-design.md#5.7"},
+        "causal_terms_zh": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "causal_terms_en": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "prediction_terms_zh": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "prediction_terms_en": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "prediction_objects_zh": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "prediction_objects_en": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "allowed_relations_zh": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "allowed_relations_en": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "audit_actions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "actions"],
+      "properties": {
+        "version": {"const": "audit-actions.v1"},
+        "actions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/audit_action"}
+        }
+      }
+    },
+    "audit_action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "owner", "status", "phase"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 80,
+          "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z0-9_]+)+$"
+        },
+        "owner": {"type": "string", "pattern": "^C(?:[2-9]|1[0-4])$"},
+        "status": {"enum": ["new", "existing", "extended", "frozen"]},
+        "phase": {"type": "string", "pattern": "^C(?:[2-9]|1[0-4])$"}
+      }
+    },
+    "phase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "scope", "objects"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^C(?:[2-9]|1[0-4])$"},
+        "name": {"type": "string", "minLength": 1},
+        "scope": {"type": "string", "minLength": 1},
+        "objects": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(table|enum|path|mcp_tool|error|schema|page_route|primary_nav):"
+          }
+        }
+      }
+    },
+    "table": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "module", "status", "phase", "purpose", "primary_key", "columns"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+        "module": {"type": "string", "pattern": "^M(?:0[1-9]|1[0-2])$"},
+        "status": {"enum": ["existing", "extend", "new"]},
+        "phase": {"type": "string", "pattern": "^C(?:[2-9]|1[0-4])$"},
+        "purpose": {"type": "string", "minLength": 1},
+        "primary_key": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "columns": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/column"}
+        },
+        "constraints": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
+        },
+        "indexes": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/index"}
+        }
+      }
+    },
+    "column": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "type", "nullable", "status", "phase"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+        "type": {
+          "type": "string",
+          "pattern": "^(uuid|text|integer|boolean|datetime|date|json|string\\([0-9]+\\)|numeric\\([0-9]+,[0-9]+\\))$"
+        },
+        "nullable": {"type": "boolean"},
+        "status": {"enum": ["existing", "extend", "new"]},
+        "phase": {"type": "string", "pattern": "^C(?:[2-9]|1[0-4])$"},
+        "references": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)?$"
+        },
+        "enum": {"type": "string", "pattern": "^[a-z][a-z0-9_.]*$"},
+        "default": {},
+        "notes": {"type": "string"}
+      }
+    },
+    "index": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "columns", "unique"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+        "columns": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "unique": {"type": "boolean"},
+        "where": {"type": "string", "minLength": 1}
+      }
+    },
+    "enum": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "values", "status", "phase", "source"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z][a-z0-9_.]*$"},
+        "values": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "status": {"enum": ["frozen", "extended", "new"]},
+        "phase": {"type": "string", "pattern": "^C(?:[2-9]|1[0-4])$"},
+        "banned_values": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
+        },
+        "source": {"type": "string", "minLength": 1},
+        "rule": {"type": "string", "minLength": 1}
+      }
+    },
+    "path": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "method", "path", "audience", "status", "phase", "auth", "idempotent", "error_codes"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z][a-z0-9_.]*$"},
+        "method": {"enum": ["GET", "POST", "PUT", "PATCH", "DELETE"]},
+        "path": {"type": "string", "pattern": "^/"},
+        "audience": {"enum": ["public", "session", "customer_key", "internal"]},
+        "status": {"enum": ["existing", "new"]},
+        "phase": {"type": "string", "pattern": "^C(?:[2-9]|1[0-4])$"},
+        "auth": {"enum": ["none", "session", "bearer", "internal"]},
+        "idempotent": {"type": "boolean"},
+        "idempotency": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "header",
+            "required",
+            "replay_status",
+            "replay_header",
+            "conflict_error"
+          ],
+          "properties": {
+            "header": {"const": "Idempotency-Key"},
+            "required": {"const": true},
+            "replay_status": {"const": 200},
+            "replay_header": {"const": "Idempotent-Replay"},
+            "conflict_error": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]*$"
+            }
+          }
+        },
+        "error_codes": {
+          "type": "array",
+          "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}
+        }
+      }
+    },
+    "page_route": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "path", "area", "enabled", "kind", "phase"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z][a-z0-9_.]*$"},
+        "path": {"type": "string", "pattern": "^/"},
+        "area": {"enum": ["public", "authorized"]},
+        "enabled": {"type": "boolean"},
+        "kind": {"enum": ["static", "dynamic"]},
+        "dynamic_segment": {"enum": ["toolId", "artifactId", "taskId", "id"]},
+        "phase": {"const": "C14"}
+      }
+    },
+    "primary_nav_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "path", "order", "phase"],
+      "properties": {
+        "id": {"enum": ["workbench", "reports", "connectors", "settings"]},
+        "label": {"type": "string", "minLength": 1},
+        "path": {"type": "string", "pattern": "^/"},
+        "order": {"type": "integer", "minimum": 1, "maximum": 4},
+        "phase": {"const": "C14"}
+      }
+    },
+    "mcp": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["endpoint", "transport", "tools_version", "schema_file", "tools", "forbidden_tools"],
+      "properties": {
+        "endpoint": {"const": "/mcp/customer"},
+        "transport": {"const": "streamable-http"},
+        "tools_version": {"const": "customer-mcp.v1"},
+        "schema_file": {"type": "string", "minLength": 1},
+        "tools": {
+          "type": "array",
+          "minItems": 8,
+          "maxItems": 8,
+          "items": {"$ref": "#/$defs/mcp_tool"}
+        },
+        "forbidden_tools": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "mcp_tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "status", "phase", "audience", "read_only", "input_ref", "output_ref", "error_codes"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+        "status": {"enum": ["new", "existing"]},
+        "phase": {"type": "string", "pattern": "^C(?:[2-9]|1[0-4])$"},
+        "audience": {"const": "customer"},
+        "read_only": {"type": "boolean"},
+        "input_ref": {
+          "type": "string",
+          "pattern": "^customer_mcp\\.schema\\.json#/\\$defs/"
+        },
+        "output_ref": {
+          "type": "string",
+          "pattern": "^customer_mcp\\.schema\\.json#/\\$defs/"
+        },
+        "error_codes": {
+          "type": "array",
+          "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}
+        }
+      }
+    },
+    "error_code": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "kind", "http_status", "retryable", "phase", "meaning"],
+      "properties": {
+        "code": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+        "kind": {"enum": ["error", "result_code"]},
+        "http_status": {"type": "integer", "minimum": 200, "maximum": 599},
+        "retryable": {"type": "boolean"},
+        "phase": {"type": "string", "pattern": "^C(?:[2-9]|1[0-4])$"},
+        "meaning": {"type": "string", "minLength": 1},
+        "banned_context": {"type": "string", "minLength": 1}
+      }
+    },
+    "schema_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "path", "kind", "profile", "digest_algorithm"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z][a-z0-9_.]*$"},
+        "path": {"type": "string", "pattern": "^(configs/contracts/v1\\.1\\.0/|apps/api/schemas/)"},
+        "kind": {"enum": ["registry", "report_contract", "delivery_manifest", "customer_mcp", "template_capability_profile"]},
+        "profile": {"const": "dih-canonical-json-v1"},
+        "digest_algorithm": {"const": "sha256"}
+      }
+    },
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "role", "version", "must_contain"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "role": {"enum": ["authority", "derived", "supporting"]},
+        "version": {"type": "string", "minLength": 1},
+        "must_contain": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "deferred_object": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "name", "phase", "owner", "reason"],
+      "properties": {
+        "kind": {"enum": ["table", "column", "enum", "path", "mcp_tool", "error", "schema"]},
+        "name": {"type": "string", "pattern": "^[a-z][a-z0-9_.]*$"},
+        "phase": {"type": "string", "pattern": "^C(?:[2-9]|1[0-4])$"},
+        "owner": {"type": "string", "pattern": "^C(?:[2-9]|1[0-4])$"},
+        "reason": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}
