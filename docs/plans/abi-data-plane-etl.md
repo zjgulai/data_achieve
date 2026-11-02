@@ -153,6 +153,21 @@ create_abi_upload -> write_abi_upload_content -> commit_abi_upload
 
 相关修复已提交：`4b303a6`（PII 误伤）、`321b23b`（asyncpg 参数上限）、`de14840`（复合主键 + CSV）。ETL 脚本：`scripts/abi_etl_load.py`。
 
+### 6.1 导出终态验收（2026-11-02）
+
+A/B 各做两条导出，均通过：
+
+| 路径 | 结果 |
+|---|---|
+| 未遮罩 `si_metric_snapshot`（`object_id`, `view_count`） | 创建 → `awaiting_approval` → 审批 → `queued` → worker `succeeded`；4,856 行 / 103,721 字节 |
+| 遮罩 `si_tiktok_video`（`video_id`, `author_id`, `author_nickname`） | 同步 `succeeded`；31,366 行 / 1,787,894 字节 |
+
+- 未遮罩 job：A `7f54b8f9…`、B `245361ce…`。遮罩 job：A `c223cd86…`、B `1864aaca…`。
+- 未遮罩产物 SHA-256 `f04ae81e…`；遮罩产物 SHA-256 `27922fdb…`；A/B 字节一致。
+- 遮罩检查：`author_id` 32 位十六进制哈希，`author_nickname` 为 `***`，`video_id` 保留。
+- worker 心跳：A/B `abi-export` 均 < 180 秒；B 当次 note 为 `export claimed=1 ok=1 failed=0 skipped=0`。
+- 测试用 publisher grant 已在 A/B 撤销；导出 job 与产物保留作审计证据，按 TTL 过期。
+
 ## 7. 2026-11-02 T-1 扫描试点
 
 - 目标日期：2026-11-01（北京时间）；账号 `complex_homage`（token 文件 t1）。
