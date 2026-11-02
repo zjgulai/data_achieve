@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data Intelligence Hub 项目成果总结 · 2026-11-02</title>
+<style>
+  :root{
+    color-scheme: light;
+    --bg:#f9f9f7; --surface:#fcfcfb; --ink:#0b0b0b; --ink-2:#52514e; --ink-3:#898781;
+    --line:#e1e0d9; --baseline:#c3c2b7; --code-bg:#f4f3f0;
+    --s1:#2a78d6; --s1-soft:#cde2fb;
+    --s2:#eb6834; --s2-soft:#fbe2d7;
+    --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --critical:#d03b3b;
+    --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:where(:not([data-theme="light"])){
+      color-scheme: dark;
+      --bg:#0d0d0d; --surface:#1a1a19; --ink:#ffffff; --ink-2:#c3c2b7; --ink-3:#898781;
+      --line:#2c2c2a; --baseline:#383835; --code-bg:#222620;
+      --s1:#3987e5; --s1-soft:#104281;
+      --s2:#d95926; --s2-soft:#4a2114;
+      --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --critical:#d03b3b;
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --bg:#0d0d0d; --surface:#1a1a19; --ink:#ffffff; --ink-2:#c3c2b7; --ink-3:#898781;
+    --line:#2c2c2a; --baseline:#383835; --code-bg:#222620;
+    --s1:#3987e5; --s1-soft:#104281;
+    --s2:#d95926; --s2-soft:#4a2114;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.75;-webkit-font-smoothing:antialiased}
+  .wrap{display:flex;max-width:1280px;margin:0 auto}
+
+  nav{width:250px;flex:0 0 250px;position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto;padding:32px 20px 40px 24px;border-right:1px solid var(--line)}
+  nav .brand{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:18px;font-weight:600}
+  nav .theme{margin:0 0 16px}
+  nav .theme button{font:inherit;font-size:12.5px;padding:4px 10px;border-radius:5px;border:1px solid var(--baseline);background:var(--surface);color:var(--ink-2);cursor:pointer}
+  nav ol{list-style:none;margin:0;padding:0;counter-reset:s}
+  nav li{counter-increment:s;margin:0 0 2px}
+  nav a{display:block;padding:6px 10px 6px 30px;position:relative;color:var(--ink-2);text-decoration:none;font-size:13.5px;border-radius:5px;transition:background .12s,color .12s}
+  nav a::before{content:counter(s);position:absolute;left:8px;top:6px;font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+  nav a:hover{background:var(--s1-soft);color:var(--ink)}
+
+  main{flex:1;min-width:0;padding:44px 48px 120px;max-width:980px}
+  header.top{margin-bottom:40px;padding-bottom:26px;border-bottom:2px solid var(--ink)}
+  header.top h1{font-size:29px;line-height:1.3;margin:0 0 12px;letter-spacing:-.01em}
+  .sub{color:var(--ink-2);font-size:14.5px;margin:0 0 18px}
+  .meta{display:flex;flex-wrap:wrap;gap:8px}
+  .meta span{font-family:var(--mono);font-size:11.5px;padding:3px 9px;background:var(--surface);border:1px solid var(--baseline);border-radius:4px;color:var(--ink-2)}
+
+  section{margin:0 0 52px;scroll-margin-top:24px}
+  h2{font-size:20px;margin:0 0 18px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+  h3{font-size:16px;margin:26px 0 10px}
+  p{margin:0 0 12px}
+  ul,ol{margin:0 0 14px;padding-left:22px}
+  li{margin:0 0 6px}
+  li::marker{color:var(--ink-3)}
+  strong{font-weight:600}
+  code{font-family:var(--mono);font-size:.88em;background:var(--code-bg);padding:1px 5px;border-radius:4px}
+  .lead{font-size:16px;color:var(--ink)}
+  a{color:var(--s1)}
+
+  table{width:100%;border-collapse:collapse;margin:0 0 16px;font-size:13.5px}
+  th{font-weight:600;text-align:left;color:var(--ink-2);border-bottom:1px solid var(--baseline);padding:7px 10px;background:var(--surface)}
+  td{border-bottom:1px solid var(--line);padding:7px 10px;vertical-align:top}
+  tr:last-child td{border-bottom:1px solid var(--baseline)}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  .tbl-note{font-size:12.5px;color:var(--ink-3);margin:-8px 0 16px}
+
+  .status{display:inline-block;font-size:12px;padding:1px 8px;border-radius:99px;border:1px solid var(--baseline);color:var(--ink-2);white-space:nowrap}
+  .status.ok{border-color:var(--good);color:var(--ink)}
+  .status.warn{border-color:var(--warn)}
+  .status.bad{border-color:var(--critical)}
+
+  .callout{background:var(--surface);border:1px solid var(--baseline);border-left:3px solid var(--s1);border-radius:6px;padding:12px 16px;margin:0 0 18px;font-size:14px}
+  .callout b{font-weight:600}
+  .callout .tag{display:block;font-size:12px;letter-spacing:.06em;color:var(--ink-3);margin-bottom:4px;text-transform:uppercase}
+
+  .kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:0 0 24px}
+  .tile{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px 12px}
+  .tile .label{font-size:12.5px;color:var(--ink-2);margin:0 0 4px}
+  .tile .value{font-size:28px;font-weight:600;line-height:1.15;letter-spacing:-.01em}
+  .tile .note{font-size:11.5px;color:var(--ink-3);margin-top:4px}
+
+  figure.chart{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:18px 18px 12px;margin:0 0 22px}
+  figure.chart figcaption{font-size:13px;color:var(--ink-2);margin:6px 0 0}
+  .chart-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .chart-head .t{font-size:15px;font-weight:600}
+  .chart-head .toggle{font:inherit;font-size:12px;color:var(--ink-2);background:none;border:1px solid var(--baseline);border-radius:5px;padding:2px 10px;cursor:pointer}
+  .chart-head .toggle:hover{color:var(--ink);border-color:var(--ink-3)}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin:10px 0 0;font-size:12.5px;color:var(--ink-2)}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+  .barbox{position:relative;margin:14px 0 4px}
+  .barrow{display:grid;grid-template-columns:110px 1fr;align-items:center;gap:10px;margin:0 0 7px;position:relative}
+  .barrow .cat{font-size:13px;color:var(--ink-2);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .track{position:relative;height:22px}
+  .bar{position:absolute;left:0;top:0;height:22px;background:var(--s1);border-radius:0 4px 4px 0;min-width:2px;transition:filter .12s;outline:none}
+  .barrow:hover .bar,.barrow:focus-within .bar{filter:brightness(1.12)}
+  .bar:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
+  .val{position:absolute;left:calc(var(--w) + 8px);top:50%;transform:translateY(-50%);font-size:12.5px;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .colbox{position:relative;margin:14px 0 4px}
+  .colbox svg{display:block;width:100%;height:auto}
+  .colbox .hit{fill:transparent;cursor:default;outline:none}
+  .tip{position:fixed;z-index:9;background:var(--surface);border:1px solid var(--baseline);border-radius:6px;padding:7px 10px;font-size:12.5px;color:var(--ink-2);box-shadow:0 4px 14px rgba(0,0,0,.14);pointer-events:none;display:none;max-width:260px;line-height:1.5}
+  .tip b{color:var(--ink);font-weight:600}
+  .tblview{display:none;margin-top:12px}
+  figure.chart.showtable .tblview{display:block}
+  figure.chart.showtable .barbox,figure.chart.showtable .colbox,figure.chart.showtable .legend{display:none}
+
+  footer{border-top:1px solid var(--line);margin-top:24px;padding-top:18px;font-size:12.5px;color:var(--ink-3)}
+
+  @media (max-width:900px){
+    .wrap{display:block}
+    nav{position:static;width:auto;height:auto;border-right:0;border-bottom:1px solid var(--line)}
+    main{padding:28px 20px 80px}
+    .barrow{grid-template-columns:88px 1fr}
+  }
+  @media print{
+    nav{display:none}
+    main{max-width:none;padding:0}
+    .tip{display:none!important}
+    figure.chart{break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav>
+  <div class="brand">DIH 成果总结</div>
+  <div class="theme"><button id="themeBtn" type="button">切换深浅色</button></div>
+  <ol>
+    <li><a href="#summary">总结</a></li>
+    <li><a href="#numbers">数字总览</a></li>
+    <li><a href="#timeline">交付时间线</a></li>
+    <li><a href="#detail">成果明细</a></li>
+    <li><a href="#boundary">已知边界</a></li>
+    <li><a href="#terms">术语</a></li>
+    <li><a href="#evidence">证据与口径</a></li>
+  </ol>
+</nav>
+<main>
+<header class="top">
+  <h1>Data Intelligence Hub 项目成果总结</h1>
+  <p class="sub lead">2026-11-02 是 ABI 数据面的实施日。当日 27 个提交，ABI 第一切片 186,352 行入仓，生产 B 升到 schema 068。平台能力目录本身没有变化。</p>
+  <div class="meta">
+    <span>报告日期 2026-11-02</span>
+    <span>代码基线 main@a4d843f</span>
+    <span>当日窗口 00:00–21:15 (+0800)</span>
+    <span>累计范围 2026-06-12 起（144 天）</span>
+    <span>按 ASD-STE100 等效规则撰写</span>
+  </div>
+</header>
+
+<section id="summary">
+  <h2>1. 总结</h2>
+  <p class="lead">当日主线分四步：ETL 第一切片装载、T-1 扫描试点、自动 scan 队列与 actor 归因、多日补扫。生产同日完成 B 的 schema 升级，A/B 账本最后都记 <code>144d7f2</code>。</p>
+  <p>当日也确认三处差距。第一，B 的端点实测状态为 224 untested、0 verified；A 为 200 verified。第二，ABI 只有第一切片入仓，生产验收未完成。第三，控制台的报告证据门禁缺合同端点，生产页面显示占位。</p>
+  <table>
+    <thead><tr><th>维度</th><th>当日结论</th></tr></thead>
+    <tbody>
+      <tr><td>平台能力</td><td>70 平台、312 能力视图、284 唯一端点；A 200 verified，B 0 verified（2026-11-02 实测）</td></tr>
+      <tr><td>生产部署</td><td>A 5 次发布、B 5 次升级；A/B schema 均为 <code>202610310068</code>；生产落后 main 6 个提交</td></tr>
+      <tr><td>ABI 数据面</td><td>第一切片 5 个 dataset、186,352 行、0 拒绝（A 与 B）；T-1 扫描 131 dataset / 4,163 item</td></tr>
+      <tr><td>控制台</td><td>采集台 26 页、洞察应用 31 页；当日无前端代码变更</td></tr>
+      <tr><td>报告管线</td><td>禁写 12 条、六档证据；打标试点 top-1 25.0%，决定不切换报告输入</td></tr>
+      <tr><td>Agent</td><td>台账 2 个 live；仅生产 A 的数说机器人 ready</td></tr>
+      <tr><td>治理</td><td>mypy 42 个类型错误修复；CI 7 个 job；新增 4 件治理资产</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="numbers">
+  <h2>2. 数字总览</h2>
+  <p>数字后的日期是口径日期。不同日期的数字不合并、不平均。</p>
+
+  <div class="kpi">
+    <div class="tile"><div class="label">当日提交</div><div class="value">27</div><div class="note">09:31–17:58</div></div>
+    <div class="tile"><div class="label">当日代码行</div><div class="value">+5,601</div><div class="note">删除 584 行</div></div>
+    <div class="tile"><div class="label">生产发布</div><div class="value">10</div><div class="note">A 5 次 + B 5 次</div></div>
+    <div class="tile"><div class="label">生产 schema</div><div class="value">068</div><div class="note">A 与 B 相同</div></div>
+    <div class="tile"><div class="label">能力视图</div><div class="value">312</div><div class="note">284 唯一端点</div></div>
+    <div class="tile"><div class="label">A 已验证端点</div><div class="value">200</div><div class="note">B 为 0</div></div>
+    <div class="tile"><div class="label">MCP 工具</div><div class="value">39</div><div class="note">23 通用 + 16 TikTok</div></div>
+    <div class="tile"><div class="label">ABI 入仓</div><div class="value">186,352</div><div class="note">行，0 拒绝</div></div>
+  </div>
+
+  <h3>2.1 当日提交节奏</h3>
+  <figure class="chart" id="fig-hour">
+    <div class="chart-head">
+      <span class="t">按小时统计当日 27 个提交（+0800）</span>
+      <button class="toggle" type="button" data-target="fig-hour">表格视图</button>
+    </div>
+    <div class="colbox" id="hourChart" role="img" aria-label="柱状图：9 时 3 个，10 时 1 个，11 时 8 个，12 时 3 个，13 时 1 个，14 时 0 个，15 时 4 个，16 时 3 个，17 时 4 个提交"></div>
+    <div class="tblview">
+      <table>
+        <thead><tr><th>小时</th><th class="num">提交</th></tr></thead>
+        <tbody>
+          <tr><td>09</td><td class="num">3</td></tr>
+          <tr><td>10</td><td class="num">1</td></tr>
+          <tr><td>11</td><td class="num">8</td></tr>
+          <tr><td>12</td><td class="num">3</td></tr>
+          <tr><td>13</td><td class="num">1</td></tr>
+          <tr><td>14</td><td class="num">0</td></tr>
+          <tr><td>15</td><td class="num">4</td></tr>
+          <tr><td>16</td><td class="num">3</td></tr>
+          <tr><td>17</td><td class="num">4</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <figcaption>单系列，无图例。11 时最密集，14 时无提交。</figcaption>
+  </figure>
+
+  <h3>2.2 A/B 的执行与验证</h3>
+  <figure class="chart" id="fig-ab">
+    <div class="chart-head">
+      <span class="t">工具可执行数与端点已验证数（2026-11-02）</span>
+      <button class="toggle" type="button" data-target="fig-ab">表格视图</button>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--s1)"></i>生产 A</span>
+      <span><i style="background:var(--s2)"></i>生产 B</span>
+    </div>
+    <div class="colbox" id="abChart" role="img" aria-label="分组柱状图：可执行工具 A 226、B 224；已验证端点 A 200、B 0"></div>
+    <div class="tblview">
+      <table>
+        <thead><tr><th>指标</th><th class="num">生产 A</th><th class="num">生产 B</th></tr></thead>
+        <tbody>
+          <tr><td>工具数</td><td class="num">284</td><td class="num">284</td></tr>
+          <tr><td>可执行工具</td><td class="num">226</td><td class="num">224</td></tr>
+          <tr><td>唯一端点</td><td class="num">284</td><td class="num">284</td></tr>
+          <tr><td>verified</td><td class="num">200</td><td class="num">0</td></tr>
+          <tr><td>config-gated</td><td class="num">57</td><td class="num">59</td></tr>
+          <tr><td>degraded</td><td class="num">12</td><td class="num">0</td></tr>
+          <tr><td>empty</td><td class="num">10</td><td class="num">0</td></tr>
+          <tr><td>untested</td><td class="num">4</td><td class="num">224</td></tr>
+          <tr><td>disabled</td><td class="num">1</td><td class="num">1</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <figcaption>两端目录 digest 同为 <code>35ead4d9</code>，但运行状态不同。B 的 224 untested 表示未执行端点实测，不是失败。</figcaption>
+  </figure>
+
+  <h3>2.3 本周提交节奏</h3>
+  <figure class="chart" id="fig-week">
+    <div class="chart-head">
+      <span class="t">按日统计本周提交（2026-10-26 至 11-02）</span>
+      <button class="toggle" type="button" data-target="fig-week">表格视图</button>
+    </div>
+    <div class="colbox" id="weekChart" role="img" aria-label="柱状图：10-26 15 个，10-27 18 个，10-28 19 个，10-29 38 个，10-30 0 个，10-31 11 个，11-01 0 个，11-02 27 个提交"></div>
+    <div class="tblview">
+      <table>
+        <thead><tr><th>日期</th><th class="num">提交</th></tr></thead>
+        <tbody>
+          <tr><td>2026-10-26</td><td class="num">15</td></tr>
+          <tr><td>2026-10-27</td><td class="num">18</td></tr>
+          <tr><td>2026-10-28</td><td class="num">19</td></tr>
+          <tr><td>2026-10-29</td><td class="num">38</td></tr>
+          <tr><td>2026-10-30</td><td class="num">0</td></tr>
+          <tr><td>2026-10-31</td><td class="num">11</td></tr>
+          <tr><td>2026-11-01</td><td class="num">0</td></tr>
+          <tr><td>2026-11-02</td><td class="num">27</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <figcaption>本周合计 128 个提交，fix 31 个（24.22%）。10-30 与 11-01 无提交。</figcaption>
+  </figure>
+
+  <h3>2.4 测试资产分层</h3>
+  <figure class="chart" id="fig-tests">
+    <div class="chart-head">
+      <span class="t">按目录统计 def test_ 数量（2026-11-02）</span>
+      <button class="toggle" type="button" data-target="fig-tests">表格视图</button>
+    </div>
+    <div class="barbox" id="testsChart" role="img" aria-label="条形图：unit 2,482 个用例，integration 290 个，postgres 系列 113 个"></div>
+    <div class="tblview">
+      <table>
+        <thead><tr><th>类别</th><th class="num">文件</th><th class="num">用例</th></tr></thead>
+        <tbody>
+          <tr><td>unit</td><td class="num">260</td><td class="num">2,482</td></tr>
+          <tr><td>integration</td><td class="num">34</td><td class="num">290</td></tr>
+          <tr><td>postgres 系列</td><td class="num">25</td><td class="num">113</td></tr>
+          <tr><td>合计</td><td class="num">319</td><td class="num">2,885</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <figcaption>静态计数，不是当日运行通过数。postgres 系列含 7 个子目录。</figcaption>
+  </figure>
+
+  <h3>2.5 其他关键数字</h3>
+  <table>
+    <thead><tr><th>指标</th><th class="num">值</th><th>口径</th></tr></thead>
+    <tbody>
+      <tr><td>全史提交</td><td class="num">958</td><td><code>main@a4d843f</code>，2026-11-02</td></tr>
+      <tr><td>当日触及文件</td><td class="num">138 文件次 / 71 个唯一文件</td><td>27 个提交 numstat</td></tr>
+      <tr><td>数据库迁移</td><td class="num">68</td><td>本地 <code>alembic/versions</code></td></tr>
+      <tr><td>文档</td><td class="num">225 个 md</td><td>2026-11-02 统计</td></tr>
+      <tr><td>ADR</td><td class="num">8</td><td>ADR-001 至 008</td></tr>
+      <tr><td>平台 Playbook</td><td class="num">73 个 md</td><td>2026-11-02 统计</td></tr>
+      <tr><td>控制台页面</td><td class="num">26</td><td><code>page.tsx</code> 计数</td></tr>
+      <tr><td>洞察应用页面</td><td class="num">31</td><td><code>page.tsx</code> 计数</td></tr>
+      <tr><td>CI job</td><td class="num">7</td><td><code>.github/workflows/ci.yml</code></td></tr>
+      <tr><td>mypy baseline</td><td class="num">976 → 934</td><td>signatures 478 → 459</td></tr>
+      <tr><td>VOC 禁写</td><td class="num">12 条</td><td>spec <code>count</code> 与 <code>items</code> 一致</td></tr>
+      <tr><td>发布账本</td><td class="num">31 行</td><td>其中 v2 13 行</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="timeline">
+  <h2>3. 交付时间线</h2>
+  <p>当日最后一次发布在 16:23（A）与 16:40（B）。17:31 之后的提交未部署。</p>
+
+  <h3>3.1 当日五阶段</h3>
+  <table>
+    <thead><tr><th>阶段</th><th>时间（+0800）</th><th>主题</th><th>代表提交与产出</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>09:19–10:01</td><td>开门：B 升级 068、文档真值、CI 门禁</td><td><code>ee9cc62</code> <code>6708547</code> <code>f9667e0</code> <code>6dc5a86</code>；B 从 schema 056 升到 068；能力口径改为 312/284/70、MCP 39；mypy 门禁恢复；记录 CI run <code>41374327302</code> 全绿</td></tr>
+      <tr><td>2</td><td>11:18–11:53</td><td>ABI ETL 第一切片</td><td><code>de14840</code> <code>321b23b</code> <code>4b303a6</code> <code>09aa288</code>；装载器 <code>scripts/abi_etl_load.py</code>；5 表 186,352 行、0 拒绝；A 发布 2 次，B 升级到 <code>09aa288</code></td></tr>
+      <tr><td>3</td><td>12:05–13:01</td><td>scan 消费器与 T-1 试点</td><td><code>ea9e197</code> <code>0fb3b0e</code> <code>39c6c17</code>；<code>abi/scan.py</code>；T-1 目标日 2026-11-01；131 dataset / 4,163 item；A 发布 12:48，B 升级 13:00</td></tr>
+      <tr><td>4</td><td>15:36–16:56</td><td>token、归因、多日补扫</td><td><code>c10ed99</code> <code>f082853</code> <code>144d7f2</code> <code>167b8bc</code>；per-account token 表与自动 scan 队列；actor 9 个、131 dataset 归因；补扫最多 7 天；A 发布 15:39、16:23，B 升级 15:50、16:40</td></tr>
+      <tr><td>5</td><td>17:31–17:58</td><td>mypy 债务收敛与对等账本</td><td><code>4659f92</code> <code>e1f6b69</code> <code>1eaa47f</code> <code>a4d843f</code>；42 个类型错误修复；baseline 回 934；打标试点结论；B 应用层对等记录</td></tr>
+    </tbody>
+  </table>
+
+  <h3>3.2 提交构成</h3>
+  <table>
+    <thead><tr><th>类型</th><th class="num">数量</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>docs</td><td class="num">14</td><td>文档、账本、方案、工单</td></tr>
+      <tr><td>feat</td><td class="num">6</td><td>ABI ETL、scan、token、补扫、B 升级</td></tr>
+      <tr><td>fix</td><td class="num">4</td><td>mypy 门禁、绑定参数、PII 误伤、mypy 债务</td></tr>
+      <tr><td>chore</td><td class="num">2</td><td>账本记录、baseline 调整</td></tr>
+      <tr><td>test</td><td class="num">1</td><td>分批测试类型注解</td></tr>
+      <tr><td>合计</td><td class="num">27</td><td>09:31–17:58</td></tr>
+    </tbody>
+  </table>
+
+  <h3>3.3 与本周的衔接</h3>
+  <p>本周提交 128 个，高于 2026-11-02 早间周复盘记录的 101 个。差异原因是复盘快照停在 <code>3f889e7</code>，未含当日后半段 27 个提交。周复盘的 B schema 056、账本 15 条也已被当日后续升级覆盖。</p>
+</section>
+
+<section id="detail">
+  <h2>4. 成果明细</h2>
+
+  <h3>4.1 平台能力与采集目录 <span class="status warn">部分完成</span></h3>
+  <p>目录结构稳定，A 的实测覆盖完整，B 未做端点实测。</p>
+  <ul>
+    <li>能力口径为 70 平台、312 能力视图、284 唯一端点（2026-11-02 生产接口，<code>catalog_digest=35ead4d9</code>）。能力视图多于唯一端点，因为同一端点可出现在多个平台视图。</li>
+    <li>工具目录为 284 个工具。A 226 个可执行，B 224 个可执行。差异只在 ecommerce 分类（A 2/2，B 2/0）。</li>
+    <li>A 的端点状态：200 verified、57 config-gated、12 degraded、10 empty、4 untested、1 disabled。</li>
+    <li>B 的端点状态：224 untested、59 config-gated、1 disabled。B 没有 verified。</li>
+    <li>MCP Runtime 注册 39 个工具：发现 6、采集 1、报告 1、监控 2、Exa 4、研究富化 4、工作区问答 1、运行额度 4、TikTok 16。</li>
+    <li>Apify 方案卡覆盖 10 个平台，数据日为 2026-10-14。</li>
+    <li>当日目录无新增端点。变更集中在文档真值刷新：README、生产基线、能力总账、能力图谱统一到 312/284/70 与 MCP 39。</li>
+  </ul>
+
+  <h3>4.2 生产部署与发布 <span class="status warn">部分完成</span></h3>
+  <p>两套生产在线，B 的发布仍走人工 runbook。</p>
+  <table>
+    <thead><tr><th>项</th><th>生产 A</th><th>生产 B</th></tr></thead>
+    <tbody>
+      <tr><td>域名</td><td>scrapy.luteos.com</td><td>scrapy.lute-tlz-dddd.top</td></tr>
+      <tr><td>部署分支</td><td><code>main</code></td><td><code>deploy/tiktok-cdo-codex</code></td></tr>
+      <tr><td>账本最后 commit</td><td><code>144d7f2</code></td><td><code>144d7f2</code></td></tr>
+      <tr><td>schema</td><td><code>202610310068</code></td><td><code>202610310068</code></td></tr>
+      <tr><td>edge 固定 IP</td><td><code>172.20.0.16</code></td><td><code>172.20.0.30</code></td></tr>
+    </tbody>
+  </table>
+  <ul>
+    <li>当日发布账本新增 16 行（A 8、B 8），覆盖 7 个不同提交。按主机去重：A 6 个、B 5 个。重复行来自同一版本的多次记账。</li>
+    <li>A 执行 5 次 <code>deploy-p0.sh</code>：<code>de14840</code>、<code>efe6d94</code>、<code>ea9e197</code>、<code>c10ed99</code>、<code>144d7f2</code>。<code>3f889e7</code> 的 3 行是补记，不是当日发布。</li>
+    <li>B 执行 5 次人工升级：<code>3f889e7</code>、<code>09aa288</code>、<code>ea9e197</code>、<code>c10ed99</code>、<code>144d7f2</code>。首次升级把 schema 从 <code>202610220056</code> 推到 <code>202610310068</code>，应用 12 个迁移。</li>
+    <li>B 有两次备份：3.4 MB 与 3.6 MB。没有恢复演练记录。</li>
+    <li>生产 HEAD <code>144d7f2</code> 是 <code>main</code> 的祖先。<code>main</code> 领先 6 个提交，其中 <code>4659f92</code> 是代码提交（类型修复），<code>e1f6b69</code> 是质量基线提交，其余 4 个是文档。</li>
+    <li>远端 <code>origin/deploy/tiktok-cdo-codex</code> 仍指 <code>e1cf7e7</code>（2026-10-25），落后生产 HEAD 238 个提交。原因是 B 只执行 <code>fetch origin main</code> 加 <code>merge --ff-only</code>，没有推送部署分支；B 主机没有写凭据。</li>
+    <li><code>deploy-p0.sh</code> 仍拒绝 <code>--host b</code>。B 的升级只能按 <code>docs/workflows/workflow-b-upgrade-2026-11.md</code> 人工执行。</li>
+    <li>发布账本 v2 已落地。<code>record_release.py</code> 强制写入 <code>schema_revision</code>、<code>alembic_head</code>、<code>verification</code>、<code>deployed_commit</code>。31 行中 13 行为 v2。</li>
+    <li>两层门禁可用。A 的 <code>preflight-production.sh</code> 检查公网健康、容器、edge IP、密钥格式与工具数；B 的 <code>preflight-production-b.sh</code> 检查 SSH、分支、四容器、备份与磁盘。</li>
+  </ul>
+
+  <h3>4.3 ABI 数据面 <span class="status warn">部分完成</span></h3>
+  <div class="callout">
+    <span class="tag">ABI 状态（固定表述）</span>
+    <b>应用侧查询/上传/导出代码路径与本地测试已打通；生产异步导出终态、T-1 入仓、看板真实数据未验收；外部仓是 PG18.6 本地快照。</b>
+  </div>
+  <p>本节其余内容是实现记录，不是验收结论。</p>
+  <ul>
+    <li>应用侧 schema 为 48 张表、766 个字段。来源是真实 PG16 的 <code>information_schema</code>，不是代码推断。48 表是 schema 结构，不等于已装载的数据集数。</li>
+    <li>第一切片装载 5 个 dataset，合计 186,352 行、0 拒绝。A 与 B 都完成装载，当前版本内容哈希一致。</li>
+  </ul>
+  <table>
+    <thead><tr><th>dataset</th><th class="num">行数</th><th class="num">拒绝</th></tr></thead>
+    <tbody>
+      <tr><td><code>si_tiktok_video</code></td><td class="num">31,366</td><td class="num">0</td></tr>
+      <tr><td><code>si_tiktok_comment</code></td><td class="num">47,073</td><td class="num">0</td></tr>
+      <tr><td><code>si_tiktok_hashtag_snapshot</code></td><td class="num">102,153</td><td class="num">0</td></tr>
+      <tr><td><code>si_metric_snapshot</code></td><td class="num">4,856</td><td class="num">0</td></tr>
+      <tr><td><code>si_author_video_snapshot</code></td><td class="num">904</td><td class="num">0</td></tr>
+      <tr><td>合计</td><td class="num">186,352</td><td class="num">0</td></tr>
+    </tbody>
+  </table>
+  <ul>
+    <li>T-1 扫描目标日为 2026-11-01，账号 <code>complex_homage</code>。结果为 131 个 dataset、4,163 条 item。<code>raw.apify_dataset</code> 的 <code>item_count_head</code> 与 <code>item_count_local</code> 均为 4,163；<code>raw.apify_item</code> 分区 2026-10 为 2,609 行、2026-11 为 1,554 行。</li>
+    <li>自动 scan 队列已实现。<code>drain_scan_queue</code> 消费 scan job，实测 <code>claimed=2 ok=2 failed=0 skipped=0</code>。</li>
+    <li>per-account token 表已种子化 5 条，用 Fernet 加密。5 条只对应 2 个账号（<code>complex_homage</code> 4 条、<code>yueguz</code> 1 条）。同一账号的多条 token 不叠加吞吐。</li>
+    <li>actor 归因已种子化 9 个 actor，131 个 dataset 全部回填，<code>endpoint_source=unknown</code> 为 0。分布为 tiktok/post 40、youtube/post 32、x/post 24、instagram/post 16、tiktok/hashtag 16、reddit/post 3。归因正确率未抽样复核。</li>
+    <li>多日补扫按 <code>schedule_state.last_target_date</code> 补齐缺失日期，最多 7 天。<code>yueguz</code> 缺口 2 天，实测补扫 2026-10-31 成功。水位用 <code>GREATEST</code> 防止回退。</li>
+    <li>B 的 ABI 数据面与 A 对齐：5 个 token、<code>abi-ingest</code> 启动、T-1 raw 131 dataset / 4,163 item、actor 归因 9/131、应用层 5 dataset / 186,352 行 / 0 拒绝。此对等仅指 ABI 数据面，不是平台端点实测对等。</li>
+    <li>实施中修复 5 类缺陷：JSONL 少计一行、默认主键取第一列、旧主键索引残留、asyncpg 参数上限（60,000 → 30,000）、信用卡扫描误伤公开 ID（194 次 → 0 次）。</li>
+    <li>报告输入暂不切换。20 条打标试点的 top-1 family 准确率 A/B 均为 25.0%（5/20）；family 平均 Jaccard 为 0.361 / 0.409；motif 为 0.549 / 0.498。结论是纯文本不能复现 deepread 标签，报告继续读 <code>deepread288.tsv</code>。</li>
+  </ul>
+
+  <h3>4.4 控制台与双前端 <span class="status warn">部分完成</span></h3>
+  <p>当日无前端代码变更。</p>
+  <ul>
+    <li>采集管理台 26 个页面，一级导航 4 项：工作台、报告、连接器、设置。</li>
+    <li>洞察应用 31 个页面，一级导航 7 项。比 2026-10-31 报告的 29 页多 2 页，新增的是 <code>/new</code> 与 <code>/new/[reportId]</code>。</li>
+    <li>采集台冻结 7 条永久重定向：<code>/platforms</code>、<code>/skills</code>、<code>/skills/:platformId</code>、<code>/collector-docs</code>、<code>/collect/:runId</code>、<code>/datasets</code>、<code>/raw-records</code>。</li>
+    <li>工作台五步中，计划与分析固定 blocked。页面列出 8 个缺失端点，并如实显示「被阻断」。采集与报告两步读真实端点；问题步只能本地填写，保存缺 <code>POST /api/workbench/tasks</code>。</li>
+    <li>报告阅读页有证据等级与门禁的渲染逻辑，但数据源未接通。前端调用 <code>GET /api/reports/{id}/contract</code>，后端 reports 路由没有该端点。生产页面显示「合同接口未提供」与「待合同接口」。</li>
+    <li>浏览器冒烟覆盖 16 个页面加 7 条重定向，共 23 项。通过记录来自 2026-10-31，当日未复跑。冒烟未覆盖 <code>/workbench</code>、<code>/reports</code>、<code>/capabilities</code>、<code>/abi</code>、<code>/login</code> 与动态详情页。</li>
+    <li>生产编排中，<code>data_achieve_scrapy_web</code> 只在内部网络运行，edge 把 <code>/insight</code> 转发到该容器。<code>apps/web</code> 的 basePath 是构建期常量，换前缀必须重建镜像。</li>
+  </ul>
+
+  <h3>4.5 VOC 与报告管线 <span class="status warn">部分完成</span></h3>
+  <p>当日只新增打标试点报告，管线代码无变更。</p>
+  <ul>
+    <li>禁写清单 12 条（FC-01 至 FC-12）。spec 的 <code>count=12</code>，<code>items</code> 长度也是 12；<code>validate_report.py</code> 硬校验 12。提交信息与旧报告写的 14 条是笔误。</li>
+    <li>六档证据按 first match wins 判定：Not authorized &gt; Blocked &gt; Evidence gap &gt; Confirmed &gt; Directional &gt; Supported hypothesis。Directional 要求同一 frame 内至少 8 条独立记录、至少 2 位作者、方向一致度至少 70%。</li>
+    <li>六级计数链：raw_object → occurrence → canonical_record → frame_membership → annotation → metric_row。本轮实测 raw 430、occurrence 430、canonical 423、membership 432。membership 大于 occurrence，因为同一条记录可进入多个 frame；它不是漏斗。</li>
+    <li>视频层有 141 条视频、124 位达人、10 条 exact 基线。没有任何层同时满足层内 n≥8 与对照 n≥8。字幕、音轨、画面为 Evidence gap。</li>
+    <li>metric rows 为 0，G7 为 BLOCKED。原因是缺第二编码员与逐字段 agreement。量化结论不可用。</li>
+    <li>run-20261029 的报告校验 34 项、spec 校验 13 项、单测 139 个 <code>test_</code> 方法。以上是资产与历史运行记录，当日未复跑。</li>
+    <li>首份洞察报告已入库：<code>report_id=ebe57a63-4241-4ce0-8e13-eb54a9f80f07</code>，正文 181,984 字节。来源是 nmem 记录，当日未登录生产独立复核。</li>
+    <li>打标试点结论：不建纯文本打标链，不切换报告输入。若继续，需补多模态输入、至少 100 条样本、双人独立标注，并预先写死 family Jaccard ≥0.80、top-1 ≥0.70。</li>
+  </ul>
+
+  <h3>4.6 Agent 与飞书 <span class="status warn">部分完成</span></h3>
+  <p>当日无 Agent 代码变更。</p>
+  <ul>
+    <li>台账登记 2 个 Agent，均标 live：<code>shusuo</code> 与 <code>tiktok_cdo</code>。live 是台账状态，不等于生产就绪。</li>
+    <li>生产 A 的数说机器人 ready：<code>app_id</code> 已配、<code>encrypt_enabled=true</code>、<code>verification_token_configured=true</code>、<code>allowlist_size=8</code>。8 是 <code>allowed_open_ids</code> 的用户数，不是群数。</li>
+    <li>生产 A 的 TikTok CDO 未就绪：<code>ready=false</code>，<code>lark_app_id</code> 为空。DeepSeek 与 Exa 已配置。</li>
+    <li>生产 B 的数说机器人未配置：<code>ready=false</code>、<code>app_id</code> 为空、<code>allowlist_size=0</code>。</li>
+    <li>生产 B 的 TikTok CDO 也未就绪：<code>ready=false</code>、<code>deepseek_configured=false</code>，且 <code>lark_app_id</code> 等于 A 数说机器人的 App ID（<code>cli_aa10f960fbb99cb3</code>）。这是配置串线风险，需单独确认。</li>
+    <li>群 mention 闸门：群聊只在被 @ 时处理；<code>@all</code>、未知 <code>chat_type</code>、机器人自己的消息一律忽略。</li>
+    <li>确认卡：自由文本不执行采集；提案 token 300 秒过期、单次消费；卡片回调校验签名、时间戳与操作人。</li>
+    <li>事件去重按 <code>event_id</code>，窗口 600 秒，最多 1,024 条，存于进程内。多 worker 或进程重启仍可能重复处理。</li>
+    <li>评测集：shusuo 17 例 / 170 行，tiktok_cdo 17 例 / 386 行；runner 381 行。两份 baseline 均为 17/17（2026-10-27）。当日未运行。</li>
+    <li>生产 B 的 <code>/api/abi/datasets</code> 与 <code>/api/insight/analysis-types</code> 返回 401。两只说明路由已挂载、鉴权生效，不证明授权后可用。</li>
+  </ul>
+
+  <h3>4.7 治理、测试与文档 <span class="status warn">部分完成</span></h3>
+  <ul>
+    <li>CI 有 7 个 job：Platform Skill And MCP Gate、API Quality Gate、Workflow Planner PostgreSQL 15 Gate、Workflow Lineage PostgreSQL 15 Gate、Web Quality Gate、Web Real Chain E2E、Console Route E2E。最后一项为非阻断。</li>
+    <li>API Quality Gate 含 8 类检查：文件完整性、真实 API E2E 守卫、运维脚本测试与迁移号检查、Ruff、mypy 非回归、unit pytest、integration pytest、pytest baseline 与 alembic heads。</li>
+    <li>测试资产 319 个文件、2,885 个 <code>def test_</code>。这是静态计数，不是当日通过数。</li>
+    <li>迁移 68 个，唯一 head 为 <code>202610310068</code>。迁移号 checker 当日退出 0，allowlist 9 条。</li>
+    <li>mypy 债务收敛：42 个 ABI 与洞察类型错误全部修复，没有新增 <code>type: ignore</code>；baseline 976 → 934，signatures 478 → 459；门禁输出 <code>current=934 baseline=934</code>。mypy 是非回归门禁，不是零错误门禁。</li>
+    <li>当日新增 4 件治理资产：双机 drift 脚本、迁移号 checker、日报健康检查、发布账本 v2。四项都已接入 CI：drift 跑测试，迁移号跑 checker，日报跑健康检查测试，账本跑 verify。</li>
+    <li>安全下限测试 20 个：生产安全默认值 7、ABI 导出默认值 4、ABI PII 契约 4、密码策略 5。</li>
+    <li>文件完整性检查只查 <code>st_size</code> 与 NUL，不查非法 UTF-8、mode 变化，也不做自动修复。</li>
+    <li>三项治理脚本仍缺：<code>check_docs_drift.py</code>、<code>check_commit_scope.py</code>、<code>egress_audit.sh</code>。密钥扫描（gitleaks / detect-secrets）也未接入。</li>
+    <li>文档 225 个 md、ADR 8 条、平台 Playbook 73 个。</li>
+    <li>采集外访默认 offline；生产未显式配置时为 restricted；没有 unrestricted 模式。批准主机 1–5 个精确域名，请求预算 1–50 次。</li>
+  </ul>
+</section>
+
+<section id="boundary">
+  <h2>5. 已知边界</h2>
+  <p>状态词固定为四个：<strong>未确认</strong>（证据不足）、<strong>阻塞</strong>（有明确外部依赖）、<strong>部分完成</strong>（部分可用）、<strong>未开始</strong>（无实现证据）。范围截至 2026-11-02 21:15。</p>
+  <table>
+    <thead><tr><th>事项</th><th>状态</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>ABI 生产验收</td><td><span class="status">未确认</span></td><td>应用侧查询/上传/导出代码路径与本地测试已打通；生产异步导出终态、T-1 入仓、看板真实数据未验收；外部仓是 PG18.6 本地快照</td></tr>
+      <tr><td>ABI 第二切片</td><td><span class="status">未开始</span></td><td>第一切片只搬 5 个 dataset；其余表未搬</td></tr>
+      <tr><td>ABI 备份与 token 轮换</td><td><span class="status">未开始</span></td><td><code>backup-abi.sh</code> 有两处 TODO；5 个 token 是否仍有效未确认</td></tr>
+      <tr><td>B 端点实测</td><td><span class="status">未开始</span></td><td>224 untested、0 verified；B 未执行端点 test 运行</td></tr>
+      <tr><td>B 远端分支引用</td><td><span class="status">未确认</span></td><td>生产 HEAD 为 <code>144d7f2</code>；<code>origin/deploy/tiktok-cdo-codex</code> 仍指 <code>e1cf7e7</code></td></tr>
+      <tr><td>B 备份恢复演练</td><td><span class="status">未确认</span></td><td>有 3.4 MB 与 3.6 MB 备份，无恢复演练记录</td></tr>
+      <tr><td>工作台计划/分析两步</td><td><span class="status bad">阻塞</span></td><td>8 个工作台端点未挂载，页面显示 blocked</td></tr>
+      <tr><td>报告证据门禁</td><td><span class="status bad">阻塞</span></td><td><code>GET /api/reports/{id}/contract</code> 未挂载，生产显示占位</td></tr>
+      <tr><td>VOC G7 双盲编码</td><td><span class="status">未开始</span></td><td>metric rows 为 0；缺第二编码员</td></tr>
+      <tr><td>视频层证据</td><td><span class="status warn">部分完成</span></td><td>141 视频 / 124 达人；仅 10 条 exact 基线</td></tr>
+      <tr><td>洞察报告独立复核</td><td><span class="status">未确认</span></td><td>记录显示已入库 181,984 字节；当日未登录复核</td></tr>
+      <tr><td>Governed Task Platform C2–C14</td><td><span class="status">未开始</span></td><td>仅 C1 契约合入</td></tr>
+      <tr><td>外访批准主机超上限</td><td><span class="status bad">阻塞</span></td><td><code>public_feed</code> 21 个，超每类 5 个上限（2026-10-31 口径）</td></tr>
+      <tr><td>快速采集表单契约</td><td><span class="status warn">部分完成</span></td><td>126 个端点无表项；52 个端点会静默采回测试数据（2026-10-31 口径）</td></tr>
+      <tr><td>STE 标准自动校验</td><td><span class="status">未开始</span></td><td>CI 无 STE 检查，依赖人工</td></tr>
+      <tr><td>版本号发布 tag</td><td><span class="status">未开始</span></td><td>6 个 tag 全为归档或备份</td></tr>
+      <tr><td>TikTok CDO Agent</td><td><span class="status">未确认</span></td><td>台账标 live，生产 health 为 ready=false</td></tr>
+      <tr><td>飞书机器人生产 B</td><td><span class="status">未开始</span></td><td><code>ready=false</code>、<code>allowlist_size=0</code></td></tr>
+      <tr><td>文件完整性门禁</td><td><span class="status warn">部分完成</span></td><td>只查 size 与 NUL；无 UTF-8、mode、repair</td></tr>
+      <tr><td>文档漂移/提交范围/出口审计</td><td><span class="status">未开始</span></td><td>三个脚本不存在，CI 无引用</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="terms">
+  <h2>6. 术语</h2>
+  <table>
+    <tbody>
+      <tr><td>能力视图</td><td>工具在某平台分类下的展示条目。同一端点可出现在多个视图</td></tr>
+      <tr><td>唯一端点</td><td>按 <code>endpoint_type</code> 去重后的可调用入口</td></tr>
+      <tr><td>verified</td><td>最近一次 test 运行成功，且返回 ≥1 条记录</td></tr>
+      <tr><td>config-gated</td><td>端点可用，但需要凭据、自建服务或受控出口</td></tr>
+      <tr><td>degraded</td><td>最近一次实测失败，问题在上游</td></tr>
+      <tr><td>empty</td><td>实测成功，但返回 0 条</td></tr>
+      <tr><td>untested</td><td>未执行 test 运行。不等于失败</td></tr>
+      <tr><td>executable</td><td>工具目录中当前可调用的工具。不等于 verified</td></tr>
+      <tr><td>MCP</td><td>Model Context Protocol。本项目入口在 <code>/mcp/</code></td></tr>
+      <tr><td>ABI</td><td>外部数据中心。应用侧为 PG16；外部仓为 PG18.6 本地快照</td></tr>
+      <tr><td>dataset</td><td>ABI 中的一张数据表，带版本与 PII 策略</td></tr>
+      <tr><td>T-1</td><td>目标日为前一天的扫描任务</td></tr>
+      <tr><td>actor</td><td>Apify 数据的来源 Actor，用于归因</td></tr>
+      <tr><td>VOC</td><td>Voice of Customer，用户声音洞察</td></tr>
+      <tr><td>六档证据</td><td>Not authorized / Blocked / Evidence gap / Confirmed / Directional / Supported hypothesis</td></tr>
+      <tr><td>禁写闸门</td><td>报告渲染前的机器检查。命中禁止结论即失败</td></tr>
+      <tr><td>G7</td><td>VOC 的第二编码员与一致性校准门</td></tr>
+      <tr><td>ADR</td><td>Architecture Decision Record，架构决策记录</td></tr>
+      <tr><td>STE</td><td>ASD-STE100 简化技术英语。本项目使用等效中文规则</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="evidence">
+  <h2>7. 证据与口径</h2>
+  <ul>
+    <li>数字一律标注口径日期。不同日期的数字不比较、不平均。</li>
+    <li>生产实测均在 2026-11-02 完成：<code>/api/health</code>、<code>/api/tool-catalog</code>、<code>/api/platform-packages</code>、<code>/api/platform-packages/providers/status</code>、<code>/api/agents/*/health</code>、<code>/api/abi/datasets</code>、<code>/api/insight/analysis-types</code>。</li>
+    <li>代码与提交数字来自本地 <code>main@a4d843f</code> 的只读 git 查询。</li>
+    <li>测试数量是静态计数（<code>def test_</code>），不是运行通过数。当日未执行全量 pytest。</li>
+    <li>ABI 的 186,352 行、131 dataset / 4,163 item、actor 归因等数字来自实施记录文档，当日未直连生产库复测。</li>
+    <li>冲突口径已在正文标注：MCP 39 与旧文档 25；禁写 12 与旧说法 14；B 的 <code>144d7f2</code> 与基线文档 <code>3f889e7</code>；能力 312/284 与 10-21 的 311/283；洞察应用 31 页与旧报告 29 页。</li>
+    <li>主要证据文件：<code>README.md</code>；<code>docs/【运维手册】生产环境基线.md</code>；<code>docs/architecture/【能力总账】DIH-平台能力现状与维护手册.md</code>；<code>docs/architecture/【能力图谱】DIH-控制台能力地图.md</code>；<code>docs/ops/releases.jsonl</code>；<code>docs/workflows/workflow-b-upgrade-2026-11.md</code>；<code>docs/plans/abi-data-plane-etl.md</code>；<code>voc_pipeline/spec/forbidden_conclusions.json</code>；<code>apps/api/src/data_intelligence_hub/mcp_runtime/server.py</code>。</li>
+  </ul>
+  <h3>7.1 取证方式说明</h3>
+  <p>本报告由 7 个并行取证代理覆盖七个成果域，另有 1 个完整性批评者查漏与核对数字矛盾。编排者本人对 5 组关键数字做了定向复核：MCP 工具数、VOC 禁写条数、ABI 状态分界、生产 B 状态、能力目录数。</p>
+  <p>本次原计划使用 Workflow 工具编排。运行环境要求人工审查后放行，本会话为非交互任务，无法完成审查。因此改用同等结构的并行 Agent，取证与复核步骤不变。</p>
+  <h3>7.2 图表规范</h3>
+  <p>图表沿用 2026-10-31 报告的样式与交互规范：SVG 绘制、逐点 hover 提示、表格视图切换、深浅色主题、打印样式。调色板经 <code>validate_palette.js</code> 校验：单系列蓝 <code>#2a78d6</code>（深色 <code>#3987e5</code>）；双系列蓝加橙 <code>#eb6834</code>（深色 <code>#d95926</code>）。两种模式的全部检查项均通过，CVD 最差相邻对 ΔE 为 24.7（浅色）与 26.8（深色），高于 8 的目标线。</p>
+  <footer>同目录 Markdown 版：<a href="./Source-项目成果总结-20261102.md">Source-项目成果总结-20261102.md</a></footer>
+</section>
+</main>
+</div>
+
+<div class="tip" id="tip" role="status" aria-hidden="true"></div>
+
+<script>
+(function(){
+  'use strict';
+  var tip = document.getElementById('tip');
+
+  function showTip(evt, title, body){
+    tip.textContent = '';
+    var t = document.createElement('b'); t.textContent = title;
+    tip.appendChild(t);
+    if(body){ var s = document.createElement('div'); s.textContent = body; tip.appendChild(s); }
+    tip.style.display = 'block';
+    moveTip(evt);
+  }
+  function moveTip(evt){
+    var pad = 14, w = tip.offsetWidth, h = tip.offsetHeight;
+    var x = evt.clientX + pad, y = evt.clientY + pad;
+    if(x + w > window.innerWidth - 8) x = evt.clientX - w - pad;
+    if(y + h > window.innerHeight - 8) y = evt.clientY - h - pad;
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  }
+  function hideTip(){ tip.style.display = 'none'; }
+
+  function svgEl(name, attrs){
+    var e = document.createElementNS('http://www.w3.org/2000/svg', name);
+    for(var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  /* 单系列柱状图 */
+  function colChart(boxId, data, max, ticks, unit){
+    var box = document.getElementById(boxId);
+    var W = 560, H = 300, padL = 44, padR = 12, padT = 26, padB = 40;
+    var plotW = W - padL - padR, plotH = H - padT - padB;
+    var svg = svgEl('svg', {viewBox: '0 0 ' + W + ' ' + H, role: 'presentation'});
+    ticks.forEach(function(g){
+      var y = padT + plotH - g/max*plotH;
+      var ln = svgEl('line', {x1: padL, y1: y, x2: W-padR, y2: y, 'stroke-width': 1});
+      ln.style.stroke = (g === 0 ? 'var(--baseline)' : 'var(--line)');
+      svg.appendChild(ln);
+      var t = svgEl('text', {x: padL-8, y: y+4, 'text-anchor': 'end', 'font-size': 11,
+        style: 'fill:var(--ink-3);font-variant-numeric:tabular-nums'});
+      t.textContent = g;
+      svg.appendChild(t);
+    });
+    var slot = plotW / data.length;
+    var barW = Math.min(34, slot * 0.5);
+    data.forEach(function(d){
+      var cx = padL + slot * data.indexOf(d) + slot/2;
+      var h = Math.max(2, d.v / max * plotH);
+      var y = padT + plotH - h;
+      var col = svgEl('rect', {x: cx - barW/2, y: y, width: barW, height: h, rx: 4});
+      col.style.fill = 'var(--s1)';
+      col.style.transition = 'filter .12s';
+      svg.appendChild(col);
+      var vt = svgEl('text', {x: cx, y: y - 7, 'text-anchor': 'middle', 'font-size': 12.5,
+        style: 'fill:var(--ink);font-variant-numeric:tabular-nums'});
+      vt.textContent = d.v;
+      svg.appendChild(vt);
+      var ml = svgEl('text', {x: cx, y: H - 12, 'text-anchor': 'middle', 'font-size': 12,
+        style: 'fill:var(--ink-2)'});
+      ml.textContent = d.l;
+      svg.appendChild(ml);
+      var hit = svgEl('rect', {x: padL + slot * data.indexOf(d), y: padT, width: slot, height: plotH,
+        'class': 'hit', tabindex: 0, role: 'graphics-symbol',
+        'aria-label': d.l + '：' + d.v + ' ' + unit});
+      hit.addEventListener('pointermove', function(e){ showTip(e, d.l, d.v + ' ' + unit); });
+      hit.addEventListener('pointerleave', hideTip);
+      hit.addEventListener('pointerenter', function(){ col.style.filter = 'brightness(1.12)'; });
+      hit.addEventListener('pointerleave', function(){ col.style.filter = ''; });
+      hit.addEventListener('focus', function(){ var r = hit.getBoundingClientRect();
+        showTip({clientX: r.left + r.width/2, clientY: r.top}, d.l, d.v + ' ' + unit); });
+      hit.addEventListener('blur', hideTip);
+      svg.appendChild(hit);
+    });
+    box.appendChild(svg);
+  }
+
+  /* 分组柱状图：2 系列 */
+  function groupChart(boxId, groups, max, ticks, series){
+    var box = document.getElementById(boxId);
+    var W = 560, H = 300, padL = 44, padR = 12, padT = 26, padB = 44;
+    var plotW = W - padL - padR, plotH = H - padT - padB;
+    var svg = svgEl('svg', {viewBox: '0 0 ' + W + ' ' + H, role: 'presentation'});
+    ticks.forEach(function(g){
+      var y = padT + plotH - g/max*plotH;
+      var ln = svgEl('line', {x1: padL, y1: y, x2: W-padR, y2: y, 'stroke-width': 1});
+      ln.style.stroke = (g === 0 ? 'var(--baseline)' : 'var(--line)');
+      svg.appendChild(ln);
+      var t = svgEl('text', {x: padL-8, y: y+4, 'text-anchor': 'end', 'font-size': 11,
+        style: 'fill:var(--ink-3);font-variant-numeric:tabular-nums'});
+      t.textContent = g;
+      svg.appendChild(t);
+    });
+    var slot = plotW / groups.length;
+    var barW = 46, gap = 4;
+    groups.forEach(function(grp, gi){
+      var center = padL + slot * gi + slot/2;
+      series.forEach(function(s, si){
+        var v = grp[s.key];
+        var h = Math.max(v === 0 ? 0 : 2, v / max * plotH);
+        var x = center - (series.length * barW + (series.length - 1) * gap)/2 + si * (barW + gap);
+        var y = padT + plotH - h;
+        var col = svgEl('rect', {x: x, y: y, width: barW, height: h, rx: 4});
+        col.style.fill = 'var(' + s.color + ')';
+        col.style.transition = 'filter .12s';
+        svg.appendChild(col);
+        var vt = svgEl('text', {x: x + barW/2, y: y - 7, 'text-anchor': 'middle', 'font-size': 12.5,
+          style: 'fill:var(--ink);font-variant-numeric:tabular-nums'});
+        vt.textContent = v;
+        svg.appendChild(vt);
+        var hit = svgEl('rect', {x: x - 2, y: padT, width: barW + 4, height: plotH,
+          'class': 'hit', tabindex: 0, role: 'graphics-symbol',
+          'aria-label': grp.l + ' ' + s.name + '：' + v});
+        hit.addEventListener('pointermove', function(e){ showTip(e, s.name + ' · ' + grp.l, v + ' 个'); });
+        hit.addEventListener('pointerleave', hideTip);
+        hit.addEventListener('pointerenter', function(){ col.style.filter = 'brightness(1.12)'; });
+        hit.addEventListener('pointerleave', function(){ col.style.filter = ''; });
+        hit.addEventListener('focus', function(){ var r = hit.getBoundingClientRect();
+          showTip({clientX: r.left + r.width/2, clientY: r.top}, s.name + ' · ' + grp.l, v + ' 个'); });
+        hit.addEventListener('blur', hideTip);
+        svg.appendChild(hit);
+      });
+      var ml = svgEl('text', {x: center, y: H - 14, 'text-anchor': 'middle', 'font-size': 12.5,
+        style: 'fill:var(--ink-2)'});
+      ml.textContent = grp.l;
+      svg.appendChild(ml);
+    });
+    box.appendChild(svg);
+  }
+
+  /* 图 1：当日提交 */
+  colChart('hourChart', [
+    {l:'09', v:3}, {l:'10', v:1}, {l:'11', v:8}, {l:'12', v:3}, {l:'13', v:1},
+    {l:'14', v:0}, {l:'15', v:4}, {l:'16', v:3}, {l:'17', v:4}
+  ], 8, [0,2,4,6,8], '个提交');
+
+  /* 图 2：A/B 执行与验证 */
+  groupChart('abChart', [
+    {l:'可执行工具', a:226, b:224},
+    {l:'已验证端点', a:200, b:0}
+  ], 240, [0,60,120,180,240], [
+    {key:'a', name:'生产 A', color:'--s1'},
+    {key:'b', name:'生产 B', color:'--s2'}
+  ]);
+
+  /* 图 3：本周提交 */
+  colChart('weekChart', [
+    {l:'10-26', v:15}, {l:'10-27', v:18}, {l:'10-28', v:19}, {l:'10-29', v:38},
+    {l:'10-30', v:0}, {l:'10-31', v:11}, {l:'11-01', v:0}, {l:'11-02', v:27}
+  ], 40, [0,10,20,30,40], '个提交');
+
+  /* 图 4：测试分层（横向条形） */
+  (function(){
+    var data = [
+      {k:'unit', v:2482, note:'260 个文件'},
+      {k:'integration', v:290, note:'34 个文件'},
+      {k:'postgres 系列', v:113, note:'25 个文件'}
+    ];
+    var max = 2482, box = document.getElementById('testsChart');
+    data.forEach(function(d){
+      var row = document.createElement('div'); row.className = 'barrow';
+      var cat = document.createElement('div'); cat.className = 'cat'; cat.textContent = d.k;
+      var track = document.createElement('div'); track.className = 'track';
+      var bar = document.createElement('div'); bar.className = 'bar';
+      var w = Math.max(0.6, d.v / max * 100);
+      bar.style.width = w + '%';
+      var val = document.createElement('span'); val.className = 'val';
+      val.style.setProperty('--w', w + '%');
+      val.textContent = d.v.toLocaleString('en-US');
+      track.appendChild(bar); track.appendChild(val);
+      row.appendChild(cat); row.appendChild(track);
+      bar.tabIndex = 0;
+      function fire(e){ showTip(e, d.k, d.v.toLocaleString('en-US') + ' 个用例 · ' + d.note); }
+      bar.addEventListener('pointermove', fire);
+      bar.addEventListener('pointerleave', hideTip);
+      bar.addEventListener('focus', function(){ var r = bar.getBoundingClientRect();
+        showTip({clientX: r.right, clientY: r.top}, d.k, d.v.toLocaleString('en-US') + ' 个用例 · ' + d.note); });
+      bar.addEventListener('blur', hideTip);
+      box.appendChild(row);
+    });
+  })();
+
+  /* 表格视图切换 */
+  document.querySelectorAll('.chart-head .toggle').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var fig = document.getElementById(btn.getAttribute('data-target'));
+      var on = fig.classList.toggle('showtable');
+      btn.textContent = on ? '图表视图' : '表格视图';
+    });
+  });
+
+  /* 深浅色切换 */
+  var btn = document.getElementById('themeBtn');
+  btn.addEventListener('click', function(){
+    var root = document.documentElement;
+    var cur = root.getAttribute('data-theme');
+    var dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var effectiveDark = cur === 'dark' || (cur !== 'light' && dark);
+    root.setAttribute('data-theme', effectiveDark ? 'light' : 'dark');
+  });
+})();
+</script>
+</body>
+</html>
