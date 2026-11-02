@@ -1,0 +1,20 @@
+{
+  "schema_version": "production-scope.v1",
+  "updated_at": "2026-11-02",
+  "decision_source": "docs/tickets/NB-2026-11-02-next-batch.md",
+  "hosts": {
+    "a": {
+      "role": "active",
+      "url": "https://scrapy.luteos.com",
+      "branch": "main",
+      "note": "生产 A"
+    },
+    "b": {
+      "role": "active",
+      "url": "https://scrapy.lute-tlz-dddd.top",
+      "branch": "deploy/tiktok-cdo-codex",
+      "state": "current",
+      "note": "2026-11-02 已 fast-forward 到 3f889e7，schema 068；升级前为 main 严格祖先 217/0，0 独有提交；备份 /opt/backups/data-achieve-scrapy/20261102-0909"
+    }
+  }
+}

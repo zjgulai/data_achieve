@@ -17,10 +17,35 @@ import sys
 from pathlib import Path
 
 BINARY_SUFFIXES = {
-    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".pdf",
-    ".zip", ".gz", ".tgz", ".bz2", ".xz", ".7z", ".woff", ".woff2",
-    ".ttf", ".otf", ".mp3", ".mp4", ".mov", ".avi", ".sqlite", ".db",
-    ".heic", ".bin", ".so", ".dylib", ".dll", ".exe",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".webp",
+    ".ico",
+    ".pdf",
+    ".zip",
+    ".gz",
+    ".tgz",
+    ".bz2",
+    ".xz",
+    ".7z",
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".otf",
+    ".mp3",
+    ".mp4",
+    ".mov",
+    ".avi",
+    ".sqlite",
+    ".db",
+    ".heic",
+    ".bin",
+    ".so",
+    ".dylib",
+    ".dll",
+    ".exe",
 }
 
 
@@ -61,9 +86,29 @@ def main() -> int:
         action="store_true",
         help="check staged files instead of every tracked file",
     )
+    parser.add_argument(
+        "--path",
+        action="append",
+        default=[],
+        metavar="PATH",
+        help="check an arbitrary file or directory tree (repeatable). "
+        "Use this for files outside the repository, such as the memory directory.",
+    )
     args = parser.parse_args()
     failures: list[tuple[str, str, str]] = []
-    files = _git_files(args.staged)
+    if args.path:
+        files = []
+        for raw in args.path:
+            target = Path(raw).expanduser()
+            if target.is_dir():
+                files.extend(sorted(p for p in target.rglob("*") if p.is_file()))
+            elif target.is_file():
+                files.append(target)
+            else:
+                print(f"path not found: {target}", file=sys.stderr)
+                return 2
+    else:
+        files = _git_files(args.staged)
     for path in files:
         if not path.exists() or _is_binary(path):
             continue

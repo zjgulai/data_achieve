@@ -101,9 +101,7 @@ _CSV_INJECTION_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
 _EXPORT_CONTENT_TYPES: dict[str, str] = {
     "csv": "text/csv; charset=utf-8",
     "jsonl": "application/x-ndjson; charset=utf-8",
-    "xlsx": (
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    ),
+    "xlsx": ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
 }
 
 
@@ -294,8 +292,7 @@ async def get_abi_overview(
         dataset_count=dataset_count,
         row_count=row_count,
         pii_pending_datasets=pii_pending,
-        exports_queued=status_counts.get("queued", 0)
-        + status_counts.get("awaiting_approval", 0),
+        exports_queued=status_counts.get("queued", 0) + status_counts.get("awaiting_approval", 0),
         exports_running=status_counts.get("running", 0),
         exports_succeeded=status_counts.get("succeeded", 0),
         uploads_pending=uploads_pending,
@@ -439,12 +436,8 @@ async def get_abi_dataset_detail(
     session: AsyncSession,
     access: DatasetAccess,
 ) -> AbiDatasetDetailResponse:
-    columns = await abi_repo.list_dataset_columns(
-        session, access.workspace.id, access.dataset.id
-    )
-    policies = await abi_repo.list_field_policies(
-        session, access.workspace.id, access.dataset.id
-    )
+    columns = await abi_repo.list_dataset_columns(session, access.workspace.id, access.dataset.id)
+    policies = await abi_repo.list_field_policies(session, access.workspace.id, access.dataset.id)
     return AbiDatasetDetailResponse(
         dataset=AbiDatasetSummary.model_validate(access.dataset),
         columns=[AbiColumnResponse.model_validate(column) for column in columns],
@@ -465,12 +458,8 @@ async def _resolve_selection(
 
     physical = await abi_repo.list_physical_columns(session, schema, table)
     physical_names = {str(item["column_name"]) for item in physical}
-    physical_types = {
-        str(item["column_name"]): str(item["data_type"]) for item in physical
-    }
-    declared = await abi_repo.list_dataset_columns(
-        session, dataset.workspace_id, dataset.id
-    )
+    physical_types = {str(item["column_name"]): str(item["data_type"]) for item in physical}
+    declared = await abi_repo.list_dataset_columns(session, dataset.workspace_id, dataset.id)
     if not declared:
         raise AbiServiceError("dataset_columns_not_configured", 409)
     all_columns = [
@@ -479,9 +468,7 @@ async def _resolve_selection(
     if not all_columns:
         raise AbiServiceError("dataset_columns_not_configured", 409)
 
-    policy_rows = await abi_repo.list_field_policies(
-        session, dataset.workspace_id, dataset.id
-    )
+    policy_rows = await abi_repo.list_field_policies(session, dataset.workspace_id, dataset.id)
     policies = {policy.field_path: policy.pii_class for policy in policy_rows}
     mask_rules = {policy.field_path: policy.mask_rule for policy in policy_rows}
 
@@ -504,9 +491,7 @@ async def _resolve_selection(
             seen.add(column)
             selected.append(column)
 
-    denied = [
-        column for column in selected if policies.get(column, "unknown") == "unknown"
-    ]
+    denied = [column for column in selected if policies.get(column, "unknown") == "unknown"]
     if denied:
         raise AbiServiceError("pii_unknown_denied", 403)
 
@@ -536,9 +521,7 @@ async def _resolve_selection(
         filterable=filterable,
         sortable=sortable,
         types={
-            column: physical_types[column]
-            for column in all_columns
-            if column in physical_types
+            column: physical_types[column] for column in all_columns if column in physical_types
         },
     )
 
@@ -640,9 +623,7 @@ def _coerced_filter_tuples(
                 )
             )
         else:
-            result.append(
-                (item.column, item.op, _coerce_scalar(item.value, data_type))
-            )
+            result.append((item.column, item.op, _coerce_scalar(item.value, data_type)))
     return result
 
 
@@ -762,9 +743,7 @@ def _serialize_row(
 
 
 def _masked_columns(selection: _Selection) -> list[str]:
-    return sorted(
-        column for column in selection.selected if selection.policies[column] != "none"
-    )
+    return sorted(column for column in selection.selected if selection.policies[column] != "none")
 
 
 async def query_abi_dataset(
@@ -807,9 +786,7 @@ async def list_abi_grants(
     session: AsyncSession,
     access: DatasetAccess,
 ) -> AbiGrantListResponse:
-    grants = await abi_repo.list_access_grants(
-        session, access.workspace.id, access.dataset.id
-    )
+    grants = await abi_repo.list_access_grants(session, access.workspace.id, access.dataset.id)
     return AbiGrantListResponse(
         items=[AbiGrantResponse.model_validate(grant) for grant in grants],
         total=len(grants),
@@ -860,9 +837,7 @@ async def delete_abi_grant(
     if grant is None:
         raise AbiServiceError("grant_not_found", 404)
     if grant.role == "admin":
-        admins = await abi_repo.count_admin_grants(
-            session, access.workspace.id, access.dataset.id
-        )
+        admins = await abi_repo.count_admin_grants(session, access.workspace.id, access.dataset.id)
         if admins <= 1:
             raise AbiServiceError("last_admin_grant", 409)
     await abi_repo.delete_access_grant(session, grant)
@@ -874,12 +849,8 @@ async def get_abi_policy(
     session: AsyncSession,
     access: DatasetAccess,
 ) -> AbiPolicyResponse:
-    columns = await abi_repo.list_dataset_columns(
-        session, access.workspace.id, access.dataset.id
-    )
-    policies = await abi_repo.list_field_policies(
-        session, access.workspace.id, access.dataset.id
-    )
+    columns = await abi_repo.list_dataset_columns(session, access.workspace.id, access.dataset.id)
+    policies = await abi_repo.list_field_policies(session, access.workspace.id, access.dataset.id)
     return AbiPolicyResponse(
         dataset_id=access.dataset.id,
         pii_scanned=access.dataset.pii_scanned,
@@ -909,9 +880,7 @@ async def replace_abi_policy(
     此前不在其中，等于明文返回。降级比较必须把它算作敏感。
     """
 
-    columns = await abi_repo.list_dataset_columns(
-        session, access.workspace.id, access.dataset.id
-    )
+    columns = await abi_repo.list_dataset_columns(session, access.workspace.id, access.dataset.id)
     column_names = {column.column_name for column in columns}
     provided: dict[str, AbiPolicyUpdateItem] = {}
     for item in payload.items:
@@ -967,9 +936,7 @@ async def replace_abi_policy(
         current.created_at = now
 
     await session.flush()
-    rows = await abi_repo.list_field_policies(
-        session, access.workspace.id, access.dataset.id
-    )
+    rows = await abi_repo.list_field_policies(session, access.workspace.id, access.dataset.id)
     # 只有真的覆盖到全部列，才算「已扫描」。此前无条件置 True，
     # 导致 overview 的「待 PII 处理」计数长期失真。
     covered = {row.field_path for row in rows if row.pii_class != "unknown"}
@@ -1097,9 +1064,7 @@ async def commit_abi_upload(
     batch = await abi_repo.get_upload_batch(session, workspace.id, batch_id)
     if batch is None:
         raise AbiServiceError("upload_batch_not_found", 404)
-    grant = await _require_grant(
-        session, workspace.id, batch.dataset_id, user.id, "editor"
-    )
+    grant = await _require_grant(session, workspace.id, batch.dataset_id, user.id, "editor")
     if batch.uploaded_by != user.id and role_rank(grant.role) < role_rank("admin"):
         raise AbiServiceError("upload_commit_forbidden", 403)
     if batch.status != "uploaded":
@@ -1235,9 +1200,7 @@ async def retry_abi_upload(
 
     # 与 commit_batch 的门槛保持一致：replace 要 publisher。
     required_role = "publisher" if batch.mode == "replace" else "editor"
-    grant = await _require_grant(
-        session, workspace.id, batch.dataset_id, user.id, required_role
-    )
+    grant = await _require_grant(session, workspace.id, batch.dataset_id, user.id, required_role)
     if batch.uploaded_by != user.id and role_rank(grant.role) < role_rank("admin"):
         raise AbiServiceError("upload_retry_forbidden", 403)
     if batch.status != "failed":
@@ -1255,9 +1218,7 @@ async def retry_abi_upload(
 
     from data_intelligence_hub.services.abi_upload import commit_batch
 
-    retried = await commit_batch(
-        session, batch_id=batch.id, user_id=user.id, retry=True
-    )
+    retried = await commit_batch(session, batch_id=batch.id, user_id=user.id, retry=True)
     return AbiUploadBatchResponse.model_validate(retried)
 
 
@@ -1266,9 +1227,7 @@ async def get_abi_export_policy(
     access: DatasetAccess,
 ) -> AbiExportPolicyResponse:
     """读 dataset 级导出策略。没有策略行时返回表定义的默认值。"""
-    policy = await abi_repo.get_export_policy(
-        session, access.workspace.id, access.dataset.id
-    )
+    policy = await abi_repo.get_export_policy(session, access.workspace.id, access.dataset.id)
     if policy is None:
         # 与 export_policy 的 server_default 保持一致：默认要求双人审批。
         # 格式与行数没有默认限制——那是代码里的 MAX_EXPORT_ROWS。
@@ -1376,14 +1335,11 @@ def _render_export(
         writer = csv.writer(buffer, lineterminator="\n")
         writer.writerow(columns)
         for row in rows:
-            writer.writerow(
-                [_csv_safe(_to_csv_text(row.get(column))) for column in columns]
-            )
+            writer.writerow([_csv_safe(_to_csv_text(row.get(column))) for column in columns])
         return buffer.getvalue().encode("utf-8")
     if export_format == "jsonl":
         return b"".join(
-            json.dumps(row, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-            + b"\n"
+            json.dumps(row, ensure_ascii=False, separators=(",", ":")).encode("utf-8") + b"\n"
             for row in rows
         )
     if export_format == "xlsx":
@@ -1410,6 +1366,17 @@ def _write_atomic(path: Path, content: bytes) -> None:
 
 def _export_filename(slug: str, job_id: uuid.UUID, export_format: str) -> str:
     return f"abi-{slug}-{job_id.hex[:8]}.{export_format}"
+
+
+def resolve_require_dual_approval(policy: object | None) -> bool:
+    """缺省策略按表定义 fail-closed：没有策略行时要求双人审批。
+
+    这条规则曾是内联表达式，写反过一次，导致未遮罩导出直接出文件。
+    抽成纯函数后由单元测试钉住，避免再次被改回 fail-open。
+    """
+    if policy is None:
+        return True
+    return bool(getattr(policy, "require_dual_approval", True))
 
 
 async def create_abi_export(
@@ -1442,9 +1409,7 @@ async def create_abi_export(
     #
     # 生产实测确认过：admin 发起 mask_pii=false 的导出，返回 status=succeeded，
     # 一次都没进 awaiting_approval。这不是配置问题，是代码路径缺失。
-    require_dual_approval = (
-        policy.require_dual_approval if policy is not None else True
-    )
+    require_dual_approval = resolve_require_dual_approval(policy)
 
     if (
         policy is not None
@@ -1462,12 +1427,10 @@ async def create_abi_export(
 
     job_filters: dict[str, Any] = {
         "filters": [
-            {"column": item.column, "op": item.op, "value": item.value}
-            for item in payload.filters
+            {"column": item.column, "op": item.op, "value": item.value} for item in payload.filters
         ],
         "order_by": [
-            {"column": item.column, "direction": item.direction}
-            for item in payload.order_by
+            {"column": item.column, "direction": item.direction} for item in payload.order_by
         ],
         "columns": selection.selected,
     }
@@ -1574,9 +1537,7 @@ async def _get_visible_export(
     job = await abi_repo.get_export_job(session, workspace.id, job_id)
     if job is None:
         raise AbiServiceError("export_not_found", 404)
-    grant = await abi_repo.get_access_grant(
-        session, workspace.id, job.dataset_id, user.id
-    )
+    grant = await abi_repo.get_access_grant(session, workspace.id, job.dataset_id, user.id)
     if not _export_visible(job, grant):
         raise AbiServiceError("export_not_found", 404)
     return job
@@ -1605,9 +1566,7 @@ async def list_abi_exports(
         limit=limit,
         offset=offset,
     )
-    total = await abi_repo.count_export_jobs(
-        session, workspace.id, user.id, see_all=False
-    )
+    total = await abi_repo.count_export_jobs(session, workspace.id, user.id, see_all=False)
     return AbiExportListResponse(
         items=[AbiExportJobResponse.model_validate(job) for job in jobs],
         total=total,
@@ -1668,9 +1627,7 @@ async def reject_abi_export(
         # 自批自驳都不算控制：申请人自己驳回没有审计价值，且会掩盖
         # 「没人处理」这件事。
         raise AbiServiceError("export_self_review_denied", 403)
-    grant = await abi_repo.get_access_grant(
-        session, workspace.id, job.dataset_id, user.id
-    )
+    grant = await abi_repo.get_access_grant(session, workspace.id, job.dataset_id, user.id)
     if grant is None or role_rank(grant.role) < role_rank("publisher"):
         raise AbiServiceError("export_reject_requires_publisher", 403)
 

@@ -131,11 +131,15 @@ jobs:
       - name: Install API dependencies
         run: uv sync --locked --dev
 
-      - name: Test production preflight scripts
+      - name: Test operational scripts
         working-directory: .
         run: |
           bash scripts/tests/test-preflight-production.sh
           bash scripts/tests/test-deploy-p0-preflight.sh
+          bash scripts/tests/test-dual-production-drift.sh
+          bash scripts/tests/test-extract-retro-sessions.sh
+          bash scripts/tests/test-migration-numbers.sh
+          bash scripts/tests/test-record-release.sh
 
       - name: Ruff
         run: uv run ruff check .

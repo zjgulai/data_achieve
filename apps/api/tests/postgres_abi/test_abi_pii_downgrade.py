@@ -99,10 +99,7 @@ async def _dataset_with_rows(factory, tmp_path, monkeypatch):
                 slug="pii-probe",
                 name="PII 探针",
                 source_kind="upload",
-                columns=[
-                    AbiColumnCreate(column_name=name, data_type="text", pii_class="none")
-                    for name in HEADER
-                ],
+                columns=[AbiColumnCreate(column_name=name, data_type="text") for name in HEADER],
             ),
         )
 
@@ -138,9 +135,7 @@ async def _access(factory, workspace, user, dataset, role: str) -> DatasetAccess
         resolved, grant = await abi_service._resolve_dataset_for_user(
             session, workspace, user, dataset.slug, role
         )
-        return DatasetAccess(
-            dataset=resolved, grant=grant, workspace=workspace, user=user
-        )
+        return DatasetAccess(dataset=resolved, grant=grant, workspace=workspace, user=user)
 
 
 async def _publisher_member(factory, workspace, owner, dataset):
@@ -168,9 +163,7 @@ async def _publisher_member(factory, workspace, owner, dataset):
         resolved, grant = await abi_service._resolve_dataset_for_user(
             session, workspace, owner, dataset.slug, "admin"
         )
-        owner_access = DatasetAccess(
-            dataset=resolved, grant=grant, workspace=workspace, user=owner
-        )
+        owner_access = DatasetAccess(dataset=resolved, grant=grant, workspace=workspace, user=owner)
         await abi_service.create_abi_grant(
             session,
             owner_access,
@@ -211,9 +204,7 @@ async def _set_classes(factory, access, mapping: dict[str, str], reason=None):
 async def test_publisher_cannot_downgrade_direct_to_none(
     session_factory, tmp_path, monkeypatch
 ) -> None:
-    user, workspace, dataset = await _dataset_with_rows(
-        session_factory, tmp_path, monkeypatch
-    )
+    user, workspace, dataset = await _dataset_with_rows(session_factory, tmp_path, monkeypatch)
     admin_access = await _access(session_factory, workspace, user, dataset, "admin")
 
     # 先由 admin 建立「author_email 是 direct」的基线。
@@ -243,14 +234,11 @@ async def test_publisher_cannot_downgrade_direct_to_none(
 async def test_admin_downgrade_requires_substantive_reason(
     session_factory, tmp_path, monkeypatch
 ) -> None:
-    user, workspace, dataset = await _dataset_with_rows(
-        session_factory, tmp_path, monkeypatch
-    )
+    user, workspace, dataset = await _dataset_with_rows(session_factory, tmp_path, monkeypatch)
     access = await _access(session_factory, workspace, user, dataset, "admin")
 
     await _set_classes(
-        session_factory,
-        access, {"post_id": "none", "author_email": "secret", "note": "none"}
+        session_factory, access, {"post_id": "none", "author_email": "secret", "note": "none"}
     )
 
     with pytest.raises(AbiServiceError) as exc:
@@ -277,14 +265,11 @@ async def test_partial_update_keeps_untouched_columns(
     全量替换会把未提交列写成 unknown，而 unknown 被视为「首次分类」，
     于是 direct → unknown → none 可以分两步洗掉分类。
     """
-    user, workspace, dataset = await _dataset_with_rows(
-        session_factory, tmp_path, monkeypatch
-    )
+    user, workspace, dataset = await _dataset_with_rows(session_factory, tmp_path, monkeypatch)
     access = await _access(session_factory, workspace, user, dataset, "admin")
 
     await _set_classes(
-        session_factory,
-        access, {"post_id": "none", "author_email": "direct", "note": "quasi"}
+        session_factory, access, {"post_id": "none", "author_email": "direct", "note": "quasi"}
     )
     # 只改 note。
     result = await _set_classes(
@@ -297,17 +282,12 @@ async def test_partial_update_keeps_untouched_columns(
 
 
 @pytest.mark.asyncio
-async def test_direct_to_quasi_is_a_downgrade(
-    session_factory, tmp_path, monkeypatch
-) -> None:
+async def test_direct_to_quasi_is_a_downgrade(session_factory, tmp_path, monkeypatch) -> None:
     """direct → quasi 也是降级：quasi 在 worker 路径曾被原样输出。"""
-    user, workspace, dataset = await _dataset_with_rows(
-        session_factory, tmp_path, monkeypatch
-    )
+    user, workspace, dataset = await _dataset_with_rows(session_factory, tmp_path, monkeypatch)
     access = await _access(session_factory, workspace, user, dataset, "admin")
     await _set_classes(
-        session_factory,
-        access, {"post_id": "none", "author_email": "direct", "note": "none"}
+        session_factory, access, {"post_id": "none", "author_email": "direct", "note": "none"}
     )
 
     publisher = await _publisher_member(session_factory, workspace, user, dataset)
@@ -345,22 +325,19 @@ async def test_policy_rows_are_not_rebuilt_on_every_save(
     session_factory, tmp_path, monkeypatch
 ) -> None:
     """增量更新不该删掉重插：那会覆盖 decided_by，审计上无法追责。"""
-    user, workspace, dataset = await _dataset_with_rows(
-        session_factory, tmp_path, monkeypatch
-    )
+    user, workspace, dataset = await _dataset_with_rows(session_factory, tmp_path, monkeypatch)
     access = await _access(session_factory, workspace, user, dataset, "admin")
 
     await _set_classes(
-        session_factory,
-        access, {"post_id": "none", "author_email": "direct", "note": "none"}
+        session_factory, access, {"post_id": "none", "author_email": "direct", "note": "none"}
     )
 
     async with session_factory() as session:
         before = (
-            await session.execute(
-                select(FieldPolicy).where(FieldPolicy.dataset_id == dataset.id)
-            )
-        ).scalars().all()
+            (await session.execute(select(FieldPolicy).where(FieldPolicy.dataset_id == dataset.id)))
+            .scalars()
+            .all()
+        )
         ids = {row.field_path: row.id for row in before}
 
     await _set_classes(
@@ -369,10 +346,10 @@ async def test_policy_rows_are_not_rebuilt_on_every_save(
 
     async with session_factory() as session:
         after = (
-            await session.execute(
-                select(FieldPolicy).where(FieldPolicy.dataset_id == dataset.id)
-            )
-        ).scalars().all()
+            (await session.execute(select(FieldPolicy).where(FieldPolicy.dataset_id == dataset.id)))
+            .scalars()
+            .all()
+        )
         ids_after = {row.field_path: row.id for row in after}
 
     assert ids_after == ids, "重复保存不该改主键，否则等于全量重建"

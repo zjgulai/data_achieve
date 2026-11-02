@@ -72,7 +72,14 @@ class AbiDatasetSummary(BaseModel):
 
 
 class AbiColumnCreate(BaseModel):
-    """创建数据集时声明的列。"""
+    """创建数据集时声明的列。
+
+    ``extra="forbid"`` 是 2026-11-02 的拍板结果。此前 Pydantic 默认忽略
+    未知字段，调用方传 ``pii_class`` 会被静默丢弃，列一律落 ``unknown``，
+    而调用方以为策略已设置。现在改为在请求边界直接 422。
+    """
+
+    model_config = ConfigDict(extra="forbid")
 
     column_name: str = Field(min_length=1, max_length=63, pattern=r"^[a-z_][a-z0-9_]*$")
     data_type: str = Field(default="text", min_length=1, max_length=100)
@@ -83,6 +90,8 @@ class AbiColumnCreate(BaseModel):
 
 class AbiDatasetCreateRequest(BaseModel):
     """建 dataset。``columns`` 为空时从 ``source_table`` 物理列自动导入。"""
+
+    model_config = ConfigDict(extra="forbid")
 
     slug: str = Field(pattern=r"^[a-z0-9][a-z0-9_-]{0,63}$")
     name: str = Field(min_length=1, max_length=200)

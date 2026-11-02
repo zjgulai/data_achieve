@@ -17,15 +17,18 @@ description: "Use when the user asks for a retrospective, weekly review, or less
 1. Time range. Default: last 7 days.
 2. Scope. Default: current repository and its production environments.
 3. Evidence sources:
+   - Session turns: run `python3 scripts/extract_retro_sessions.py --since <YYYY-MM-DD>`.
+     It writes redacted per-session markdown plus `INDEX.md` under `tmp/retro-<date>/`.
    - `git log --since=<date> --oneline --decorate`
    - `docs/architecture/*` and `docs/retro/*`
    - `.claude/projects/*/memory/MEMORY.md` and linked memory files
-   - Production read-only checks (`scripts/preflight-production.sh`)
+   - Production read-only checks (`scripts/preflight-production.sh`,
+     `scripts/check_dual_production_drift.sh`)
    - Session incidents, deploy failures, test failures
 
 ## Procedure
 
-1. **Collect**: list commits by theme, not by author.
+1. **Collect**: run the session extractor and list commits by theme, not by author.
 2. **Reconstruct**: for each incident record symptom, root cause, fix, and evidence.
 3. **Classify**: knowledge gap, process gap, code gap, or collaboration gap.
 4. **Convert**: every lesson must map to at least one asset:
@@ -45,6 +48,24 @@ description: "Use when the user asks for a retrospective, weekly review, or less
    - 度量
 6. **Ticket**: if the lesson exposes product work, add a ticket to `docs/tickets/` and the current tracking table.
 7. **Verify**: run the assets you created. A retro that only writes prose is incomplete.
+
+## Evidence rules
+
+- Every fact carries a file:line, commit, date, or command. No evidence means `UNKNOWN`.
+- Separate fact from inference. Never promote a design document to "implemented".
+- A number carries its date and counting unit. Conflicting values coexist; do not average.
+- The session extractor redacts secrets. Do not paste raw tokens, passwords, or private keys
+  into a retro, a memory, or a ticket.
+
+## Concurrent work rule
+
+Two workflows must not write the same artifact. In 2026-10-31 a plain-language rewrite and a
+second workflow both edited the same report HTML. The second overwrote the first and re-added
+63 jargon instances.
+
+- Write each workflow's output to its own staging directory.
+- Merge in one final step, after both workflows finish.
+- Read the merged file back and scan for regressions before delivery.
 
 ## Rules
 

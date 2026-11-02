@@ -102,10 +102,7 @@ async def _dataset(factory, tmp_path, monkeypatch, *, rows: int = 2, policy=True
                 slug="export-side",
                 name="导出执行侧",
                 source_kind="upload",
-                columns=[
-                    AbiColumnCreate(column_name=name, data_type="text", pii_class="none")
-                    for name in HEADER
-                ],
+                columns=[AbiColumnCreate(column_name=name, data_type="text") for name in HEADER],
             ),
         )
 
@@ -140,13 +137,10 @@ async def _dataset(factory, tmp_path, monkeypatch, *, rows: int = 2, policy=True
 
             await abi_service.replace_abi_policy(
                 session,
-                DatasetAccess(
-                    dataset=resolved, grant=grant, workspace=workspace, user=user
-                ),
+                DatasetAccess(dataset=resolved, grant=grant, workspace=workspace, user=user),
                 AbiPolicyUpdateRequest(
                     items=[
-                        AbiPolicyUpdateItem(field_path=name, pii_class="none")
-                        for name in HEADER
+                        AbiPolicyUpdateItem(field_path=name, pii_class="none") for name in HEADER
                     ]
                 ),
             )
@@ -213,13 +207,9 @@ async def test_run_job_rejects_format_not_allowed_by_policy(
     )
 
 
-async def test_run_job_enforces_max_rows_masked(
-    session_factory, tmp_path, monkeypatch
-) -> None:
+async def test_run_job_enforces_max_rows_masked(session_factory, tmp_path, monkeypatch) -> None:
     """策略把上限压到 1，而数据有 2 行：必须失败，不能产出部分文件。"""
-    user, workspace, dataset = await _dataset(
-        session_factory, tmp_path, monkeypatch, rows=2
-    )
+    user, workspace, dataset = await _dataset(session_factory, tmp_path, monkeypatch, rows=2)
 
     async with session_factory() as session:
         session.add(
@@ -241,9 +231,7 @@ async def test_run_job_enforces_max_rows_masked(
 
     # 失败必须留下 failed 状态与错误码，而不是一个 succeeded 的半份文件。
     async with session_factory() as session:
-        stored = await session.scalar(
-            select(ExportJob).where(ExportJob.id == job.id)
-        )
+        stored = await session.scalar(select(ExportJob).where(ExportJob.id == job.id))
     assert stored is not None
     assert stored.status == "failed"
     assert stored.artifact_path is None
@@ -261,9 +249,7 @@ async def test_run_job_denies_unknown_pii_in_unmasked_export(
     ``***`` 是安全的；未遮罩导出会原样写出。
     """
     # policy=False：建数据集但不写策略，于是所有列都是 unknown。
-    user, workspace, dataset = await _dataset(
-        session_factory, tmp_path, monkeypatch, policy=False
-    )
+    user, workspace, dataset = await _dataset(session_factory, tmp_path, monkeypatch, policy=False)
 
     job = await _queue_job(
         session_factory,
@@ -278,13 +264,9 @@ async def test_run_job_denies_unknown_pii_in_unmasked_export(
             await abi_export.run_job(session, job.id)
 
 
-async def test_masked_export_allows_unknown_columns(
-    session_factory, tmp_path, monkeypatch
-) -> None:
+async def test_masked_export_allows_unknown_columns(session_factory, tmp_path, monkeypatch) -> None:
     """反向确认：遮罩导出对 unknown 列是允许的（输出 ***）。"""
-    user, workspace, dataset = await _dataset(
-        session_factory, tmp_path, monkeypatch, policy=False
-    )
+    user, workspace, dataset = await _dataset(session_factory, tmp_path, monkeypatch, policy=False)
     job = await _queue_job(session_factory, workspace, dataset, mask_pii=True)
 
     async with session_factory() as session:
@@ -292,18 +274,14 @@ async def test_masked_export_allows_unknown_columns(
 
     assert ran.status == "succeeded"
     async with session_factory() as session:
-        path = (
-            await session.scalar(select(ExportJob).where(ExportJob.id == job.id))
-        ).artifact_path
+        path = (await session.scalar(select(ExportJob).where(ExportJob.id == job.id))).artifact_path
     assert path is not None
     with open(path, encoding="utf-8") as handle:
         text = handle.read()
     assert "标题0" not in text, "unknown 列在遮罩导出里必须是 ***"
 
 
-async def test_revoked_creator_cannot_download(
-    session_factory, tmp_path, monkeypatch
-) -> None:
+async def test_revoked_creator_cannot_download(session_factory, tmp_path, monkeypatch) -> None:
     """撤销 grant 后，创建人也不能再下载自己此前的导出。
 
     撤权必须同时切断历史产物的访问，否则「收回权限」只挡住新请求。
@@ -317,9 +295,7 @@ async def test_revoked_creator_cannot_download(
             user,
             __import__(
                 "data_intelligence_hub.schemas.abi", fromlist=["AbiExportCreateRequest"]
-            ).AbiExportCreateRequest(
-                dataset_slug=dataset.slug, format="csv", mask_pii=True
-            ),
+            ).AbiExportCreateRequest(dataset_slug=dataset.slug, format="csv", mask_pii=True),
         )
 
     async with session_factory() as session:
@@ -341,9 +317,7 @@ async def test_revoked_creator_cannot_download(
 
     async with session_factory() as session:
         with pytest.raises(AbiServiceError):
-            await abi_service.get_abi_export_download(
-                session, workspace, user, job.id
-            )
+            await abi_service.get_abi_export_download(session, workspace, user, job.id)
 
 
 def test_stored_filters_accepts_both_shapes() -> None:
@@ -442,15 +416,12 @@ async def test_api_created_unmasked_export_succeeds_through_worker(
         ran = await abi_export.run_job(session, created.id)
 
     assert ran.status == "succeeded", (
-        "API 创建的导出经 worker 执行必须成功；失败通常意味着 filters 形状"
-        "又被当成了单个过滤条件"
+        "API 创建的导出经 worker 执行必须成功；失败通常意味着 filters 形状又被当成了单个过滤条件"
     )
     assert ran.rows_total == 2
 
 
-async def test_upsert_export_policy_is_idempotent(
-    session_factory, tmp_path, monkeypatch
-) -> None:
+async def test_upsert_export_policy_is_idempotent(session_factory, tmp_path, monkeypatch) -> None:
     """重复保存只留一行，且新值生效。
 
     表上原本没有 (workspace_id, dataset_id) 唯一约束，upsert 是「先查后改」。

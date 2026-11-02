@@ -8,6 +8,10 @@
 # 手工补记（发布脚本调用或人工核对）：
 #   python3 scripts/record_release.py append --host a --commit <sha> --result success
 #
+# 账本 v2（2026-11-02）：probe 与 append 都自动读 /api/health，写入
+# schema_revision、alembic_head、verification、deployed_commit。旧 v1 记录保留，
+# verify 只对 v2 强制这四个字段。测试可用 RELEASE_LEDGER=/tmp/x.jsonl 覆盖路径。
+#
 # 发布账本回答一个问题：「生产现在跑的是哪一版代码」。
 # 在此之前这个答案只能靠现场 SSH 猜，文档则写着过时的「B = main 加一个提交」。
 #
@@ -20,14 +24,18 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
+import urllib.error
+import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-LEDGER = ROOT / "docs/ops/releases.jsonl"
-LEDGER_SCHEMA = "release-ledger.v1"
+LEDGER = Path(os.environ.get("RELEASE_LEDGER", ROOT / "docs/ops/releases.jsonl"))
+LEDGER_SCHEMA_V1 = "release-ledger.v1"
+LEDGER_SCHEMA = "release-ledger.v2"
 
 # 两台生产的固定信息，与 scripts/deploy-p0.sh 保持一致。
 # 密钥路径不进仓库，只放「默认候选」，找不到时报错而不是静默失败。
@@ -86,15 +94,52 @@ def _find_key(host: str) -> Path:
     )
 
 
+def _fetch_health(url: str) -> dict[str, Any]:
+    """Read /api/health with a short timeout. Never raises."""
+    try:
+        with urllib.request.urlopen(f"{url}/api/health", timeout=10) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError):
+        return {}
+
+
+def _health_fields(url: str) -> tuple[str, str, str]:
+    """Return (schema_revision, alembic_head, verification).
+
+    ``verification`` is a short stable label, not prose:
+      health_ok        status ok, schema current, revision == head
+      health_degraded  reachable but not current
+      unreachable      no health response
+    """
+    data = _fetch_health(url)
+    if not data:
+        return "unknown", "unknown", "unreachable"
+    revision = str(data.get("schema_revision") or "unknown")
+    head = str(data.get("schema_head") or "unknown")
+    ok = (
+        data.get("status") == "ok"
+        and data.get("database") == "connected"
+        and data.get("schema") == "current"
+        and revision == head
+        and revision != "unknown"
+    )
+    return revision, head, "health_ok" if ok else "health_degraded"
+
+
 def probe(host: str) -> dict[str, Any]:
     info = HOSTS[host]
     key = _find_key(host)
     result = subprocess.run(
         [
-            "ssh", "-i", str(key),
-            "-o", "StrictHostKeyChecking=no",
-            "-o", "ConnectTimeout=15",
-            "-o", "BatchMode=yes",
+            "ssh",
+            "-i",
+            str(key),
+            "-o",
+            "StrictHostKeyChecking=no",
+            "-o",
+            "ConnectTimeout=15",
+            "-o",
+            "BatchMode=yes",
             info["ssh"],
             PROBE_SCRIPT,
         ],
@@ -117,6 +162,7 @@ def probe(host: str) -> dict[str, Any]:
     if missing:
         raise SystemExit(f"探测 {host} 的输出缺少字段：{missing}")
 
+    schema_revision, alembic_head, verification = _health_fields(info["url"])
     return {
         "schema_version": LEDGER_SCHEMA,
         "recorded_at": datetime.now(UTC).isoformat(timespec="seconds"),
@@ -124,6 +170,7 @@ def probe(host: str) -> dict[str, Any]:
         "url": info["url"],
         "commit": observed["COMMIT"],
         "short_commit": observed.get("SHORT", observed["COMMIT"][:7]),
+        "deployed_commit": observed["COMMIT"],
         "branch": observed["BRANCH"],
         "subject": observed["SUBJECT"],
         "committed_at": observed.get("COMMITTED_AT", ""),
@@ -131,6 +178,9 @@ def probe(host: str) -> dict[str, Any]:
         "image": observed.get("IMAGE", "unknown"),
         "container_created": observed["CONTAINER_CREATED"],
         "container_status": observed.get("CONTAINER_STATUS", "unknown"),
+        "schema_revision": schema_revision,
+        "alembic_head": alembic_head,
+        "verification": verification,
         "source": "probe",
     }
 
@@ -171,11 +221,27 @@ def verify(records: list[dict[str, Any]]) -> list[str]:
 
     seen_hosts = set()
     for index, record in enumerate(records, 1):
-        if record.get("schema_version") != LEDGER_SCHEMA:
+        version = record.get("schema_version")
+        if version not in (LEDGER_SCHEMA_V1, LEDGER_SCHEMA):
             problems.append(
-                f"第 {index} 条 schema_version 应为 {LEDGER_SCHEMA}，"
-                f"实际 {record.get('schema_version')!r}"
+                f"第 {index} 条 schema_version 应为 {LEDGER_SCHEMA_V1} 或 "
+                f"{LEDGER_SCHEMA}，实际 {version!r}"
             )
+        elif version == LEDGER_SCHEMA:
+            # v2 记录必须能回答「生产跑的是哪一版、schema 是什么、
+            # 当时健康与否」。缺一项就不算可回滚锚点。
+            for field in ("schema_revision", "alembic_head", "verification", "deployed_commit"):
+                if not record.get(field):
+                    problems.append(f"第 {index} 条 v2 记录缺少 {field}")
+            if record.get("verification") not in {
+                "health_ok",
+                "health_degraded",
+                "unreachable",
+            }:
+                problems.append(
+                    f"第 {index} 条 verification={record.get('verification')!r} "
+                    "不是 health_ok/health_degraded/unreachable"
+                )
         host = record.get("host")
         if host not in HOSTS:
             problems.append(f"第 {index} 条 host={host!r} 不是 a 或 b")
@@ -219,6 +285,15 @@ def cmd_probe(args: argparse.Namespace) -> int:
 
 def cmd_append(args: argparse.Namespace) -> int:
     info = HOSTS[args.host]
+    if args.schema_revision and args.alembic_head and args.verification:
+        schema_revision = args.schema_revision
+        alembic_head = args.alembic_head
+        verification = args.verification
+    else:
+        fetched_revision, fetched_head, fetched_verification = _health_fields(info["url"])
+        schema_revision = args.schema_revision or fetched_revision
+        alembic_head = args.alembic_head or fetched_head
+        verification = args.verification or fetched_verification
     record = {
         "schema_version": LEDGER_SCHEMA,
         "recorded_at": datetime.now(UTC).isoformat(timespec="seconds"),
@@ -226,6 +301,7 @@ def cmd_append(args: argparse.Namespace) -> int:
         "url": info["url"],
         "commit": args.commit,
         "short_commit": args.commit[:7],
+        "deployed_commit": args.deployed_commit or args.commit,
         "branch": args.branch or info["branch"],
         "subject": args.subject or "",
         "committed_at": "",
@@ -233,6 +309,9 @@ def cmd_append(args: argparse.Namespace) -> int:
         "image": args.image or "unknown",
         "container_created": args.container_created or "",
         "container_status": "unknown",
+        "schema_revision": args.schema_revision or schema_revision,
+        "alembic_head": args.alembic_head or alembic_head,
+        "verification": args.verification or verification,
         "source": args.source,
         "result": args.result,
     }
@@ -250,24 +329,31 @@ def cmd_verify(args: argparse.Namespace) -> int:
     latest = latest_by_host(records)
 
     if args.json:
-        print(json.dumps(
-            {
-                "schema_version": "release-ledger-report.v1",
-                "records": len(records),
-                "latest": latest,
-                "problems": problems,
-                "ok": not problems,
-            },
-            ensure_ascii=False,
-            indent=2,
-        ))
+        print(
+            json.dumps(
+                {
+                    "schema_version": "release-ledger-report.v1",
+                    "records": len(records),
+                    "latest": latest,
+                    "problems": problems,
+                    "ok": not problems,
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
     else:
-        print(f"账本：{LEDGER.relative_to(ROOT)}，{len(records)} 条记录")
+        try:
+            display = LEDGER.relative_to(ROOT)
+        except ValueError:
+            display = LEDGER
+        print(f"账本：{display}，{len(records)} 条记录")
         for host in sorted(latest):
             rec = latest[host]
             print(
-                f"  {host.upper()}: {rec['short_commit']} [{rec['branch']}] "
-                f"容器 {rec['container_created'] or '未知'}"
+                f"  {host.upper()}: {rec.get('short_commit', '?')} "
+                f"[{rec.get('branch', '?')}] "
+                f"容器 {rec.get('container_created') or '未知'}"
             )
             if rec.get("subject"):
                 print(f"      {rec['subject'][:70]}")
@@ -297,6 +383,14 @@ def main() -> int:
     p_append.add_argument("--subject")
     p_append.add_argument("--image")
     p_append.add_argument("--container-created")
+    p_append.add_argument("--schema-revision", help="默认从 /api/health 读取")
+    p_append.add_argument("--alembic-head", help="默认从 /api/health 读取")
+    p_append.add_argument(
+        "--verification",
+        choices=["health_ok", "health_degraded", "unreachable"],
+        help="默认从 /api/health 推导",
+    )
+    p_append.add_argument("--deployed-commit", help="默认等于 --commit")
     p_append.add_argument(
         "--result", default="success", choices=["success", "rolled_back", "failed"]
     )

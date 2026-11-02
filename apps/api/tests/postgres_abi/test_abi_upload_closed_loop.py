@@ -116,9 +116,7 @@ async def test_upload_commit_loads_rows_and_makes_dataset_queryable(
                 name="上传闭环",
                 source_kind="upload",
                 columns=[
-                    AbiColumnCreate(
-                        column_name=name, data_type=dtype, pii_class="none"
-                    )
+                    AbiColumnCreate(column_name=name, data_type=dtype)
                     for name, dtype in [
                         ("post_id", "text"),
                         ("title", "text"),
@@ -159,9 +157,7 @@ async def test_upload_commit_loads_rows_and_makes_dataset_queryable(
         )
 
     async with session_factory() as session:
-        committed = await abi_service.commit_abi_upload(
-            session, workspace, user, created.batch.id
-        )
+        committed = await abi_service.commit_abi_upload(session, workspace, user, created.batch.id)
 
     # 1) 批次状态与行数
     assert committed.status == "committed"
@@ -171,9 +167,7 @@ async def test_upload_commit_loads_rows_and_makes_dataset_queryable(
     # 2) catalog 被回写。source_table 只在 commit 时填，
     #    没有它查询必 409——这正是旧实现的断裂点。
     async with session_factory() as session:
-        stored = await session.scalar(
-            select(CatalogDataset).where(CatalogDataset.id == dataset.id)
-        )
+        stored = await session.scalar(select(CatalogDataset).where(CatalogDataset.id == dataset.id))
         assert stored is not None
         # 必须是两段式：上传表建在 raw，查询侧 _parse_source_table
         # 只接受 schema.table。单段名会让查询报 source_table_invalid。
@@ -191,17 +185,12 @@ async def test_upload_commit_loads_rows_and_makes_dataset_queryable(
         resolved, grant = await abi_service._resolve_dataset_for_user(
             session, workspace, user, dataset.slug, "admin"
         )
-        access = DatasetAccess(
-            dataset=resolved, grant=grant, workspace=workspace, user=user
-        )
+        access = DatasetAccess(dataset=resolved, grant=grant, workspace=workspace, user=user)
         await abi_service.replace_abi_policy(
             session,
             access,
             AbiPolicyUpdateRequest(
-                items=[
-                    AbiPolicyUpdateItem(field_path=name, pii_class="none")
-                    for name in header
-                ]
+                items=[AbiPolicyUpdateItem(field_path=name, pii_class="none") for name in header]
             ),
         )
 

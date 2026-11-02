@@ -107,10 +107,7 @@ async def _prepare_dataset(factory, *, tmp_path, monkeypatch):
                 slug="export-default",
                 name="导出缺省",
                 source_kind="upload",
-                columns=[
-                    AbiColumnCreate(column_name=name, data_type="text", pii_class="none")
-                    for name in HEADER
-                ],
+                columns=[AbiColumnCreate(column_name=name, data_type="text") for name in HEADER],
             ),
         )
 
@@ -144,14 +141,9 @@ async def _prepare_dataset(factory, *, tmp_path, monkeypatch):
 
         await abi_service.replace_abi_policy(
             session,
-            DatasetAccess(
-                dataset=resolved, grant=grant, workspace=workspace, user=user
-            ),
+            DatasetAccess(dataset=resolved, grant=grant, workspace=workspace, user=user),
             AbiPolicyUpdateRequest(
-                items=[
-                    AbiPolicyUpdateItem(field_path=name, pii_class="none")
-                    for name in HEADER
-                ]
+                items=[AbiPolicyUpdateItem(field_path=name, pii_class="none") for name in HEADER]
             ),
         )
 
@@ -168,10 +160,14 @@ async def test_unmasked_export_requires_approval_when_no_policy_row(
     async with session_factory() as session:
         # 前提：这张表必须真的是空的，否则测的不是缺省行为。
         rows = (
-            await session.execute(
-                select(ExportPolicy).where(ExportPolicy.workspace_id == workspace.id)
+            (
+                await session.execute(
+                    select(ExportPolicy).where(ExportPolicy.workspace_id == workspace.id)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         assert rows == [], "本测试要求没有策略行"
 
         job = await abi_service.create_abi_export(

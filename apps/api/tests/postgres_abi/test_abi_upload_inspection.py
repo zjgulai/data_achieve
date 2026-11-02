@@ -98,10 +98,8 @@ async def _setup(factory, tmp_path, monkeypatch, *, slug: str = "u5-probe"):
                 name="上传检视",
                 source_kind="upload",
                 columns=[
-                    AbiColumnCreate(column_name="post_id", data_type="text", pii_class="none"),
-                    AbiColumnCreate(
-                        column_name="view_count", data_type="bigint", pii_class="none"
-                    ),
+                    AbiColumnCreate(column_name="post_id", data_type="text"),
+                    AbiColumnCreate(column_name="view_count", data_type="bigint"),
                 ],
             ),
         )
@@ -115,14 +113,9 @@ async def _setup(factory, tmp_path, monkeypatch, *, slug: str = "u5-probe"):
 
         await abi_service.replace_abi_policy(
             session,
-            DatasetAccess(
-                dataset=resolved, grant=grant, workspace=workspace, user=user
-            ),
+            DatasetAccess(dataset=resolved, grant=grant, workspace=workspace, user=user),
             AbiPolicyUpdateRequest(
-                items=[
-                    AbiPolicyUpdateItem(field_path=name, pii_class="none")
-                    for name in HEADER
-                ]
+                items=[AbiPolicyUpdateItem(field_path=name, pii_class="none") for name in HEADER]
             ),
         )
 
@@ -150,23 +143,17 @@ async def _upload(factory, workspace, user, dataset, payload: bytes):
     return created
 
 
-async def test_list_uploads_is_scoped_to_dataset(
-    session_factory, tmp_path, monkeypatch
-) -> None:
+async def test_list_uploads_is_scoped_to_dataset(session_factory, tmp_path, monkeypatch) -> None:
     user, workspace, dataset = await _setup(session_factory, tmp_path, monkeypatch)
     other, other_workspace, other_dataset = await _setup(
         session_factory, tmp_path, monkeypatch, slug="u5-other"
     )
 
     await _upload(session_factory, workspace, user, dataset, _csv_bytes([["a", "1"]]))
-    await _upload(
-        session_factory, other_workspace, other, other_dataset, _csv_bytes([["b", "2"]])
-    )
+    await _upload(session_factory, other_workspace, other, other_dataset, _csv_bytes([["b", "2"]]))
 
     async with session_factory() as session:
-        listing = await abi_service.list_abi_uploads(
-            session, workspace, user, dataset.slug
-        )
+        listing = await abi_service.list_abi_uploads(session, workspace, user, dataset.slug)
 
     assert listing.total == 1
     assert listing.items[0].filename == "rows.csv"
@@ -186,14 +173,10 @@ async def test_upload_errors_expose_location_not_values(
 
     async with session_factory() as session:
         with pytest.raises(AbiServiceError):
-            await abi_service.commit_abi_upload(
-                session, workspace, user, created.batch.id
-            )
+            await abi_service.commit_abi_upload(session, workspace, user, created.batch.id)
 
     async with session_factory() as session:
-        errors = await abi_service.get_abi_upload_errors(
-            session, workspace, user, created.batch.id
-        )
+        errors = await abi_service.get_abi_upload_errors(session, workspace, user, created.batch.id)
 
     assert errors.total >= 1
     first = errors.items[0]
@@ -203,40 +186,26 @@ async def test_upload_errors_expose_location_not_values(
     assert "not-a-number" not in first.rule_id
 
 
-async def test_upload_errors_cross_workspace_is_404(
-    session_factory, tmp_path, monkeypatch
-) -> None:
+async def test_upload_errors_cross_workspace_is_404(session_factory, tmp_path, monkeypatch) -> None:
     user, workspace, dataset = await _setup(session_factory, tmp_path, monkeypatch)
-    _, other_ws, _ = await _setup(
-        session_factory, tmp_path, monkeypatch, slug="u5-other"
-    )
-    created = await _upload(
-        session_factory, workspace, user, dataset, _csv_bytes([["a", "1"]])
-    )
+    _, other_ws, _ = await _setup(session_factory, tmp_path, monkeypatch, slug="u5-other")
+    created = await _upload(session_factory, workspace, user, dataset, _csv_bytes([["a", "1"]]))
 
     async with session_factory() as session:
         with pytest.raises(AbiServiceError) as exc:
-            await abi_service.get_abi_upload_errors(
-                session, other_ws, user, created.batch.id
-            )
+            await abi_service.get_abi_upload_errors(session, other_ws, user, created.batch.id)
 
     # 必须是 404 而不是 403：区分二者等于承认这个 id 存在。
     assert exc.value.status_code == 404
 
 
-async def test_retry_rejects_non_failed_batch(
-    session_factory, tmp_path, monkeypatch
-) -> None:
+async def test_retry_rejects_non_failed_batch(session_factory, tmp_path, monkeypatch) -> None:
     user, workspace, dataset = await _setup(session_factory, tmp_path, monkeypatch)
-    created = await _upload(
-        session_factory, workspace, user, dataset, _csv_bytes([["a", "1"]])
-    )
+    created = await _upload(session_factory, workspace, user, dataset, _csv_bytes([["a", "1"]]))
 
     async with session_factory() as session:
         with pytest.raises(AbiServiceError) as exc:
-            await abi_service.retry_abi_upload(
-                session, workspace, user, created.batch.id
-            )
+            await abi_service.retry_abi_upload(session, workspace, user, created.batch.id)
 
     assert exc.value.detail == "upload_not_retryable"
 
@@ -262,9 +231,7 @@ async def test_retry_is_repeatable_and_refreshes_errors(
 
     async with session_factory() as session:
         with pytest.raises(AbiServiceError):
-            await abi_service.commit_abi_upload(
-                session, workspace, user, created.batch.id
-            )
+            await abi_service.commit_abi_upload(session, workspace, user, created.batch.id)
 
     async with session_factory() as session:
         first_errors = await abi_service.get_abi_upload_errors(
@@ -275,14 +242,10 @@ async def test_retry_is_repeatable_and_refreshes_errors(
     # 同一份坏数据重试：仍失败，但批次必须留在 failed 而不是变成不可推进的状态。
     async with session_factory() as session:
         with pytest.raises(AbiServiceError):
-            await abi_service.retry_abi_upload(
-                session, workspace, user, created.batch.id
-            )
+            await abi_service.retry_abi_upload(session, workspace, user, created.batch.id)
 
     async with session_factory() as session:
-        batch = await abi_repo.get_upload_batch(
-            session, workspace.id, created.batch.id
-        )
+        batch = await abi_repo.get_upload_batch(session, workspace.id, created.batch.id)
     assert batch is not None
     assert batch.status == "failed", "重试失败后必须仍可再次重试"
 
@@ -314,23 +277,17 @@ async def test_retry_never_touches_a_committed_batch(
     )
 
     async with session_factory() as session:
-        committed = await abi_service.commit_abi_upload(
-            session, workspace, user, created.batch.id
-        )
+        committed = await abi_service.commit_abi_upload(session, workspace, user, created.batch.id)
     assert committed.status == "committed"
     assert committed.rows_loaded == 2
 
     async with session_factory() as session:
         with pytest.raises(AbiServiceError) as exc:
-            await abi_service.retry_abi_upload(
-                session, workspace, user, created.batch.id
-            )
+            await abi_service.retry_abi_upload(session, workspace, user, created.batch.id)
     assert exc.value.detail == "upload_not_retryable"
 
     async with session_factory() as session:
-        batch = await abi_repo.get_upload_batch(
-            session, workspace.id, created.batch.id
-        )
+        batch = await abi_repo.get_upload_batch(session, workspace.id, created.batch.id)
     assert batch is not None
     assert batch.status == "committed", "重试不得改写已提交批次的状态"
     assert batch.rows_loaded == 2, "计数不得被清零"
@@ -356,14 +313,10 @@ async def test_retry_denied_keeps_batch_failed_and_errors_intact(
     )
     async with session_factory() as session:
         with pytest.raises(AbiServiceError):
-            await abi_service.commit_abi_upload(
-                session, workspace, user, created.batch.id
-            )
+            await abi_service.commit_abi_upload(session, workspace, user, created.batch.id)
 
     async with session_factory() as session:
-        before = await abi_service.get_abi_upload_errors(
-            session, workspace, user, created.batch.id
-        )
+        before = await abi_service.get_abi_upload_errors(session, workspace, user, created.batch.id)
     assert before.total >= 1
 
     # 造一个只读成员：他既不是上传人，也没有 admin，重试必须 403。
@@ -387,28 +340,20 @@ async def test_retry_denied_keeps_batch_failed_and_errors_intact(
         )
         await abi_service.create_abi_grant(
             session,
-            DatasetAccess(
-                dataset=resolved, grant=grant, workspace=workspace, user=user
-            ),
+            DatasetAccess(dataset=resolved, grant=grant, workspace=workspace, user=user),
             AbiGrantCreateRequest(user_id=other.id, role="viewer"),
         )
 
     async with session_factory() as session:
         with pytest.raises(AbiServiceError) as exc:
-            await abi_service.retry_abi_upload(
-                session, workspace, other, created.batch.id
-            )
+            await abi_service.retry_abi_upload(session, workspace, other, created.batch.id)
     assert exc.value.status_code == 403
 
     async with session_factory() as session:
-        batch = await abi_repo.get_upload_batch(
-            session, workspace.id, created.batch.id
-        )
+        batch = await abi_repo.get_upload_batch(session, workspace.id, created.batch.id)
     assert batch is not None
     assert batch.status == "failed", "被拒的重试不得改动状态"
 
     async with session_factory() as session:
-        after = await abi_service.get_abi_upload_errors(
-            session, workspace, user, created.batch.id
-        )
+        after = await abi_service.get_abi_upload_errors(session, workspace, user, created.batch.id)
     assert after.total == before.total, "被拒的重试不得删掉失败明细"
