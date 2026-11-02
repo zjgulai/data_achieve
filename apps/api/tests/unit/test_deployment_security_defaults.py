@@ -12,8 +12,9 @@ contract, not a production probe.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 from data_intelligence_hub.core.config import Settings
 
@@ -24,7 +25,7 @@ COMPOSE = (
 
 def _api_environment() -> dict[str, object]:
     data = yaml.safe_load(COMPOSE.read_text(encoding="utf-8"))
-    return data["services"]["api"]["environment"]
+    return cast(dict[str, object], data["services"]["api"]["environment"])
 
 
 def test_api_service_pins_production_environment() -> None:

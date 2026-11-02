@@ -25,12 +25,14 @@ def test_column_accepts_known_fields() -> None:
 
 def test_column_rejects_pii_class_instead_of_dropping_it() -> None:
     with pytest.raises(ValidationError):
-        AbiColumnCreate(column_name="author_email", data_type="text", pii_class="direct")
+        AbiColumnCreate(  # type: ignore[call-arg]
+            column_name="author_email", data_type="text", pii_class="direct"
+        )
 
 
 def test_dataset_rejects_pii_class_instead_of_dropping_it() -> None:
     with pytest.raises(ValidationError):
-        AbiDatasetCreateRequest(
+        AbiDatasetCreateRequest(  # type: ignore[call-arg]
             slug="pii-probe",
             name="PII 探针",
             source_kind="upload",
