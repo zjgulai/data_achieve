@@ -9,11 +9,14 @@ trap 'rm -rf "$TMP"' EXIT
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
-cat >"$TMP/leak.txt" <<'EOF'
-apify_api_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
------BEGIN PRIVATE KEY-----
-eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature1234567890
-EOF
+{
+  printf 'apify_api_%s\n' "$(printf 'a%.0s' {1..30})"
+  printf -- '-----BEGIN %s PRIVATE KEY-----\n' "RSA"
+  printf 'eyJ%s.%s.%s\n' \
+    "$(printf 'a%.0s' {1..12})" \
+    "$(printf 'b%.0s' {1..12})" \
+    "$(printf 'c%.0s' {1..12})"
+} >"$TMP/leak.txt"
 
 if python3 "$SCANNER" --path "$TMP/leak.txt" >"$TMP/out" 2>&1; then
   fail "fake credentials were not detected"
