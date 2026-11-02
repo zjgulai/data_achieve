@@ -1,6 +1,8 @@
 # ABI 外部数据中心 · 建设方案
 
-状态：待批准　｜　盘点：2026-10-28　｜　实测方式：Apify API 只读 + 本机扫描 + 临时 PG 集群跑 DDL
+状态：已批准并执行（2026-10-28 拍板；应用侧 ABI 已上线 A/B，schema 068）　｜　盘点：2026-10-28　｜　实测方式：Apify API 只读 + 本机扫描 + 临时 PG 集群跑 DDL
+
+> 2026-11-02 更新：应用侧查询/上传/导出代码路径已上线；外部仓（PG18.6 本地快照）与生产应用库（PG16）是两套，数据面 ETL 方案见 [abi-data-plane-etl.md](./abi-data-plane-etl.md)。`abi-ingest` 仍只入队 `scan`，不消费；异步导出终态与 T-1 入仓待验收。
 
 本方案取代 `docs/plans/apify-raw-warehouse.md`（那份是文件湖 + DuckDB，不引入 Postgres）。本轮按你的要求改为 Postgres + Docker + 看板。
 

@@ -13,12 +13,12 @@ Data Intelligence Hub 是纯数据采集平台。FastAPI 后端提供统一 cata
 
 当前产品口径：
 
-- 平台目录：70 个平台。生产 catalog、仓库生成物与工作树三处一致（2026-10-20 核对）。
-- 能力视图：生产 catalog 309 个（2026-10-20 采集，`catalog_digest=dad20448…`）；仓库生成物 286 个（2026-10-15 生成）。两套口径不得混用。
-- 唯一 endpoint：生产 catalog 281 个（2026-10-20 采集）；仓库生成物 258 个（2026-10-15 生成）；工作树端点映射 290 条（2026-10-20 对账）。
-- Catalog 静态声明：274 verified / 12 disabled（仓库生成物 286 个端点口径，2026-10-15 生成）。
-- 实测状态（`providers/status` 的 `availability`，2026-10-15 生产，当时 258 个唯一端点口径）：209 verified、21 config-gated、17 degraded、10 empty、1 disabled。
-- 生产主域名：`https://scrapy.luteos.com`。
+- 平台目录：70 个平台。生产 catalog、仓库生成物与工作树三处一致（2026-11-02 核对）。
+- 能力视图：生产 312 个（2026-11-02 `GET /api/platform-packages`，`catalog_digest=35ead4d9…`）；`configs/tool-catalog.lock.json` 284 个工具。两套口径不得混用。
+- 唯一 endpoint：生产 284 个（2026-11-02，按 `endpoint_type` 去重）；工具目录 284 个，226 个可执行。
+- Catalog 静态声明：2026-11-02 未登录复测；旧值 2026-10-15 为 274 verified / 12 disabled（仓库生成物 286 个端点口径）。
+- 实测状态（`providers/status` 的 `availability`）：2026-11-02 未登录复测；旧值 2026-10-21 为 200 verified / 57 config-gated / 12 degraded / 10 empty / 3 untested / 1 disabled（283 个唯一端点口径）。
+- 生产主域名：`https://scrapy.luteos.com`。A/B 均为 `3f889e7`，schema `202610310068`。
 
 ## 当前生产速查
 
@@ -303,7 +303,7 @@ docker exec <api容器> python -c "import os;print(bool(os.environ.get('X_API_KE
 - 热替换容器文件不是正式发布；下一次部署必须重建镜像。
 - 历史 ADR 和执行日志中的旧域名、数量和 revision 是历史证据，不批量改写。
 - `codex/social-api-private-matrix-20260708` 是 TikTok CDO 飞书 Agent 的第二套实现（main 版已在生产运行），保留为独立分支，不合并；需要其卡片回调、意图路由或 Exa 数据源时做带 spec 的功能移植。该分支的 `docs/playbook-full-2026-09.md` 是旧域名、旧内网地址口径的快照，不作现行文档引用。
-- 生产有两套环境，见[生产环境基线](docs/【运维手册】生产环境基线.md)。生产 B（`scrapy.lute-tlz-dddd.top`）固定在 `deploy/tiktok-cdo-codex`，该分支等于 `main` 加 codex 版 CDO Agent；两套环境的差异只允许这一处。`main` 前进后用 `git merge main` 前推该分支，不做 rebase。
+- 生产有两套环境，见[生产环境基线](docs/【运维手册】生产环境基线.md)。生产 B（`scrapy.lute-tlz-dddd.top`）部署 `deploy/tiktok-cdo-codex`。**2026-11-02 实测：该分支相对 `main` 是 217/0 严格祖先，0 个独有提交；CDO router 在 `main` 也存在。B 不再保留独有 CDO 代码差异。** `main` 前进后用 `git fetch origin main` + `git merge --ff-only FETCH_HEAD` 前推，不做 merge commit，也不做 rebase。B 的 edge 固定 IP 是 `172.20.0.30`（A 是 `172.20.0.16`）。
 
 ## 发布
 

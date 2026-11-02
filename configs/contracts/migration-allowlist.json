@@ -1,0 +1,70 @@
+{
+  "schema_version": "migration-allowlist.v1",
+  "updated_at": "2026-11-02",
+  "note": "历史计划里的迁移号早于 ABI/insight 实际迁移链。保留原文作追溯，不批量改写历史；新建计划必须用 069+，且不得复用这些序号。",
+  "entries": [
+    {
+      "path": "docs/superpowers/plans/2026-10-22-governed-task-platform-c1-contract-v1-1.md",
+      "revision": "202610220061",
+      "owner": "Pray",
+      "reason": "C1 历史计划；实际迁移号已重排",
+      "expires": "2026-12-31"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-22-governed-task-platform-c3-project-keys-credentials.md",
+      "revision": "202610220060",
+      "owner": "Pray",
+      "reason": "C3 历史计划；060 已被 ABI 占用",
+      "expires": "2026-12-31"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-22-governed-task-platform-c4-task-submission-idempotency.md",
+      "revision": "202610220061",
+      "owner": "Pray",
+      "reason": "C4 历史计划；061 已被 ABI 占用",
+      "expires": "2026-12-31"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-22-governed-task-platform-c7-claims-evidence.md",
+      "revision": "202610220064",
+      "owner": "Pray",
+      "reason": "C7 历史计划；064 已被 ABI 占用",
+      "expires": "2026-12-31"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-22-governed-task-platform-c8-dataset-quality-template.md",
+      "revision": "202610220065",
+      "owner": "Pray",
+      "reason": "C8 历史计划；065 已被 runs 迁移占用",
+      "expires": "2026-12-31"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-22-governed-task-platform-c10-delivery-manifest-publish.md",
+      "revision": "202610220067",
+      "owner": "Pray",
+      "reason": "C10 历史计划；067 已被 export_policy 迁移占用",
+      "expires": "2026-12-31"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-22-governed-task-platform-c11-pseudonymization-retention.md",
+      "revision": "202610220068",
+      "owner": "Pray",
+      "reason": "C11 历史计划；068 已被 insight_reports 占用",
+      "expires": "2026-12-31"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-22-governed-task-platform-c12-deletion-dsr.md",
+      "revision": "202610220069",
+      "owner": "Pray",
+      "reason": "C12 历史计划；069 以后需重新分配",
+      "expires": "2026-12-31"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-25-n1-change-requests.md",
+      "revision": "202610210057",
+      "owner": "Pray",
+      "reason": "N1 历史计划；057 已被 monitors 迁移占用",
+      "expires": "2026-12-31"
+    }
+  ]
+}

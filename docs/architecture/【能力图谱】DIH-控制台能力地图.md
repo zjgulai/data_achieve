@@ -7,7 +7,7 @@ description: Data Intelligence Hub 采集控制台能力图谱，逐页映射页
 
 > 站点：`https://scrapy.luteos.com` · 采集后端：`apps/api/src/data_intelligence_hub` · 控制台：`apps/scraper-console`
 > 首次测绘：2026-10-09（基于生产实测，见 [测试计划](../playbooks/【测试计划】DIH-平台采集生产实测.md)）
-> 最近刷新：2026-10-15（Apify 十平台深挖 + 16 新端点 + 主力更换，见 [方案卡](../apify-actors/README.md)）
+> 最近刷新：2026-11-02（B 升级到 068；能力口径 312 视图 / 284 端点 / 70 平台；MCP 39）
 > 现状总账与维护方法见 [平台能力总账](./【能力总账】DIH-平台能力现状与维护手册.md)
 
 ## 1. 概览
@@ -15,13 +15,13 @@ description: Data Intelligence Hub 采集控制台能力图谱，逐页映射页
 | 指标 | 值 |
 |---|---|
 | 生产域名 | `https://scrapy.luteos.com`（控制台）· `/api/*`（FastAPI）· `/mcp/`（共享 MCP） |
-| 部署分支 | `main`（只部署生产 A；B 暂缓） |
-| catalog 条目 | 311（2026-10-21 生产实测） |
-| 唯一端点 | 283（按 endpoint_type 去重） |
+| 部署分支 | A=`main`；B=`deploy/tiktok-cdo-codex`（2026-11-02 已升级到 `3f889e7`，schema 068） |
+| catalog 条目 | 312（2026-11-02 生产实测，`catalog_digest=35ead4d9…`） |
+| 唯一端点 | 284（按 endpoint_type 去重） |
 | 平台（Skill 包） | 70 |
 | collector group | 36 |
-| MCP 工具 | 25（含 `get_run`、`list_records`、`stop`、`balance`） |
-| **生产实测状态（2026-10-21）** | 283 个唯一端点：200 verified / 57 config-gated / 12 degraded / 10 empty / 3 untested / 1 disabled；分布见 [能力总账 §1](./【能力总账】DIH-平台能力现状与维护手册.md) |
+| MCP 工具 | 39（含 `get_run`、`list_records`、`stop`、`balance`） |
+| **生产实测状态** | 2026-11-02 未登录复测；旧值 2026-10-21 为 283 个唯一端点：200 verified / 57 config-gated / 12 degraded / 10 empty / 3 untested / 1 disabled；分布见 [能力总账 §1](./【能力总账】DIH-平台能力现状与维护手册.md) |
 
 > ⚠️ **既有能力声明 ≠ 实测可用**。测绘当日 catalog 里 266 个端点标 `verified`，但平台从未记录过任何一条真实测试结果；本轮全量实测（249 唯一端点）显示仅 **101 个真正返回数据**。`/collector-docs` 与 `/skills` 详情页的"验证比例/最近测试"在此之前一直是空的。
 

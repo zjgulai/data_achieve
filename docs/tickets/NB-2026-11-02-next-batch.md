@@ -235,3 +235,14 @@ P1-1 迁移号 ──> P2 C2-C14
 | B 升级 runbook | `docs/workflows/workflow-b-upgrade-2026-11.md`，含备份、fast-forward、构建、迁移、edge、公网验收、回滚与执行记录 |
 | ABI ETL 第一切片方案 | `docs/plans/abi-data-plane-etl.md`，5 表 / 186,352 行 / 3 天 |
 | B 祖先验证 | `git rev-list --left-right --count main...origin/deploy/tiktok-cdo-codex` = 217/0 |
+
+## 10. 2026-11-02 第二批落地（P1 部分）
+
+| 项 | 证据 |
+|---|---|
+| P1-1 迁移号 allowlist | `configs/contracts/migration-allowlist.json` 收录 9 条历史引用；`check_migration_numbers.py` 现退出 0；`--no-allowlist` 仍报 12 处。新增计划仍必须用 069+。 |
+| P1-2 integration CI | `tests/integration` 本地 397 passed；CI `api` job 增加 `Pytest integration`。 |
+| P1-3 文档真值 pass | README、生产环境基线、能力总账、能力图谱、AGENTS.md、SP 台账头、ABI 方案、insight 设计状态已改为 2026-11-02 口径。 |
+| P1-5 日报健康检查 | `scripts/check_daily_report_health.sh` + 5 例测试；CI 接入。11-01 允许 `known_gap`。 |
+| 账本 v2 | `record_release.py` 写 `schema_revision`、`alembic_head`、`verification`、`deployed_commit`；A/B 最新记录均 v2；`verify` 通过。 |
+| 安全下限 | 新增 `test_deployment_security_defaults.py`（7 passed）、`test_abi_export_defaults.py`（4 passed）、`test_abi_pii_contract.py`（4 passed）、`test_auth_password_policy.py`（5 passed）。 |

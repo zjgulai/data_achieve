@@ -140,6 +140,8 @@ jobs:
           bash scripts/tests/test-extract-retro-sessions.sh
           bash scripts/tests/test-migration-numbers.sh
           bash scripts/tests/test-record-release.sh
+          bash scripts/tests/test-daily-report-health.sh
+          python3 scripts/check_migration_numbers.py
 
       - name: Ruff
         run: uv run ruff check .
@@ -152,6 +154,9 @@ jobs:
 
       - name: Pytest
         run: uv run pytest tests/unit
+
+      - name: Pytest integration
+        run: uv run pytest tests/integration -q
 
       - name: Pytest regression guard (unit scope)
         run: uv run python ../../scripts/check_pytest_baseline.py --path tests/unit

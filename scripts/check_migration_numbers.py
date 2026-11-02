@@ -21,6 +21,7 @@ Exit codes: 0 clean, 1 failed check, 2 usage error.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
@@ -85,16 +86,40 @@ def scan_docs(docs: list[Path]) -> list[tuple[str, int, str]]:
     return references
 
 
+def load_allowlist(path: Path | None) -> set[tuple[str, str]]:
+    """Historical plan references that are deliberately grandfathered.
+
+    The file is a list of ``{"path", "revision", "owner", "reason", "expires"}``
+    entries. A new doc reference that is not listed still fails.
+    """
+    if path is None or not path.is_file():
+        return set()
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return set()
+    return {
+        (Path(item["path"]).as_posix(), str(item["revision"]))
+        for item in data.get("entries", [])
+        if item.get("path") and item.get("revision")
+    }
+
+
 def check_doc_references(
-    references: list[tuple[str, int, str]], revisions: dict[str, Path]
+    references: list[tuple[str, int, str]],
+    revisions: dict[str, Path],
+    allowlist: set[tuple[str, str]] | None = None,
 ) -> list[str]:
     problems: list[str] = []
+    allowlist = allowlist or set()
     by_suffix = {revision[-4:]: revision for revision in revisions}
     for path, line_number, revision in references:
         if revision == "not-valid-utf8":
             problems.append(f"{path}: not valid UTF-8")
             continue
         if revision in revisions:
+            continue
+        if (Path(path).as_posix(), revision) in allowlist:
             continue
         collision = by_suffix.get(revision[-4:])
         if collision:
@@ -122,6 +147,16 @@ def main() -> int:
     )
     parser.add_argument("--expect-head", help="fail unless this is the only head")
     parser.add_argument(
+        "--allowlist",
+        default="configs/contracts/migration-allowlist.json",
+        help="JSON file with grandfathered historical plan references",
+    )
+    parser.add_argument(
+        "--no-allowlist",
+        action="store_true",
+        help="ignore the allowlist and report every doc reference",
+    )
+    parser.add_argument(
         "--allow-multiple-heads",
         action="store_true",
         help="do not fail when the chain has more than one head",
@@ -144,7 +179,8 @@ def main() -> int:
         print(f"WARN  sequence {suffix} is shared by: {', '.join(values)}")
 
     references = scan_docs([Path(item) for item in args.docs])
-    problems.extend(check_doc_references(references, revisions))
+    allowlist = set() if args.no_allowlist else load_allowlist(Path(args.allowlist))
+    problems.extend(check_doc_references(references, revisions, allowlist))
 
     if len(heads) > 1 and not args.allow_multiple_heads:
         problems.append(f"multiple heads: {', '.join(heads)}")

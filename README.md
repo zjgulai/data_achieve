@@ -12,14 +12,16 @@ Data Intelligence Hub 是多平台数据采集工作台。系统通过统一 API
 | 项目 | 当前值 |
 |---|---|
 | 生产地址 | <https://scrapy.luteos.com>（A 主站）· <https://scrapy.lute-tlz-dddd.top>（B） |
-| 平台目录 | 70 个平台（生产 catalog、仓库生成物与工作树三处一致，2026-10-20 核对） |
-| 能力视图 | 生产 catalog 311 个（2026-10-21 实测，`catalog_digest=e5169ab2…`）。 |
-| 唯一 endpoint | 生产 catalog 283 个（按 `endpoint_type` 去重，2026-10-21 实测）。 |
-| 实测状态 | 2026-10-21 生产 `providers/status`，283 个唯一端点：200 个 verified / 57 个 config-gated / 12 个 degraded / 10 个 empty / 3 个 untested / 1 个 disabled |
-| 工具目录 | 283 个工具，225 个当前可执行（`GET /api/tool-catalog`，2026-10-21）。 |
-| MCP | `https://scrapy.luteos.com/mcp/`，要求 Bearer Token；25 个工具。 |
-| 数据库 schema | A=`202610210053`（2026-10-21 `/api/health` 实测）。B 暂缓，未纳入本轮。 |
-| 部署分支 | A=`main`。B 按 2026-10-21 指示暂缓。 |
+| 平台目录 | 70 个平台（`GET /api/platform-packages`，2026-11-02）。 |
+| 能力视图 | 312 个（2026-11-02 生产实测，`catalog_digest=35ead4d9…`）。 |
+| 唯一 endpoint | 284 个（按 `endpoint_type` 去重，2026-11-02 生产实测）。 |
+| 实测状态 | 2026-11-02 未登录复测。以 `GET /api/platform-packages/providers/status` 为准；旧值 2026-10-21 为 283 个唯一端点：200 verified / 57 config-gated / 12 degraded / 10 empty / 3 untested / 1 disabled。 |
+| 工具目录 | 284 个工具，226 个当前可执行（`GET /api/tool-catalog` 与 `configs/tool-catalog.lock.json`，2026-11-02）。 |
+| MCP | `https://scrapy.luteos.com/mcp/`，要求 Bearer Token；39 个工具（`mcp_runtime/server.py` 的 `@_tool` 计数，2026-11-02）。 |
+| 数据库 schema | A=B=`202610310068`（2026-11-02 `/api/health` 实测）。B 已于 2026-11-02 升级到 `3f889e7`。 |
+| 部署分支 | A=`main`。B=`deploy/tiktok-cdo-codex`，2026-11-02 实测是 main 的严格祖先（217/0），已 fast-forward 到同一 revision。 |
+| ABI | `/abi` 看板与 `/api/abi/*` 已挂载；应用侧 schema 48 表/766 字段；外部仓是 PG18.6 本地快照，数据面 ETL 待做。 |
+| 洞察 | `/insight` 已挂载；`/insight/new` 是 TikTok 爆款选题报告查看器；v1 只有只读端点，没有生成端点。 |
 
 服务器、容器、网络和数据卷的当前事实统一维护在 [生产环境基线](docs/【运维手册】生产环境基线.md)，不要在其他文档复制易变的 revision 或容器状态。
 
@@ -40,10 +42,13 @@ Data Intelligence Hub 是多平台数据采集工作台。系统通过统一 API
 | 监控 | `/monitors` | 查看搜索监控 |
 | 用量 | `/usage` | 查看用量与成本 |
 | 连接 | `/connect` | 配置平台凭证与登录状态 |
+| ABI 看板 | `/abi` | 查看 ABI 数据集、查询、上传与导出 |
+| 洞察工作台 | `/insight` | 业务洞察入口（独立 Next.js 应用，basePath `/insight`） |
+| 新建洞察 | `/insight/new` | 查看已导入的 TikTok 爆款选题报告 |
 
 旧路径由 Next.js 永久重定向：`/platforms` 与 `/skills` → `/tools`，`/collector-docs` → `/docs`，`/datasets` → `/assets`，`/raw-records` → `/assets/records`，`/collect/[runId]` → `/runs/[runId]`，`/skills/[platformId]` → `/tools/[platformId]`。
 
-公开目录页面可直接访问。项目数据和管理接口使用 demo workspace 与演示账号机制；生产账号和密码只存在于生产环境变量，不写入仓库。
+生产环境使用严格鉴权：无 token 的 `/api/*` 返回 401；`/insight` 未登录会 307 到 `/insight/login`。demo workspace 只在非生产环境回退。生产账号和密码只存在于生产环境变量，不写入仓库。
 
 ## 系统组成
 

@@ -67,5 +67,34 @@ grep -q "multiple heads" <<<"$out" || {
   echo "$out"
   exit 1
 }
+rm "$TMP/versions/202601010003_c.py"
+
+echo "case 4: allowlisted historical reference passes"
+cat >"$TMP/docs/plan.md" <<'MD'
+Migration: down_revision = "202512310099"
+MD
+cat >"$TMP/allowlist.json" <<JSON
+{"entries":[{"path":"$TMP/docs/plan.md","revision":"202512310099","owner":"test","reason":"historical","expires":"2026-12-31"}]}
+JSON
+out="$(python3 "$SCRIPT" --versions "$TMP/versions" --docs "$TMP/docs" --allowlist "$TMP/allowlist.json")"
+grep -q "migration number check OK" <<<"$out" || {
+  echo "FAIL: allowlisted reference should pass"
+  echo "$out"
+  exit 1
+}
+
+echo "case 5: a new unlisted reference still fails"
+cat >"$TMP/docs/plan.md" <<'MD'
+Migration: down_revision = "202512310098"
+MD
+set +e
+out="$(python3 "$SCRIPT" --versions "$TMP/versions" --docs "$TMP/docs" --allowlist "$TMP/allowlist.json" 2>&1)"
+code=$?
+set -e
+[[ "$code" == "1" ]] || {
+  echo "FAIL: unlisted reference must fail, got $code"
+  echo "$out"
+  exit 1
+}
 
 echo "migration numbers test OK"
