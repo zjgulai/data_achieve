@@ -162,4 +162,5 @@ create_abi_upload -> write_abi_upload_content -> commit_abi_upload
 - 命令：`python -m data_intelligence_hub.abi.ingest --scan-once --target-date 2026-11-01`；token 通过 stdin 传入，不落盘。
 - 自动队列：`drain_scan_queue` 已实现并用 2 个 `scan` job 验证；complex_homage 与 yueguz 均 `succeeded`，心跳 `scan claimed=2 ok=2 failed=0 skipped=0`，`schedule_state` 两账号 `last_target_date=2026-11-01`。
 - per-account token：A 已种子化 5 条（`complex_homage` 4、`yueguz` 1），Fernet 加密，`ABI_FERNET_KEY` 已配置。
-- 未做：`meta.actor_registry` 为空，dataset 归因暂为 `other/unknown`；B 未种子化 token、未装数据。
+- actor 归因：`meta.actor_registry` 已种子化 9 个 actor，131 个 dataset 全部回填；分布 tiktok/post 40、youtube/post 32、x/post 24、instagram/post 16、tiktok/hashtag 16、reddit/post 3；`endpoint_source='unknown'` 为 0。脚本 `scripts/seed_abi_actor_registry.py`。
+- 未做：B 未种子化 token、未启动 ingest、未装数据；02:15 停机后的多日补扫未实现。
