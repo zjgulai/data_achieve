@@ -189,6 +189,9 @@ services:
       TIKHUB_API_KEY: ${TIKHUB_API_KEY:-}
       TIKHUB_TIKTOK_CREATOR_COOKIE: ${TIKHUB_TIKTOK_CREATOR_COOKIE:-}
       APIFY_API_TOKEN: ${APIFY_API_TOKEN:-}
+      # ABI 专用 key：token 表加密与 ABI 导出密钥分离。api 容器用它执行
+      # --seed-tokens 与手动 scan；abi-ingest 容器也声明了同一键。
+      ABI_FERNET_KEY: ${ABI_FERNET_KEY:-}
       ANYSEARCH_API_KEY: ${ANYSEARCH_API_KEY:-}
       EXA_API_KEY: ${EXA_API_KEY:-}
       FIRECRAWL_API_KEY: ${FIRECRAWL_API_KEY:-}

@@ -28,9 +28,13 @@ import asyncio
 import os
 import signal
 import socket
+import sys
+import uuid
 from collections.abc import Sequence
 from contextlib import suppress
 from datetime import UTC, date, datetime, timedelta
+from pathlib import Path
+from typing import cast
 from zoneinfo import ZoneInfo
 
 import structlog
@@ -182,6 +186,13 @@ async def run_tick(
                 await write_heartbeat(session, worker_id=worker_id, role="abi-export", note=note)
                 await session.commit()
 
+    if role == "ingest":
+        note = await drain_scan_queue(session_factory, worker_id=worker_id)
+        if note:
+            async with session_factory() as session:
+                await write_heartbeat(session, worker_id=worker_id, role="abi-ingest", note=note)
+                await session.commit()
+
 
 async def drain_export_queue(
     session_factory: async_sessionmaker[AsyncSession],
@@ -229,6 +240,191 @@ async def drain_export_queue(
         skipped=skipped,
     )
     return f"export claimed={len(job_ids)} ok={succeeded} failed={failed} skipped={skipped}"
+
+
+async def _claim_scan_job(session: AsyncSession, worker_id: str) -> dict[str, object] | None:
+    row = await session.execute(
+        text(
+            """
+            UPDATE meta.ingest_job
+            SET state = 'running',
+                lease_owner = :worker_id,
+                lease_expires_at = clock_timestamp() + interval '30 minutes',
+                lease_version = lease_version + 1,
+                attempts = attempts + 1,
+                started_at = COALESCE(started_at, clock_timestamp())
+            WHERE id = (
+                SELECT id
+                FROM meta.ingest_job
+                WHERE state = 'queued'
+                  AND job_type = 'scan'
+                  AND (not_before IS NULL OR not_before <= clock_timestamp())
+                ORDER BY created_at
+                FOR UPDATE SKIP LOCKED
+                LIMIT 1
+            )
+            RETURNING id, account_id, target_date, attempts, max_attempts, lease_version
+            """
+        ),
+        {"worker_id": worker_id},
+    )
+    mapping = row.mappings().first()
+    return dict(mapping) if mapping else None
+
+
+async def _finish_scan_job(
+    session: AsyncSession,
+    job: dict[str, object],
+    *,
+    success: bool,
+    error: str | None = None,
+) -> None:
+    if success:
+        await session.execute(
+            text(
+                """
+                UPDATE meta.ingest_job
+                SET state = 'succeeded',
+                    finished_at = clock_timestamp(),
+                    lease_owner = NULL,
+                    lease_expires_at = NULL,
+                    last_error = NULL
+                WHERE id = :id AND lease_version = :lease_version
+                """
+            ),
+            {"id": job["id"], "lease_version": job["lease_version"]},
+        )
+        await session.execute(
+            text(
+                """
+                INSERT INTO meta.schedule_state
+                    (id, account_id, last_target_date, last_success_at, updated_at)
+                VALUES
+                    (gen_random_uuid(), :account_id, :target_date,
+                     clock_timestamp(), clock_timestamp())
+                ON CONFLICT (account_id) DO UPDATE
+                SET last_target_date = EXCLUDED.last_target_date,
+                    last_success_at = EXCLUDED.last_success_at,
+                    updated_at = clock_timestamp()
+                """
+            ),
+            {"account_id": job["account_id"], "target_date": job["target_date"]},
+        )
+        return
+
+    attempts = int(cast(int, job["attempts"]))
+    max_attempts = int(cast(int, job["max_attempts"]))
+    state = "dead" if attempts >= max_attempts else "queued"
+    await session.execute(
+        text(
+            """
+            UPDATE meta.ingest_job
+            SET state = :state,
+                not_before = CASE
+                    WHEN :state = 'queued'
+                    THEN clock_timestamp() + interval '10 minutes'
+                    ELSE not_before
+                END,
+                finished_at = CASE
+                    WHEN :state = 'dead' THEN clock_timestamp()
+                    ELSE NULL
+                END,
+                lease_owner = NULL,
+                lease_expires_at = NULL,
+                last_error = :error
+            WHERE id = :id AND lease_version = :lease_version
+            """
+        ),
+        {
+            "state": state,
+            "error": (error or "unknown")[:500],
+            "id": job["id"],
+            "lease_version": job["lease_version"],
+        },
+    )
+
+
+async def drain_scan_queue(
+    session_factory: async_sessionmaker[AsyncSession],
+    *,
+    worker_id: str,
+    batch: int = 2,
+) -> str | None:
+    """Claim and execute queued scan jobs.
+
+    A job is bound to an account. The token is read from that account's
+    encrypted row in ``meta.apify_token``; if no key or token is configured,
+    the job is skipped instead of scanning the wrong account.
+    """
+    from data_intelligence_hub.abi import scan, tokens
+
+    settings = get_settings()
+    key = (
+        settings.abi_fernet_key.get_secret_value() if settings.abi_fernet_key is not None else None
+    )
+    succeeded = 0
+    failed = 0
+    skipped = 0
+    claimed = 0
+
+    for _ in range(batch):
+        async with session_factory() as session:
+            job = await _claim_scan_job(session, worker_id)
+            await session.commit()
+        if job is None:
+            break
+        claimed += 1
+
+        if key is None:
+            async with session_factory() as session:
+                await _finish_scan_job(session, job, success=False, error="abi_fernet_key_missing")
+                await session.commit()
+            skipped += 1
+            continue
+
+        account_id = cast(uuid.UUID, job["account_id"])
+        target_date = cast(date, job["target_date"])
+        try:
+            async with session_factory() as session:
+                token = await tokens.get_active_token(session, account_id=account_id, key=key)
+                if token is None:
+                    await _finish_scan_job(
+                        session, job, success=False, error="abi_token_not_configured"
+                    )
+                    await session.commit()
+                    skipped += 1
+                    continue
+                await tokens.mark_used(session, account_id=account_id)
+                await session.commit()
+                result = await scan.scan_once(
+                    session,
+                    token=token,
+                    target_date=target_date,
+                    max_datasets=None,
+                    max_items=None,
+                    dry_run=False,
+                )
+                await _finish_scan_job(session, job, success=True)
+                await session.commit()
+            succeeded += 1
+            logger.info(
+                "abi_scan_job_succeeded",
+                job_id=str(job["id"]),
+                account_id=str(job["account_id"]),
+                target_date=str(job["target_date"]),
+                datasets=result.get("datasets"),
+                items=result.get("items_written"),
+            )
+        except Exception as exc:
+            failed += 1
+            logger.exception("abi_scan_job_failed", job_id=str(job["id"]))
+            async with session_factory() as session:
+                await _finish_scan_job(session, job, success=False, error=str(exc))
+                await session.commit()
+
+    if claimed == 0:
+        return None
+    return f"scan claimed={claimed} ok={succeeded} failed={failed} skipped={skipped}"
 
 
 def resolve_worker_id(role: str) -> str:
@@ -322,7 +518,53 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="只列出 dataset 与 item 预估数，不写库",
     )
     parser.add_argument("--token", help="Apify token；缺省读 APIFY_API_TOKEN")
+    parser.add_argument(
+        "--seed-tokens",
+        action="store_true",
+        help="把 token 文件加密写入 meta.apify_token 后退出",
+    )
+    parser.add_argument(
+        "--token-file",
+        help="token 文件（每行 label token）；缺省从 stdin 读",
+    )
     return parser.parse_args(argv)
+
+
+async def _run_seed(args: argparse.Namespace) -> None:
+    import httpx
+
+    from data_intelligence_hub.abi import scan, tokens
+
+    settings = get_settings()
+    if settings.abi_fernet_key is None:
+        raise SystemExit("ABI_FERNET_KEY is required for --seed-tokens")
+    key = settings.abi_fernet_key.get_secret_value()
+    text_value = (
+        Path(args.token_file).read_text(encoding="utf-8") if args.token_file else sys.stdin.read()
+    )
+    entries = tokens.parse_token_file(text_value)
+    if not entries:
+        raise SystemExit("no tokens found")
+
+    seeded: list[str] = []
+    async with (
+        httpx.AsyncClient(timeout=60) as client,
+        async_session_factory() as session,
+    ):
+        for label, token in entries:
+            account = await scan.get_account(client, token)
+            account_id = await scan.ensure_account(session, account=account)
+            await tokens.upsert_token(
+                session,
+                account_id=account_id,
+                label=label,
+                token=token,
+                key=key,
+            )
+            seeded.append(f"{label}:{account.get('username')}")
+        await session.commit()
+    logger.info("abi_tokens_seeded", entries=seeded)
+    print({"seeded": seeded})
 
 
 async def _run_scan(args: argparse.Namespace) -> None:
@@ -358,6 +600,9 @@ async def _run_scan(args: argparse.Namespace) -> None:
 
 async def _run(*, role: str, once: bool, args: argparse.Namespace) -> None:
     await ensure_schema_current()
+    if args.seed_tokens:
+        await _run_seed(args)
+        return
     if args.scan_once:
         await _run_scan(args)
         return
