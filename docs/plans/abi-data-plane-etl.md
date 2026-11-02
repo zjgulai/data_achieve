@@ -152,3 +152,12 @@ create_abi_upload -> write_abi_upload_content -> commit_abi_upload
 验收：`abi.catalog_dataset.row_count` 与 5 张物理表的当前版本计数逐表一致；PII 策略已写入（`author_id`/`author_unique_id` 等 `quasi+hash`，昵称/头像 `direct+redact`，正文与计数 `none`）。读路径实测：`run_query_page` 返回 3 行，`author_id` 为 32 位哈希，`author_nickname` 为 `***`，`descr` 保持明文。B 代码已升级到 `09aa288`（与 A `efe6d94` 同一代码），但 B 数据库只有 `data-achieve-demo` workspace，没有 `zhoujianaaa123`；数据未装。要在 B 上装同一批数据，先建真实 workspace 与 owner，再跑同一脚本。
 
 相关修复已提交：`4b303a6`（PII 误伤）、`321b23b`（asyncpg 参数上限）、`de14840`（复合主键 + CSV）。ETL 脚本：`scripts/abi_etl_load.py`。
+
+## 7. 2026-11-02 T-1 扫描试点
+
+- 目标日期：2026-11-01（北京时间）；账号 `complex_homage`（token 文件 t1）。
+- 结果：**131 个 dataset / 4,163 条 item**。
+- `raw.apify_dataset`：131 行，`item_count_head=item_count_local=4,163`。
+- `raw.apify_item`：4,163 行；分区 `2026-10` 2,609 行、`2026-11` 1,554 行。
+- 命令：`python -m data_intelligence_hub.abi.ingest --scan-once --target-date 2026-11-01`；token 通过 stdin 传入，不落盘。
+- 未做：`run_tick` 仍只入队 `scan`，不自动消费；per-account token 表未种子化；`meta.actor_registry` 为空，dataset 归因暂为 `other/unknown`。这三项是下一批。
