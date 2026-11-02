@@ -115,3 +115,25 @@ create_abi_upload -> write_abi_upload_content -> commit_abi_upload
 | 验收与报告重算 | 0.5 天 | Pray |
 
 合计 3 天。第一切片通过后再评估其余 18 张表。
+
+## 6. 2026-11-02 实施记录（第一切片）
+
+源数据不在本地 `abi_migtest` 容器（已不存在），而在 `~/data/apify-lake/local/si_duckdb/` 的 5 个 `.jsonl.zst` 抽取，行数与计划一致：31,366 / 47,073 / 102,153 / 4,856 / 904。
+
+实际工作区不是 `data_scrapy`，而是生产 A 的 `zhoujianaaa123`（owner `zhoujianaaa123@gmail.com`）。`data-achieve-demo` 是演示库，`abi-e2e-*` 是测试库，都不要装生产数据。
+
+装载器 `scripts/abi_etl_load.py` 复用 ABI 上传闭环。实施中修掉四个真实缺陷：
+
+1. **JSONL 少计一行。** 上传服务按「表头 + 数据行」计数并固定减 1；JSONL 没有表头，`expected_rows` 永远差 1，提交报 `abi_upload_expected_rows_mismatch`。改用 CSV（表头 + 数据行）。
+2. **默认主键是第一列。** 快照表第一列 `snapshot_date` 重复，99 行里 97 行被判 `primary_key_duplicate`。`commit_abi_upload` 增加 `primary_key_columns`；第一切片用复合键：
+   - `si_tiktok_video`：`video_id`
+   - `si_tiktok_comment`：`comment_id`
+   - `si_tiktok_hashtag_snapshot`：`(snapshot_date, hashtag, video_id)`
+   - `si_metric_snapshot`：`(snapshot_date, object_type, object_id, captured_at)`
+   - `si_author_video_snapshot`：`(snapshot_date, account_handle, video_id)`
+   已在源数据逐表验证唯一。
+3. **旧主键索引不会自动消失。** 第一次用默认主键建表后，再传复合主键，旧的 `(__abi_version, snapshot_date)` 唯一索引仍在，插入仍失败。第一切片删除旧的单列唯一索引后重建复合索引。产品侧后续应在 `_ensure_upload_table` 里对主键变更做显式迁移。
+4. **asyncpg 参数上限。** `MAX_BIND_PARAMETERS` 原为 60,000，但 asyncpg 上限是 32,767；4,856 行 × 12 列的语句在 commit 阶段报 `the number of query arguments cannot exceed 32767`。改为 30,000，并按列宽切分语句。
+5. **信用卡扫描误伤公开 ID。** `author_id`、`video_id`、`hashtag_id` 是 16-19 位裸数字，偶尔通过 Luhn；`author_nickname` 的 `user<13位>` 与头像 URL 也会命中。186,352 行扫描原有 194 次误伤。修复：正则边界排除字母前缀；`*_id`/`*_uid`/`*_handle`/`*_avatar`/`*_url` 列跳过卡扫描；正文列仍扫描。修复后全量扫描 0 命中。
+
+冒烟结果：`si_metric_snapshot` 99 行、0 拒绝、`committed`。全量 5 表待执行。
