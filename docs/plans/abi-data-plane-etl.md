@@ -149,6 +149,6 @@ create_abi_upload -> write_abi_upload_content -> commit_abi_upload
 | `si_author_video_snapshot` | 904 | 0 |
 | **合计** | **186,352** | **0** |
 
-验收：`abi.catalog_dataset.row_count` 与 5 张物理表的当前版本计数逐表一致；PII 策略已写入（`author_id`/`author_unique_id` 等 `quasi+hash`，昵称/头像 `direct+redact`，正文与计数 `none`）。读路径实测：`run_query_page` 返回 3 行，`author_id` 为 32 位哈希，`author_nickname` 为 `***`，`descr` 保持明文。B 代码已升级到 `09aa288`（与 A `efe6d94` 同一代码），B 数据未装；按需在 B 上跑同一脚本。
+验收：`abi.catalog_dataset.row_count` 与 5 张物理表的当前版本计数逐表一致；PII 策略已写入（`author_id`/`author_unique_id` 等 `quasi+hash`，昵称/头像 `direct+redact`，正文与计数 `none`）。读路径实测：`run_query_page` 返回 3 行，`author_id` 为 32 位哈希，`author_nickname` 为 `***`，`descr` 保持明文。B 代码已升级到 `09aa288`（与 A `efe6d94` 同一代码），但 B 数据库只有 `data-achieve-demo` workspace，没有 `zhoujianaaa123`；数据未装。要在 B 上装同一批数据，先建真实 workspace 与 owner，再跑同一脚本。
 
 相关修复已提交：`4b303a6`（PII 误伤）、`321b23b`（asyncpg 参数上限）、`de14840`（复合主键 + CSV）。ETL 脚本：`scripts/abi_etl_load.py`。
