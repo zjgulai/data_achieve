@@ -14,7 +14,7 @@
       "url": "https://scrapy.lute-tlz-dddd.top",
       "branch": "deploy/tiktok-cdo-codex",
       "state": "current",
-      "note": "2026-11-02 已 fast-forward 到 c10ed99，schema 068；A 同为 c10ed99；备份 20261102-0909 / 20261102-1138；升级前为 main 严格祖先 217/0，0 独有提交"
+      "note": "2026-11-02 已 fast-forward 到 144d7f2，schema 068；A 同为 144d7f2；备份 20261102-0909 / 20261102-1138；升级前为 main 严格祖先 217/0，0 独有提交"
     }
   }
 }

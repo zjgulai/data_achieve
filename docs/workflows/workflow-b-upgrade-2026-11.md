@@ -220,3 +220,11 @@ docker compose ... exec -T db pg_restore -U "$SCRAPY_POSTGRES_USER" \
 - 结果：B 健康、schema 068；api/abi-export 新镜像 `1001be4f…` running；edge `172.20.0.30`
 - 未做：B 未种子化 Apify token、未启动 `abi-ingest`；B 只有 demo workspace
 - 账本：`c10ed99`
+
+### 2026-11-02 五次升级（多日补扫）
+
+- 目标：`144d7f2`，与 A 同一提交
+- GitHub fetch 连续 4 次超时；改用本地 `git bundle`（`c10ed99..144d7f2`）scp 到 B，`git fetch /tmp/b-144d7f2.bundle tmp/b-target` 后 `--ff-only`
+- 结果：B 健康、schema 068；api/abi-export 新镜像 `aaf79dc7…` running；edge `172.20.0.30`
+- 后续：B 已种子化 5 个 token、启动 `abi-ingest`；回填 2026-11-01 raw 数据 131 dataset / 4,163 item，actor 归因 9/131
+- 账本：`144d7f2`

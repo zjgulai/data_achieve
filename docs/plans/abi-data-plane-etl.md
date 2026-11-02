@@ -164,7 +164,7 @@ create_abi_upload -> write_abi_upload_content -> commit_abi_upload
 - per-account token：A 已种子化 5 条（`complex_homage` 4、`yueguz` 1），Fernet 加密，`ABI_FERNET_KEY` 已配置。
 - actor 归因：`meta.actor_registry` 已种子化 9 个 actor，131 个 dataset 全部回填；分布 tiktok/post 40、youtube/post 32、x/post 24、instagram/post 16、tiktok/hashtag 16、reddit/post 3；`endpoint_source='unknown'` 为 0。脚本 `scripts/seed_abi_actor_registry.py`。
 - 多日补扫：`backfill_dates` 按 `schedule_state.last_target_date` 补齐缺失日期，最多 7 天；`enqueue_scan_job` 过滤已成功账号；`schedule_state` 用 `GREATEST` 防止乱序回填把水位改小。实测 yueguz 缺口 2 天：`scan backfill days=2 enqueued=1`，补扫 2026-10-31 成功。
-- 未做：B 未种子化 token、未启动 ingest、未装数据。
+- B 对等：B 已种子化 5 个 token、启动 `abi-ingest`，T-1 raw 装载 131 dataset / 4,163 item（head=local），actor 归因 9/131 与 A 一致；B 应用层 ABI dataset 仍缺真实 workspace。
 
 ## 8. 报告输入切换到 ABI：评估结论
 

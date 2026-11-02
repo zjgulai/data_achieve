@@ -250,6 +250,6 @@ P1-1 迁移号 ──> P2 C2-C14
 | CI | run `41374327302` 全绿：Platform、API、Web Quality、Web Real Chain、Console E2E、两组 Postgres 全过；API 含新增 `Pytest integration`。 |
 | ABI ETL 第一切片 | **生产 A 已装载**：5 表 / 186,352 行 / 0 拒绝；catalog 与物理表逐表一致；B 未装。脚本 `scripts/abi_etl_load.py`，坑点见 `docs/plans/abi-data-plane-etl.md` §6。 |
 | ABI T-1 扫描试点 | **A 已跑通**：2026-11-01 目标日 131 dataset / 4,163 item；`raw.apify_dataset` head=local=4,163；`raw.apify_item` 4,163（2026-10 2,609 / 2026-11 1,554）。手动 `--scan-once`。 |
-| ABI 自动 scan 队列 | **A 已完成**：`drain_scan_queue` 处理 2 个 job（complex_homage/yueguz）均 succeeded；`ABI_FERNET_KEY` + 5 个 token 加密入库；`schedule_state` 更新。B 未种子化、未启动 worker。 |
+| ABI 自动 scan 队列 | **A/B 已完成**：`drain_scan_queue` 处理 scan job；A/B 各 5 个 token 加密入库；B 回填 2026-11-01 raw 131/4,163；`schedule_state` 两账号 2026-11-01。 |
 | ABI actor 归因 | **A 已完成**：9 个 actor 入 `meta.actor_registry`；131 dataset 全部回填；分布 tiktok/post 40、youtube/post 32、x/post 24、instagram/post 16、tiktok/hashtag 16、reddit/post 3；unknown 0。 |
 | ABI 多日补扫 | **A 已完成**：`backfill_dates` 按 `schedule_state` 补齐缺失日期，最多 7 天；yueguz 缺口 2 天实测 `days=2 enqueued=1`，补扫 2026-10-31 成功；水位用 `GREATEST` 防回退。 |
