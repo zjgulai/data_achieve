@@ -197,3 +197,11 @@ docker compose ... exec -T db pg_restore -U "$SCRAPY_POSTGRES_USER" \
 | 公网 | `/api/health` 200、schema 068；ABI/insight/tiktok 均 401；`/abi`、`/insight` 307 到登录 |
 | 账本 | A/B 均记 `3f889e7`；`record_release.py verify` 通过 |
 | 备注 | 升级脚本在迁移后中断，容器替换由第二条命令补齐；`abi-export` 需带依赖启动（`--profile abi up -d abi-export`，不要加 `--no-deps`） |
+
+### 2026-11-02 二次升级（ABI ETL 代码）
+
+- 目标：`09aa288`（与 A `efe6d94` 同一代码；A 多两个文档/账本提交）
+- 备份：`/opt/backups/data-achieve-scrapy/20261102-1138/`，`db.dump` 3.6 MB
+- 结果：B 健康、schema 068；api/console/web/abi-export 均 running；edge `172.20.0.30`
+- 坑：`up -d` 重建 api 后 edge 缓存旧 IP，公网 502；执行 `restart edge` 后恢复。`abi-export` 需 `--profile abi up -d abi-export`（不带 `--no-deps`）。
+- 账本：`09aa288`，`record_release.py verify` 通过。
