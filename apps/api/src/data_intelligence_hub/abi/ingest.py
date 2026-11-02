@@ -179,9 +179,7 @@ async def run_tick(
         note = await drain_export_queue(session_factory, worker_id=worker_id)
         if note:
             async with session_factory() as session:
-                await write_heartbeat(
-                    session, worker_id=worker_id, role="abi-export", note=note
-                )
+                await write_heartbeat(session, worker_id=worker_id, role="abi-export", note=note)
                 await session.commit()
 
 
@@ -220,9 +218,7 @@ async def drain_export_queue(
             raise
         except Exception:
             failed += 1
-            logger.exception(
-                "abi_export_job_failed", job_id=str(job_id), worker_id=worker_id
-            )
+            logger.exception("abi_export_job_failed", job_id=str(job_id), worker_id=worker_id)
 
     logger.info(
         "abi_export_drained",
@@ -309,11 +305,62 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="只跑一个 tick 后退出，用于联调",
     )
+    parser.add_argument(
+        "--scan-once",
+        action="store_true",
+        help="执行一次 dataset scan 后退出；不进入常驻循环",
+    )
+    parser.add_argument(
+        "--target-date",
+        help="scan 的目标北京时间，YYYY-MM-DD；缺省为 T-1",
+    )
+    parser.add_argument("--max-datasets", type=int, help="本次最多扫描多少个 dataset")
+    parser.add_argument("--max-items", type=int, help="每个 dataset 最多拉多少条 item")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="只列出 dataset 与 item 预估数，不写库",
+    )
+    parser.add_argument("--token", help="Apify token；缺省读 APIFY_API_TOKEN")
     return parser.parse_args(argv)
 
 
-async def _run(*, role: str, once: bool) -> None:
+async def _run_scan(args: argparse.Namespace) -> None:
+    from data_intelligence_hub.abi import scan
+
+    token = (args.token or "").strip()
+    if not token:
+        settings = get_settings()
+        if settings.apify_api_token is not None:
+            token = settings.apify_api_token.get_secret_value()
+    if not token:
+        raise SystemExit("APIFY_API_TOKEN is required for --scan-once")
+
+    target = (
+        date.fromisoformat(args.target_date)
+        if args.target_date
+        else compute_target_date(datetime.now(UTC))
+    )
     await ensure_schema_current()
+    async with async_session_factory() as session:
+        result = await scan.scan_once(
+            session,
+            token=token,
+            target_date=target,
+            max_datasets=args.max_datasets,
+            max_items=args.max_items,
+            dry_run=bool(args.dry_run),
+        )
+        await session.commit()
+    logger.info("abi_scan_once_done", **result)
+    print(result)
+
+
+async def _run(*, role: str, once: bool, args: argparse.Namespace) -> None:
+    await ensure_schema_current()
+    if args.scan_once:
+        await _run_scan(args)
+        return
     worker_id = resolve_worker_id(role)
     if once:
         await run_tick(async_session_factory, worker_id=worker_id, role=role)
@@ -334,7 +381,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         export_dir=settings.abi_export_dir,
         fernet_key_configured=settings.abi_fernet_key is not None,
     )
-    asyncio.run(_run(role=role, once=bool(args.once)))
+    asyncio.run(_run(role=role, once=bool(args.once), args=args))
     return 0
 
 

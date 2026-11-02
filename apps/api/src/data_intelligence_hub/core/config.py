@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     s3_bucket: str | None = None
 
     platform_credential_master_key: SecretStr | None = None
+    # Apify API token for the ABI ingest worker. The long-term design stores
+    # per-account tokens encrypted in meta.apify_token; the first slice uses
+    # this env value as a single-account bootstrap.
+    apify_api_token: SecretStr | None = None
     mcp_token: SecretStr | None = Field(
         default=None,
         validation_alias="SCRAPY_MCP_TOKEN",
