@@ -213,3 +213,10 @@ docker compose ... exec -T db pg_restore -U "$SCRAPY_POSTGRES_USER" \
 - 结果：B 健康、schema 068；api/abi-export 新镜像 `dd74ea53…` running；edge `172.20.0.30`
 - 坑：同上，`up -d` 后必须 `restart edge`；`abi-export` 用 `--profile abi up -d abi-export`
 - 账本：`ea9e197`
+
+### 2026-11-02 四次升级（token 表 + scan 队列）
+
+- 目标：`c10ed99`，与 A 同一提交；`ABI_FERNET_KEY` 已在 B `.env.production`
+- 结果：B 健康、schema 068；api/abi-export 新镜像 `1001be4f…` running；edge `172.20.0.30`
+- 未做：B 未种子化 Apify token、未启动 `abi-ingest`；B 只有 demo workspace
+- 账本：`c10ed99`
