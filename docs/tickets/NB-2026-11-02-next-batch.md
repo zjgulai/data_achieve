@@ -252,6 +252,11 @@ P1-1 迁移号 ──> P2 C2-C14
 | 洞察报告独立复核 | **已完成**：`report_count=1`；DB 正文 181,984 字节，SHA-256 `f7f7c4f0…`；manifest 归一化规则本地复现同一哈希；`source_status=snapshot_only`，UI 显示「数据快照」；GET 401、POST 405、`/insight` 307。 |
 | 日报 11-01 known_gap | 已写 `reports/achievements-20261101/MISSING.md`；健康检查 `KNOWN_GAP` 退出 0；20261102 健康检查 PASS。 |
 | 报告语言与数字闸门 | **已完成**：共享包 `data_intelligence_hub.report_quality` + 一份 `rules.json`；`tools/insight-report/validate.py --gate`、导入器、CI 共用；删除 `ir_impl/validate.py`；63 词夹具命中 63；当前报告 PASS（279 个百分比、6 张图）；日报 advisory。 |
+| 生产 8ecb28e | **已完成（2026-11-03）**：A/B api/abi-export/abi-ingest 新镜像；A/B schema 068；A 的 media-query edge 热修保留；健康 200、业务端点 401；A/B 账本已记。A 因热修用手动七步发布，`deploy-p0.sh` 仍拒绝脏工作区（OI-45）。 |
+| 凭证清理与扫描 | **部分完成**：`scripts/check_secrets.py` + 测试 + CI；1984 个 tracked 文件 0 命中；`reports/mcp-token.txt` 移出仓库；Apify/TikHub 控制台轮换待用户。 |
+| ABI 远端备份与恢复 | **部分完成**：A 首次加密备份 69M；Mac 与 B 各一份，sha256 一致；scratch Postgres 恢复 5 表 / 186,352 行，current-version 计数与 catalog 一致；脚本支持远端目标。持久 cron 目标待用户。 |
+| Workflow scope guard | **已完成**：`scripts/workflow_scope_guard.py` claim/audit/clean；重叠写集、越界写、secret 读、未批准付费调用均退出 1；测试通过。 |
+| 健康检查 schema | **已完成**：默认跟随 `/api/health` 的 `schema_head`，不再写死 048；22 passed。 |
 | CI | run `41374327302` 全绿：Platform、API、Web Quality、Web Real Chain、Console E2E、两组 Postgres 全过；API 含新增 `Pytest integration`。 |
 | ABI ETL 第一切片 | **生产 A 已装载**：5 表 / 186,352 行 / 0 拒绝；catalog 与物理表逐表一致；B 未装。脚本 `scripts/abi_etl_load.py`，坑点见 `docs/plans/abi-data-plane-etl.md` §6。 |
 | ABI T-1 扫描试点 | **A 已跑通**：2026-11-01 目标日 131 dataset / 4,163 item；`raw.apify_dataset` head=local=4,163；`raw.apify_item` 4,163（2026-10 2,609 / 2026-11 1,554）。手动 `--scan-once`。 |

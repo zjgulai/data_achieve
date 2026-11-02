@@ -34,6 +34,8 @@ PG_USER="${ABI_PG_USER:-${SCRAPY_POSTGRES_USER:-}}"
 PG_DB="${ABI_PG_DB:-${SCRAPY_POSTGRES_DB:-}}"
 ENV_FILE="${ABI_BACKUP_ENV_FILE:-/opt/data-achieve-scrapy/.abi-backup.env}"
 CRON_SCHEDULE="${ABI_BACKUP_CRON:-15 3 * * *}"
+REMOTE_TARGET="${ABI_BACKUP_REMOTE:-}"
+REQUIRE_REMOTE="${ABI_BACKUP_REQUIRE_REMOTE:-0}"
 
 TMP_FILE=""
 
@@ -57,6 +59,8 @@ usage() {
   ABI_BACKUP_DIR              备份目录，默认 /opt/data-achieve-scrapy/abi-backups
   ABI_BACKUP_RETENTION_DAYS   保留天数，默认 14
   ABI_BACKUP_ENV_FILE         cron 触发时 source 的密钥文件
+  ABI_BACKUP_REMOTE           远端副本目标，格式 user@host:/path 或本地目录
+  ABI_BACKUP_REQUIRE_REMOTE   设为 1 时，未配置远端目标即失败
 EOF
 }
 
@@ -102,6 +106,36 @@ run_backup() {
     sha256sum "$target" >"${target}.sha256"
   else
     shasum -a 256 "$target" >"${target}.sha256"
+  fi
+
+  if [[ -n "$REMOTE_TARGET" ]]; then
+    if [[ "$REMOTE_TARGET" == *:* ]]; then
+      remote_host="${REMOTE_TARGET%%:*}"
+      remote_dir="${REMOTE_TARGET#*:}"
+      ssh -o BatchMode=yes -o ConnectTimeout=15 "$remote_host" "mkdir -p '$remote_dir'"
+    fi
+    if command -v rsync >/dev/null 2>&1; then
+      rsync -a --partial "$target" "${target}.sha256" "$REMOTE_TARGET/"
+    else
+      scp "$target" "${target}.sha256" "$REMOTE_TARGET/"
+    fi
+    if [[ "$REMOTE_TARGET" == *:* ]]; then
+      remote_name="$(basename "$target")"
+      remote_hash="$(ssh -o BatchMode=yes -o ConnectTimeout=15 "$remote_host" \
+        "sha256sum '$remote_dir/$remote_name'" | awk '{print $1}')"
+      local_hash="$(awk '{print $1}' "${target}.sha256")"
+      if [[ "$remote_hash" != "$local_hash" ]]; then
+        echo "远端副本校验失败：$REMOTE_TARGET/$remote_name" >&2
+        exit 1
+      fi
+    fi
+    echo "远端副本完成：$REMOTE_TARGET"
+  else
+    if [[ "$REQUIRE_REMOTE" == "1" ]]; then
+      echo "ABI_BACKUP_REQUIRE_REMOTE=1 但 ABI_BACKUP_REMOTE 未设置" >&2
+      exit 1
+    fi
+    echo "警告：未配置 ABI_BACKUP_REMOTE；备份只在本机。" >&2
   fi
 
   # 只清理本目录下符合命名规则的过期备份，避免误删其它文件。

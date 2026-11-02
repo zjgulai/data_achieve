@@ -29,7 +29,9 @@ from typing import Any
 import httpx
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8000"
-DEFAULT_EXPECTED_SCHEMA = "202610200048"
+# 空值表示不写死迁移版本。健康检查以 /api/health 的 schema_head 为准；
+# SCRAPY_HEALTH_EXPECTED_SCHEMA 只用于兼容没有 schema_head 的旧版响应。
+DEFAULT_EXPECTED_SCHEMA = ""
 DEFAULT_STATE_FILE = "/tmp/scrapy_health_state.json"
 DEFAULT_ALERT_OPEN_IDS: tuple[str, ...] = ("ou_b49d21f41d8b2f119e466d29782d29ff",)
 BITABLE_URL = (
@@ -174,7 +176,9 @@ def evaluate_health_payload(
     # /api/health 同时返回 schema_head；旧版没有该字段时回落到配置值。
     head = payload.get("schema_head")
     target = head if isinstance(head, str) and head else expected_schema
-    if revision != target:
+    if not isinstance(revision, str) or not revision:
+        return False, f"schema_revision={revision!r}"
+    if target and revision != target:
         return False, f"schema_revision={revision!r}, expected {target}"
     schema_status = payload.get("schema", "current")
     if schema_status != "current":

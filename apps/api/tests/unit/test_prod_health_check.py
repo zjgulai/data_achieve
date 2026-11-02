@@ -49,11 +49,12 @@ def _report(*checks: CheckResult, checked_at: datetime = NOW) -> HealthReport:
 
 
 def _ready_payload() -> dict[str, object]:
+    # 用例固定当前 head 的字面量；生产逻辑跟随 /api/health 返回的 schema_head。
     return {
         "database": "connected",
         "schema": "current",
-        "schema_revision": DEFAULT_EXPECTED_SCHEMA,
-        "schema_head": DEFAULT_EXPECTED_SCHEMA,
+        "schema_revision": "202610310068",
+        "schema_head": "202610310068",
     }
 
 
@@ -95,7 +96,7 @@ def test_evaluate_health_payload_rejects_wrong_schema_revision() -> None:
 
     assert ok is False
     assert "202610200047" in detail
-    assert DEFAULT_EXPECTED_SCHEMA in detail
+    assert "202610310068" in detail
 
 
 def test_evaluate_health_payload_rejects_database_failure() -> None:
@@ -354,6 +355,10 @@ def test_build_alert_text_lists_failed_checks_status_and_bitable_link() -> None:
     assert "- mcp_auth: HTTP 200" in text
     assert "- tools" not in text
     assert BITABLE_URL in text
+
+
+def test_default_expected_schema_is_not_hardcoded() -> None:
+    assert DEFAULT_EXPECTED_SCHEMA == ""
 
 
 def test_config_from_env_defaults_and_overrides() -> None:

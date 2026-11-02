@@ -63,7 +63,10 @@ Two workflows must not write the same artifact. In 2026-10-31 a plain-language r
 second workflow both edited the same report HTML. The second overwrote the first and re-added
 63 jargon instances.
 
+- Claim the write set before editing:
+  `python3 scripts/workflow_scope_guard.py claim --id <wf> --write <staging> --read <paths>`.
 - Write each workflow's output to its own staging directory.
+- Audit before merge: `python3 scripts/workflow_scope_guard.py audit --claim <wf>`.
 - Merge in one final step, after both workflows finish.
 - Read the merged file back and scan for regressions before delivery.
 

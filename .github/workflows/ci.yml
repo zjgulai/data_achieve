@@ -141,7 +141,10 @@ jobs:
           bash scripts/tests/test-migration-numbers.sh
           bash scripts/tests/test-record-release.sh
           bash scripts/tests/test-daily-report-health.sh
+          bash scripts/tests/test-check-secrets.sh
+          bash scripts/tests/test-workflow-scope-guard.sh
           python3 scripts/check_migration_numbers.py
+          python3 scripts/check_secrets.py --tracked
 
       - name: Report language and number gate
         working-directory: .

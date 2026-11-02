@@ -34,7 +34,7 @@ grep -q "token=" "$SESSION" || {
   cat "$SESSION"
   exit 1
 }
-if grep -q "apify_api_abcdefghijklmnopqrstuvwxyz" "$SESSION"; then
+if grep -q "apify_api_abcdefghijklmnopqrstuvwxyz" "$SESSION"; then  # secret-scan: allow fake token
   echo "FAIL: raw token leaked"
   exit 1
 fi
