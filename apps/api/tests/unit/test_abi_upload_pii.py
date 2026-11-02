@@ -10,7 +10,7 @@ uses those prefixes. Separated candidates are still checked.
 
 from __future__ import annotations
 
-from data_intelligence_hub.services.abi_upload import _contains_credit_card
+from data_intelligence_hub.services.abi_upload import _contains_credit_card, scan_pii
 
 
 def test_public_id_starting_with_one_is_not_a_card() -> None:
@@ -32,3 +32,22 @@ def test_separated_visa_number_is_still_a_card() -> None:
 
 def test_text_without_digits_is_not_a_card() -> None:
     assert _contains_credit_card("no digits here") is False
+
+
+def test_identifier_column_skips_card_scan() -> None:
+    assert scan_pii("4111111111111111", column_name="author_id") is None
+
+
+def test_non_identifier_column_still_scans() -> None:
+    assert scan_pii("4111111111111111", column_name="note") == "pii_credit_card"
+
+
+def test_nickname_with_user_prefix_is_not_a_card() -> None:
+    assert _contains_credit_card("user8040990514992") is False
+
+
+def test_avatar_column_skips_card_scan() -> None:
+    assert (
+        scan_pii("https://p19-common-sign.tiktok/abc1234567890123", column_name="author_avatar")
+        is None
+    )

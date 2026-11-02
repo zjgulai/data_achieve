@@ -151,7 +151,12 @@ _DATA_TYPE_ALIASES: Final[dict[str, str]] = {
 _PRIVATE_KEY_RE: Final[re.Pattern[str]] = re.compile(
     r"-----BEGIN [A-Z ]*PRIVATE KEY(?: BLOCK)?-----"
 )
-_CARD_CANDIDATE_RE: Final[re.Pattern[str]] = re.compile(r"(?<!\d)(?:\d[ -]?){12,19}\d(?!\d)")
+_CARD_CANDIDATE_RE: Final[re.Pattern[str]] = re.compile(
+    # Do not treat digits inside an alphanumeric token as a card. The old
+    # boundary only excluded digits, so "user8040990514992" matched and was
+    # rejected as a card. "card:4111..." still matches.
+    r"(?<![A-Za-z0-9])(?:\d[ -]?){12,19}\d(?![A-Za-z0-9])"
+)
 
 
 # ---------------------------------------------------------------- 领域异常
@@ -608,13 +613,31 @@ def _contains_credit_card(text: str) -> bool:
     return False
 
 
-def scan_pii(value: object) -> str | None:
+_IDENTIFIER_COLUMN_SUFFIXES: Final[tuple[str, ...]] = (
+    "_id",
+    "_ids",
+    "_uid",
+    "_handle",
+    "_unique_id",
+    "_avatar",
+    "_avatar_url",
+    "_url",
+)
+
+
+def scan_pii(value: object, *, column_name: str | None = None) -> str | None:
     """返回命中的 PII 规则名，未命中返回 None。
 
     只检测两类明确禁止入库的内容：信用卡号与私钥。邮箱、handle 等
     不在这里拒收，它们由 field_policy 遮罩。
+
+    标识列（``*_id`` / ``*_uid`` / ``*_handle``）跳过信用卡扫描：TikTok 的
+    author_id / video_id / hashtag_id 是 16-19 位裸数字，偶尔通过 Luhn，
+    会被误判成卡号。真实卡号应出现在正文或备注列，那些列仍然扫描。
     """
 
+    if column_name and column_name.endswith(_IDENTIFIER_COLUMN_SUFFIXES):
+        return None
     if value is None:
         return None
     if isinstance(value, str):
@@ -701,7 +724,7 @@ def _validate_row(
         if "\x00" in raw:
             errors.append((name, "invalid_null_byte", "值含 NUL 字节，PostgreSQL 拒绝"))
             continue
-        rule = scan_pii(raw)
+        rule = scan_pii(raw, column_name=name)
         if rule is not None:
             errors.append((name, rule, "命中禁止入库的 PII 规则"))
             continue
