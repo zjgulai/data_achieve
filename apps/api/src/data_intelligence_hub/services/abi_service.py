@@ -22,7 +22,7 @@ import io
 import json
 import re
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
@@ -1060,6 +1060,8 @@ async def commit_abi_upload(
     workspace: Workspace,
     user: User,
     batch_id: uuid.UUID,
+    *,
+    primary_key_columns: Sequence[str] | None = None,
 ) -> AbiUploadBatchResponse:
     batch = await abi_repo.get_upload_batch(session, workspace.id, batch_id)
     if batch is None:
@@ -1099,6 +1101,7 @@ async def commit_abi_upload(
     committed = await commit_batch(
         session,
         batch_id=batch.id,
+        primary_key_columns=primary_key_columns,
         user_id=user.id,
     )
     return AbiUploadBatchResponse.model_validate(committed)

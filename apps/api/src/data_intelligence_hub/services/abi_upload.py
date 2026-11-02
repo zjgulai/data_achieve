@@ -148,9 +148,7 @@ _DATA_TYPE_ALIASES: Final[dict[str, str]] = {
 _PRIVATE_KEY_RE: Final[re.Pattern[str]] = re.compile(
     r"-----BEGIN [A-Z ]*PRIVATE KEY(?: BLOCK)?-----"
 )
-_CARD_CANDIDATE_RE: Final[re.Pattern[str]] = re.compile(
-    r"(?<!\d)(?:\d[ -]?){12,19}\d(?!\d)"
-)
+_CARD_CANDIDATE_RE: Final[re.Pattern[str]] = re.compile(r"(?<!\d)(?:\d[ -]?){12,19}\d(?!\d)")
 
 
 # ---------------------------------------------------------------- 领域异常
@@ -520,9 +518,7 @@ async def append_content(
     """
 
     batch = await session.scalar(
-        select(UploadBatch)
-        .where(UploadBatch.id == batch_id)
-        .with_for_update()
+        select(UploadBatch).where(UploadBatch.id == batch_id).with_for_update()
     )
     if batch is None:
         raise AbiUploadNotFound()
@@ -595,8 +591,16 @@ def _luhn_valid(digits: str) -> bool:
 
 def _contains_credit_card(text: str) -> bool:
     for match in _CARD_CANDIDATE_RE.finditer(text):
-        digits = re.sub(r"\D", "", match.group(0))
-        if 13 <= len(digits) <= 19 and _luhn_valid(digits):
+        candidate = match.group(0)
+        digits = re.sub(r"\D", "", candidate)
+        if not (13 <= len(digits) <= 19):
+            continue
+        # 公开平台 ID 会误伤：TikTok 的 hashtag_id 是 16 位、video_id 是
+        # 19 位，裸数字偶尔能通过 Luhn。主要卡组织没有以 1 或 7 开头的
+        # 卡号；带空格/连字符的仍按卡号检查，避免放过真正的分隔格式。
+        if digits[0] in {"1", "7"} and " " not in candidate and "-" not in candidate:
+            continue
+        if _luhn_valid(digits):
             return True
     return False
 
@@ -763,18 +767,14 @@ def _upload_table_name(dataset: CatalogDataset) -> str:
     source_table = _bare_source_table(dataset.source_table or "")
     if not source_table:
         source_table = expected_table
-    if source_table != expected_table or not UPLOAD_TABLE_PATTERN.fullmatch(
-        source_table
-    ):
+    if source_table != expected_table or not UPLOAD_TABLE_PATTERN.fullmatch(source_table):
         raise AbiUploadValidationError("abi_upload_source_table_invalid")
     # 与 create_batch 同口径：落库值必须带 schema 前缀。
     dataset.source_table = f"{_UPLOAD_TABLE_SCHEMA}.{source_table}"
     return source_table
 
 
-def _build_upload_table(
-    table_name: str, columns: Sequence[DatasetColumn]
-) -> Table:
+def _build_upload_table(table_name: str, columns: Sequence[DatasetColumn]) -> Table:
     """按 dataset_column 构造通用上传表定义。
 
     表名来自数据集 UUID，列名来自已在查询层校验过的 dataset_column。
@@ -825,9 +825,7 @@ def _build_upload_table(
     )
 
 
-def _local_table(
-    source_table: str, columns: Sequence[DatasetColumn] | None = None
-) -> Table:
+def _local_table(source_table: str, columns: Sequence[DatasetColumn] | None = None) -> Table:
     """固定本地表的核心表对象。
 
     已知 dataset_column 类型的列用真实类型，保证 JSON/数组参数按正确
@@ -850,9 +848,7 @@ def _local_table(
         if column_type is None:
             table_columns.append(Column(quoted_name(name, True)))
         else:
-            table_columns.append(
-                Column(quoted_name(name, True), column_type)
-            )
+            table_columns.append(Column(quoted_name(name, True), column_type))
     return Table(
         quoted_name(source_table, True),
         metadata,
@@ -886,18 +882,14 @@ async def _ensure_upload_table(
     await session.execute(CreateIndex(index, if_not_exists=True))
 
 
-async def _next_upload_row(
-    session: AsyncSession, table: Table, version: int
-) -> int:
+async def _next_upload_row(session: AsyncSession, table: Table, version: int) -> int:
     value = await session.scalar(
         select(
             func.coalesce(
                 func.max(table.c[quoted_name(_UPLOAD_ROW_COLUMN, True)]),
                 -1,
             )
-        ).where(
-            table.c[quoted_name(_UPLOAD_VERSION_COLUMN, True)] == version
-        )
+        ).where(table.c[quoted_name(_UPLOAD_VERSION_COLUMN, True)] == version)
     )
     return int(value or 0) + 1
 
@@ -921,16 +913,12 @@ async def _existing_keys(
     key_columns = [table.c[quoted_name(name, True)] for name in pk_names]
     found: set[tuple[object, ...]] = set()
     unique_keys = list(dict.fromkeys(keys))
-    window_size = max(
-        1, min(5000, MAX_BIND_PARAMETERS // max(1, len(key_columns)))
-    )
+    window_size = max(1, min(5000, MAX_BIND_PARAMETERS // max(1, len(key_columns))))
     for start in range(0, len(unique_keys), window_size):
         window = unique_keys[start : start + window_size]
         conditions: list[Any] = []
         if version is not None:
-            conditions.append(
-                table.c[quoted_name(_UPLOAD_VERSION_COLUMN, True)] == version
-            )
+            conditions.append(table.c[quoted_name(_UPLOAD_VERSION_COLUMN, True)] == version)
         if origin is not None and "origin" in table.c:
             conditions.append(table.c[quoted_name("origin", True)] == origin)
         if len(key_columns) == 1:
@@ -1000,9 +988,7 @@ async def _flush_rows(
             return 0, duplicates
 
     if mode == "upsert":
-        update_columns = [
-            name for name in data_columns if name not in set(pk_names)
-        ]
+        update_columns = [name for name in data_columns if name not in set(pk_names)]
         conflict_columns: list[Any] = (
             [
                 table.c[quoted_name(_UPLOAD_VERSION_COLUMN, True)],
@@ -1017,16 +1003,12 @@ async def _flush_rows(
                 statement = statement.on_conflict_do_update(
                     index_elements=conflict_columns,
                     set_={
-                        quoted_name(name, True): statement.excluded[
-                            quoted_name(name, True)
-                        ]
+                        quoted_name(name, True): statement.excluded[quoted_name(name, True)]
                         for name in update_columns
                     },
                 )
             else:
-                statement = statement.on_conflict_do_nothing(
-                    index_elements=conflict_columns
-                )
+                statement = statement.on_conflict_do_nothing(index_elements=conflict_columns)
             await session.execute(statement)
     else:
         for batch in _value_batches(values):
@@ -1216,15 +1198,11 @@ async def _cleanup_partial(
     try:
         if is_local:
             await session.execute(
-                delete(table).where(
-                    table.c[quoted_name("load_batch_id", True)] == batch_id
-                )
+                delete(table).where(table.c[quoted_name("load_batch_id", True)] == batch_id)
             )
         else:
             await session.execute(
-                delete(table).where(
-                    table.c[quoted_name(_UPLOAD_BATCH_COLUMN, True)] == batch_id
-                )
+                delete(table).where(table.c[quoted_name(_UPLOAD_BATCH_COLUMN, True)] == batch_id)
             )
         await session.commit()
     except Exception:
@@ -1270,9 +1248,7 @@ async def commit_batch(
     """
 
     batch = await session.scalar(
-        select(UploadBatch)
-        .where(UploadBatch.id == batch_id)
-        .with_for_update()
+        select(UploadBatch).where(UploadBatch.id == batch_id).with_for_update()
     )
     if batch is None:
         raise AbiUploadNotFound()
@@ -1393,9 +1369,7 @@ async def commit_batch(
                     )
                     rows_rejected += 1
                 else:
-                    raw_values = {
-                        name: row[header_map[name]] for name in expected_names
-                    }
+                    raw_values = {name: row[header_map[name]] for name in expected_names}
                     values, row_errors = _validate_row(
                         raw_values=raw_values,
                         columns=columns,
@@ -1403,9 +1377,7 @@ async def commit_batch(
                     if row_errors:
                         rows_rejected += 1
                         for column_name, rule_id, message in row_errors:
-                            error_chunk.append(
-                                (row_number, column_name, rule_id, message)
-                            )
+                            error_chunk.append((row_number, column_name, rule_id, message))
                     elif values is not None:
                         values = _with_provenance(
                             values,
@@ -1488,9 +1460,7 @@ async def commit_batch(
         rows_loaded += inserted
         for duplicate_row, duplicate_column, rule_id, message in duplicates:
             rows_rejected += 1
-            error_chunk.append(
-                (duplicate_row, duplicate_column, rule_id, message)
-            )
+            error_chunk.append((duplicate_row, duplicate_column, rule_id, message))
         await _flush_errors(session, batch_id=batch.id, errors=error_chunk)
 
         if rows_loaded == 0:
@@ -1580,17 +1550,12 @@ async def _count_dataset_rows(
 ) -> int:
     statement = select(func.count()).select_from(table)
     if version is not None:
-        statement = statement.where(
-            table.c[quoted_name(_UPLOAD_VERSION_COLUMN, True)] == version
-        )
+        statement = statement.where(table.c[quoted_name(_UPLOAD_VERSION_COLUMN, True)] == version)
     elif dataset.origin:
-        statement = statement.where(
-            table.c[quoted_name("origin", True)] == dataset.origin
-        )
+        statement = statement.where(table.c[quoted_name("origin", True)] == dataset.origin)
     else:
         statement = statement.where(
-            table.c[quoted_name("origin", True)]
-            == f"upload:{dataset.workspace_id}"
+            table.c[quoted_name("origin", True)] == f"upload:{dataset.workspace_id}"
         )
     value = await session.scalar(statement)
     return int(value or 0)
