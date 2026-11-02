@@ -37,6 +37,7 @@ from data_intelligence_hub.models.insight_report import (
     InsightReport,
     InsightReportContent,
 )
+from data_intelligence_hub.report_quality import check_html_report
 from data_intelligence_hub.repositories.insight_reports import (
     get_content_by_report_id,
     get_report_by_scope,
@@ -300,6 +301,16 @@ def validate_bundle(bundle_dir: Path) -> ValidatedReportBundle:
         )
 
     _check_html_safety(normalized)
+    gate = check_html_report(
+        normalized,
+        manifest=manifest.model_dump(mode="json"),
+        strict=True,
+    )
+    if not gate.ok:
+        details = "; ".join(
+            f"line {hit.line}: {hit.message}" for hit in gate.hits[:8]
+        )
+        raise InsightImportError(f"报告语言闸门失败: {details}")
     return ValidatedReportBundle(
         bundle_dir=bundle_dir,
         manifest=manifest,

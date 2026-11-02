@@ -1,0 +1,76 @@
+{
+  "schema_version": "report_language_gate_v1",
+  "banned_terms": [
+    {"term": "样本不足", "suggestion": "条数太少，说明不了问题"},
+    {"term": "样本量偏小", "suggestion": "条数太少，说明不了问题"},
+    {"term": "接近下限", "suggestion": "数量刚够，结论偏弱"},
+    {"term": "外推", "suggestion": "推到其他人群；本轮不做"},
+    {"term": "显著", "suggestion": "差异有多大；会不会只是偶然"},
+    {"term": "p 值", "suggestion": "差异有多大；会不会只是偶然"},
+    {"term": "p值", "suggestion": "差异有多大；会不会只是偶然"},
+    {"term": "置信区间", "suggestion": "差异有多大；会不会只是偶然"},
+    {"term": "归因", "suggestion": "原因"},
+    {"term": "口径", "suggestion": "统计范围"},
+    {"term": "结构化", "suggestion": "具体动作"},
+    {"term": "赋能", "suggestion": "具体动作"},
+    {"term": "抓手", "suggestion": "具体动作"},
+    {"term": "闭环", "suggestion": "具体动作"},
+    {"term": "沉淀", "suggestion": "具体动作"},
+    {"term": "建议关注", "suggestion": "建议做 X，因为 Y"},
+    {"term": "维度", "suggestion": "直接说哪一项"},
+    {"term": "层面", "suggestion": "直接说哪一项"},
+    {"term": "颗粒度", "suggestion": "细到什么程度"}
+  ],
+  "allowlist": [
+    {
+      "term": "外推",
+      "regex": "(?:不能|不|勿|禁止|避免|不可|别|不要)[^。；\\n]{0,8}外推",
+      "reason": "明确的否定用法，不是结论"
+    },
+    {
+      "term": "口径",
+      "regex": "关键数字\\s*·\\s*口径",
+      "reason": "数字区标签，指统计范围"
+    },
+    {
+      "term": "维度",
+      "regex": "维度\\s+数量\\s+零散情况",
+      "reason": "既有报告的表头；本次不重导报告"
+    }
+  ],
+  "denominator_terms": [
+    "条",
+    "样本",
+    "记录",
+    "总数",
+    "视频",
+    "账号",
+    "评论",
+    "组",
+    "行",
+    "次",
+    "例",
+    "分母"
+  ],
+  "percent_allowlist": [
+    {
+      "regex": "(?:不能写|不能把|不能说|禁止|不要写|别写)",
+      "reason": "禁写示例，不是报告结论"
+    }
+  ],
+  "denominator_window": 20,
+  "evidence_markers": [
+    "证据等级",
+    "描述性归档",
+    "数据快照",
+    "已确认",
+    "方向性",
+    "证据不足",
+    "无法判断",
+    "不允许分析"
+  ],
+  "archive_statuses": ["snapshot_only"],
+  "chart_source_markers": ["数据来源", "来源"],
+  "chart_scope_markers": ["范围", "统计范围", "用到的数据", "分母", "条", "样本"],
+  "allow_percent_in_heading_with_next_exhibit": true
+}

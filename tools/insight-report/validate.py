@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """validate.py — fail-closed validator for VOC report data and rendered HTML.
 
-Two modes:
+Three modes:
 
   python3 validate.py --data out/report-data.json
   python3 validate.py --html out/report.html --data out/report-data.json
+  python3 validate.py --gate --html report.html --manifest manifest.json --strict
+
+The third mode is the shared business-report language and number gate. It uses
+the single rule catalog in ``data_intelligence_hub.report_quality``.
 
 The validator never downgrades a failure to a warning. Missing required fields,
 missing four-question readouts, missing source-foot keys, missing exhibit parts,
@@ -25,6 +29,17 @@ from pathlib import Path
 import ir_contract as C
 
 SCHEMA_PATH = Path(__file__).with_name("schema.json")
+
+# The shared gate lives in the API package so the importer and this validator
+# use one rule catalog. The package is stdlib-only.
+REPO_ROOT = Path(__file__).resolve().parents[2]
+API_SRC = REPO_ROOT / "apps" / "api" / "src"
+if str(API_SRC) not in sys.path:
+    sys.path.insert(0, str(API_SRC))
+
+from data_intelligence_hub.report_quality import (  # noqa: E402
+    check_html_report,
+)
 
 ACTION_VERBS = (
     "验证", "补采", "停止", "回滚", "重跑", "拆分", "合并", "隔离", "标注",
@@ -1006,8 +1021,34 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Fail-closed validator for VOC report data / HTML")
     ap.add_argument("--data", help="path to report-data.json")
     ap.add_argument("--html", help="path to report.html")
+    ap.add_argument("--gate", action="store_true", help="run the business-report language/number gate")
+    ap.add_argument("--manifest", help="path to manifest.json for archive/evidence context")
+    ap.add_argument("--strict", action="store_true", help="require an as-of date")
     ap.add_argument("--json", action="store_true", help="print machine-readable JSON")
     args = ap.parse_args(argv)
+
+    if args.gate:
+        if not args.html:
+            ap.error("--gate requires --html")
+        html = Path(args.html).read_text(encoding="utf-8")
+        manifest = (
+            json.loads(Path(args.manifest).read_text(encoding="utf-8"))
+            if args.manifest
+            else None
+        )
+        result = check_html_report(html, manifest=manifest, strict=args.strict)
+        if args.json:
+            print(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))
+        elif result.ok:
+            print(
+                f"GATE PASS: percentages={result.checked_percentages} "
+                f"figures={result.checked_figures} evidence={result.evidence}"
+            )
+        else:
+            print(f"GATE FAIL: {len(result.hits)} violation(s)")
+            for hit in result.hits:
+                print(f"  {args.html}:{hit.line}: [{hit.kind}] {hit.message}")
+        return 0 if result.ok else 1
 
     if not args.data and not args.html:
         ap.error("provide --data and/or --html")

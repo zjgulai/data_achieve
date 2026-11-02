@@ -143,6 +143,14 @@ jobs:
           bash scripts/tests/test-daily-report-health.sh
           python3 scripts/check_migration_numbers.py
 
+      - name: Report language and number gate
+        working-directory: .
+        run: |
+          python3 scripts/check_report_language.py \
+            --html tools/insight-reports/tiktok-viral-topic/2026-10-31/report.html \
+            --manifest tools/insight-reports/tiktok-viral-topic/2026-10-31/manifest.json \
+            --strict
+
       - name: Ruff
         run: uv run ruff check .
 

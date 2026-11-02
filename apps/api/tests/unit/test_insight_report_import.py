@@ -93,6 +93,16 @@ def test_tampered_source_is_rejected(bundle_copy: Path) -> None:
         validate_bundle(bundle_copy)
 
 
+def test_banned_language_is_rejected(bundle_copy: Path) -> None:
+    _rewrite_bundle(
+        bundle_copy,
+        lambda html: html.replace("</body>", "<p>这里用归因。</p></body>"),
+    )
+
+    with pytest.raises(InsightImportError, match="报告语言闸门失败"):
+        validate_bundle(bundle_copy)
+
+
 def test_unknown_inline_script_is_rejected(bundle_copy: Path) -> None:
     _rewrite_bundle(
         bundle_copy,

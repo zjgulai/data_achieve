@@ -138,7 +138,7 @@
 | P1-1 | 迁移号重基线 | 列出 checker 报的 12 处；逐文件决定历史 allowlist 或新增 addendum；069+ 预留表；checker 对历史计划与现行迁移分开校验；最后 exit 0 | `python3 scripts/check_migration_numbers.py` 当前 FAIL，12 处 |
 | P1-2 | integration CI | 34 个 integration 文件进 CI，或书面 allowlist（owner、原因、到期日）；至少加 ABI export、auth 401、insight 路由的 targeted integration | `.github/workflows/ci.yml` 只跑 `pytest tests/unit` |
 | P1-3 | 工单与数字单一源 | JSON 单一源生成 MD；每日 diff 飞书；README/能力图谱/总账/基线数字同源；0 冲突 | SP JSON 42/3/2/18 vs 飞书 37/6/1/21 |
-| P1-4 | 报告语言闸门 | 不新建第四个校验器；把白话词表与分母规则并入现有 `voc_pipeline/voc/validate_report.py` 或 `tools/insight-report/validate.py`；删除 `ir_impl/validate.py` 重复副本 | 已有三套校验器，`validate.py` 与 `ir_impl/validate.py` 字节相同 |
+| P1-4 | 报告语言闸门 | **已完成（2026-11-03）**：共享实现 `apps/api/src/data_intelligence_hub/report_quality/`，一份 `rules.json`；`tools/insight-report/validate.py --gate` 与导入器共用；删除 `ir_impl/validate.py`；CI 增加闸门步骤；日报 advisory。63 词夹具命中 63；当前报告 PASS。 | 见 `docs/plans/report-language-gate.md` |
 | P1-5 | 日报健康检查 | 不用 `flock`/`timeout`（本机没有）；用 `mkdir` 原子锁或 `run_with_timeout`；检查放在 22:15 后或读完成标记；外部 dead-man 检查心跳 | `command -v flock/timeout` 均失败 |
 | P1-6 | workflow scope guard | claim/audit 脚本；写集外修改、读 `.env`、未批准付费调用三夹具 FAIL；双 workflow 演练 0 覆盖 | 本次审计期间 NB 文件被并行改写 |
 | P1-7 | 身份回归证据 | A/B `/api/tools` 无 token 401；工作区隔离测试；B1/P1 同批门禁记录 | A/B 均含 b75bc3c |
@@ -251,6 +251,7 @@ P1-1 迁移号 ──> P2 C2-C14
 | ABI 导出终态 | **A/B 已完成**：未遮罩 `si_metric_snapshot` 走 `awaiting_approval → queued → succeeded`，4,856 行 / 103,721 字节；遮罩 `si_tiktok_video` 同步 `succeeded`，31,366 行 / 1,787,894 字节；A/B 产物字节一致；worker 心跳 < 180 秒。见 `docs/plans/abi-data-plane-etl.md` §6.1。 |
 | 洞察报告独立复核 | **已完成**：`report_count=1`；DB 正文 181,984 字节，SHA-256 `f7f7c4f0…`；manifest 归一化规则本地复现同一哈希；`source_status=snapshot_only`，UI 显示「数据快照」；GET 401、POST 405、`/insight` 307。 |
 | 日报 11-01 known_gap | 已写 `reports/achievements-20261101/MISSING.md`；健康检查 `KNOWN_GAP` 退出 0；20261102 健康检查 PASS。 |
+| 报告语言与数字闸门 | **已完成**：共享包 `data_intelligence_hub.report_quality` + 一份 `rules.json`；`tools/insight-report/validate.py --gate`、导入器、CI 共用；删除 `ir_impl/validate.py`；63 词夹具命中 63；当前报告 PASS（279 个百分比、6 张图）；日报 advisory。 |
 | CI | run `41374327302` 全绿：Platform、API、Web Quality、Web Real Chain、Console E2E、两组 Postgres 全过；API 含新增 `Pytest integration`。 |
 | ABI ETL 第一切片 | **生产 A 已装载**：5 表 / 186,352 行 / 0 拒绝；catalog 与物理表逐表一致；B 未装。脚本 `scripts/abi_etl_load.py`，坑点见 `docs/plans/abi-data-plane-etl.md` §6。 |
 | ABI T-1 扫描试点 | **A 已跑通**：2026-11-01 目标日 131 dataset / 4,163 item；`raw.apify_dataset` head=local=4,163；`raw.apify_item` 4,163（2026-10 2,609 / 2026-11 1,554）。手动 `--scan-once`。 |
