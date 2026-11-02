@@ -247,6 +247,7 @@ P1-1 迁移号 ──> P2 C2-C14
 | 账本 v2 | `record_release.py` 写 `schema_revision`、`alembic_head`、`verification`、`deployed_commit`；A/B 最新记录均 v2；`verify` 通过。 |
 | 安全下限 | 新增 `test_deployment_security_defaults.py`（7 passed）、`test_abi_export_defaults.py`（4 passed）、`test_abi_pii_contract.py`（4 passed）、`test_auth_password_policy.py`（5 passed）。 |
 | mypy 债务清零 | `3f889e7` 起 CI 在 mypy 步骤红；42 个 ABI/洞察类型错误先登记并把 baseline 934→976。2026-11-02 已全部修复，无新增 `type: ignore`；current=baseline=934，signatures 478→459。unit 91 passed、postgres_abi 20 passed。见 [TD-2026-11-02-mypy-abi](./TD-2026-11-02-mypy-abi.md)。 |
+| B 应用层 ABI 数据 | **已完成**：B 创建与 A 同名 workspace，复制 owner 与成员关系；ETL 装载 5 表 / 186,352 行 / 0 拒绝；catalog 与物理表当前版本计数一致；当前版本内容哈希与 A 全部一致；读路径 `author_id` 哈希、昵称 `***`、正文明文。 |
 | CI | run `41374327302` 全绿：Platform、API、Web Quality、Web Real Chain、Console E2E、两组 Postgres 全过；API 含新增 `Pytest integration`。 |
 | ABI ETL 第一切片 | **生产 A 已装载**：5 表 / 186,352 行 / 0 拒绝；catalog 与物理表逐表一致；B 未装。脚本 `scripts/abi_etl_load.py`，坑点见 `docs/plans/abi-data-plane-etl.md` §6。 |
 | ABI T-1 扫描试点 | **A 已跑通**：2026-11-01 目标日 131 dataset / 4,163 item；`raw.apify_dataset` head=local=4,163；`raw.apify_item` 4,163（2026-10 2,609 / 2026-11 1,554）。手动 `--scan-once`。 |
