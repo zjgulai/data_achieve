@@ -180,3 +180,14 @@ create_abi_upload -> write_abi_upload_content -> commit_abi_upload
   5. 保持 `deepread288.tsv` 的 9 列契约，或显式升级契约并同步渲染器。
 
 在完成 1-3 之前，报告继续读现有 `deepread288.tsv`；ABI 只作为原始数据底座，不冒充洞察输入。
+
+### 8.1 20 条试点结果（2026-11-02）
+
+试点报告见 [abi-tag-pilot-2026-11-02.md](./abi-tag-pilot-2026-11-02.md)。结论：
+
+- A（caption）与 B（caption+评论）的 top-1 family 准确率都是 25.0%（5/20）。
+- family 平均 Jaccard：A 0.361，B 0.409；motif 平均 Jaccard：A 0.549，B 0.498。
+- 评论不改变 top-1，20 条首选族完全一致。
+- 首选族只覆盖 F3-F7。F1/F2/F8/F9/F10 需要画面、音频或叙事证据，纯文本无法判断。
+
+因此第 2 条的“补 deepread 打标链”暂停。先补多模态输入、100 条以上样本和双人标注，再评估。报告输入继续用 `deepread288.tsv`。

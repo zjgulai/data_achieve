@@ -1,6 +1,6 @@
 # TD-2026-11-02 · ABI/洞察 mypy 债务
 
-- 状态：已登记，待清理
+- 状态：已清理（2026-11-02）
 - 发现日期：2026-11-02
 - 发现方式：`3f889e7` 的 CI `API Quality Gate` 在 `Mypy (non-regression)` 步骤失败
 - 处理：2026-11-02 将 baseline 从 934 调到 976，先恢复 CI 绿；这不是修复
@@ -34,12 +34,25 @@ mypy 是「不回归」门禁，不是「零错误」门禁。ABI 与洞察两�
 3. CI `API Quality Gate` 的 mypy 步骤为绿。
 4. 新增代码不得再让 current 上升；baseline 更新必须单独提交并说明原因。
 
+## 清理结果（2026-11-02）
+
+- 42 个错误全部修复，没有新增 `# type: ignore`。
+- current 976 → 934，baseline 976 → 934；signatures 478 → 459。
+- 门禁结果：`OK: mypy baseline non-regression current=934 baseline=934 decreased=0`。
+- 相关测试：unit 91 passed；postgres_abi 20 passed。
+- 主要修法：
+  - `repositories/abi.py`：DML 结果用 `cast(CursorResult[Any], result)` 取 `rowcount`。
+  - `services/abi_query.py`：`sessionmaker` 改为 `async_sessionmaker`；`AbiQueryValidationError` 改为显式重导出。
+  - `services/abi_export.py`：`order_by` 解析改为显式循环，避免 `list[Any | None]`。
+  - 测试：给 helper 补参数与返回类型；`AbiBase` 改从 `models.abi_base` 导入；导出 worker 测试直接 patch 真实模块。
+- 基线更新为单独提交。provenance 已记录当前 commit、Python 版本与 mypy flags。
+
 ## 优先级
 
 P2。它不阻塞功能，但会让 CI 失去类型回归保护。建议在 C2 开工前清完，避免新代码继续叠加。
 
 ## 相关
 
-- `docs/tickets/NB-2026-11-02-next-batch.md` P1-2
+- `docs/tickets/NB-2026-11-02-next-batch.md` §10
 - `configs/quality/mypy-src-tests-signatures.txt`
 - `configs/quality/mypy-baseline-provenance.json`
