@@ -205,3 +205,11 @@ docker compose ... exec -T db pg_restore -U "$SCRAPY_POSTGRES_USER" \
 - 结果：B 健康、schema 068；api/console/web/abi-export 均 running；edge `172.20.0.30`
 - 坑：`up -d` 重建 api 后 edge 缓存旧 IP，公网 502；执行 `restart edge` 后恢复。`abi-export` 需 `--profile abi up -d abi-export`（不带 `--no-deps`）。
 - 账本：`09aa288`，`record_release.py verify` 通过。
+
+### 2026-11-02 三次升级（ABI scan consumer）
+
+- 目标：`ea9e197`，与 A 同一提交
+- 备份：复用 `20261102-1138`（schema 未变，代码增量）
+- 结果：B 健康、schema 068；api/abi-export 新镜像 `dd74ea53…` running；edge `172.20.0.30`
+- 坑：同上，`up -d` 后必须 `restart edge`；`abi-export` 用 `--profile abi up -d abi-export`
+- 账本：`ea9e197`
