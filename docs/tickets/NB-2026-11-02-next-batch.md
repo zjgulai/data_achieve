@@ -247,3 +247,4 @@ P1-1 迁移号 ──> P2 C2-C14
 | 账本 v2 | `record_release.py` 写 `schema_revision`、`alembic_head`、`verification`、`deployed_commit`；A/B 最新记录均 v2；`verify` 通过。 |
 | 安全下限 | 新增 `test_deployment_security_defaults.py`（7 passed）、`test_abi_export_defaults.py`（4 passed）、`test_abi_pii_contract.py`（4 passed）、`test_auth_password_policy.py`（5 passed）。 |
 | mypy 债务登记 | `3f889e7` 起 CI 在 mypy 步骤红；42 个 ABI/洞察类型错误，baseline 934→976 先恢复绿。债务见 [TD-2026-11-02-mypy-abi](./TD-2026-11-02-mypy-abi.md)，P2 清理。 |
+| CI | run `41374327302` 全绿：Platform、API、Web Quality、Web Real Chain、Console E2E、两组 Postgres 全过；API 含新增 `Pytest integration`。 |
