@@ -136,4 +136,19 @@ create_abi_upload -> write_abi_upload_content -> commit_abi_upload
 4. **asyncpg 参数上限。** `MAX_BIND_PARAMETERS` 原为 60,000，但 asyncpg 上限是 32,767；4,856 行 × 12 列的语句在 commit 阶段报 `the number of query arguments cannot exceed 32767`。改为 30,000，并按列宽切分语句。
 5. **信用卡扫描误伤公开 ID。** `author_id`、`video_id`、`hashtag_id` 是 16-19 位裸数字，偶尔通过 Luhn；`author_nickname` 的 `user<13位>` 与头像 URL 也会命中。186,352 行扫描原有 194 次误伤。修复：正则边界排除字母前缀；`*_id`/`*_uid`/`*_handle`/`*_avatar`/`*_url` 列跳过卡扫描；正文列仍扫描。修复后全量扫描 0 命中。
 
-冒烟结果：`si_metric_snapshot` 99 行、0 拒绝、`committed`。全量 5 表待执行。
+冒烟结果：`si_metric_snapshot` 99 行、0 拒绝、`committed`。
+
+**2026-11-02 全量结果（生产 A，workspace `zhoujianaaa123`）：**
+
+| dataset | 行数 | 拒绝 |
+|---|---:|---:|
+| `si_tiktok_video` | 31,366 | 0 |
+| `si_tiktok_comment` | 47,073 | 0 |
+| `si_tiktok_hashtag_snapshot` | 102,153 | 0 |
+| `si_metric_snapshot` | 4,856 | 0 |
+| `si_author_video_snapshot` | 904 | 0 |
+| **合计** | **186,352** | **0** |
+
+验收：`abi.catalog_dataset.row_count` 与 5 张物理表的当前版本计数逐表一致；PII 策略已写入（`author_id`/`author_unique_id` 等 `quasi+hash`，昵称/头像 `direct+redact`，正文与计数 `none`）。读路径实测：`run_query_page` 返回 3 行，`author_id` 为 32 位哈希，`author_nickname` 为 `***`，`descr` 保持明文。生产 B 未装，按需再跑同一脚本。
+
+相关修复已提交：`4b303a6`（PII 误伤）、`321b23b`（asyncpg 参数上限）、`de14840`（复合主键 + CSV）。ETL 脚本：`scripts/abi_etl_load.py`。
