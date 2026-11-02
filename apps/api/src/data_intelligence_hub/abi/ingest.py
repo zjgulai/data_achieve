@@ -54,8 +54,6 @@ logger = structlog.get_logger(__name__)
 
 # 方案 §5.1：时区必须显式。容器默认 UTC，不指定会让整条链偏 8 小时。
 ABI_TZ = ZoneInfo("Asia/Shanghai")
-SCAN_HOUR = 2
-SCAN_MINUTE = 15
 TICK_SECONDS = 60
 WORKER_ROLES = ("ingest", "export")
 
@@ -69,15 +67,26 @@ def compute_target_date(now: datetime) -> date:
     return now.astimezone(ABI_TZ).date() - timedelta(days=1)
 
 
-def is_scan_window(now: datetime) -> bool:
-    """是否处于 02:15 这一分钟的触发窗口。
+def backfill_dates(
+    last_target_date: date | None,
+    latest_target_date: date,
+    max_days: int = 7,
+) -> list[date]:
+    """Return the missing T-1 dates to enqueue, capped at ``max_days``.
 
-    TODO(ABI): 现在只在 02:15 那一分钟触发。停机错过窗口时按方案 §5.4
-    用 ``meta.schedule_state.last_target_date`` 补跑：差 N 天就补 N 条
-    按日期的 scan，不能只补昨天，否则中间日期的新增 dataset 会落错分区。
+    A new account has no schedule state: enqueue only the latest T-1, not a
+    week of history. An account that missed a window gets the gap filled.
     """
-    local_now = now.astimezone(ABI_TZ)
-    return (local_now.hour, local_now.minute) == (SCAN_HOUR, SCAN_MINUTE)
+    if last_target_date is None or last_target_date >= latest_target_date:
+        return [] if last_target_date is not None else [latest_target_date]
+    floor = latest_target_date - timedelta(days=max(1, max_days) - 1)
+    start = max(last_target_date + timedelta(days=1), floor)
+    dates: list[date] = []
+    current = start
+    while current <= latest_target_date:
+        dates.append(current)
+        current += timedelta(days=1)
+    return dates
 
 
 async def write_heartbeat(
@@ -111,22 +120,14 @@ async def write_heartbeat(
 
 
 async def enqueue_scan_job(session: AsyncSession, target_date: date) -> int:
-    """为每个启用的 Apify 账号入队一条 T-1 ``scan`` 作业。
+    """为尚未完成该日期的启用账号入队一条 ``scan`` 作业。
 
     幂等键格式来自方案 §5.2：``scan:{account}:{target_date}``。
     唯一约束 ``uq_ingest_job_idempotency_key`` 会让重复触发命中
-    ``ON CONFLICT DO NOTHING``，所以 02:15 所在的那一分钟重复 tick 也安全。
+    ``ON CONFLICT DO NOTHING``。``schedule_state.last_target_date`` 过滤
+    已经成功的账号，避免每天重复扫同一日期。
 
-    返回本次真正新插入的行数。没有启用账号时返回 0。
-
-    TODO(ABI): 这里只入队，不扫描。后续切片补齐：
-    1. claim ``meta.ingest_job``（``FOR UPDATE SKIP LOCKED`` + ``lease_version``
-       fencing，见迁移 202610280060 的说明）；
-    2. scan：分页枚举 dataset，按
-       ``items:{dataset_id}:{observed_item_count}:{modified_at}`` 入队；
-    3. items：显式 ``offset + limit`` 分页拉取，写 ``raw.apify_item``，
-       稳态用 ``ON CONFLICT DO NOTHING``；
-    4. 写分区前调用 ``meta.ensure_partitions`` 补齐月份，不能只建未来。
+    返回本次真正新插入的行数。
     """
     result = await session.execute(
         text(
@@ -141,7 +142,12 @@ async def enqueue_scan_job(session: AsyncSession, target_date: date) -> int:
                 CAST(:target_date AS date),
                 'queued'
             FROM meta.apify_account a
+            LEFT JOIN meta.schedule_state s ON s.account_id = a.id
             WHERE a.enabled
+              AND (
+                  s.last_target_date IS NULL
+                  OR s.last_target_date < CAST(:target_date AS date)
+              )
             ON CONFLICT (idempotency_key) DO NOTHING
             RETURNING id
             """
@@ -151,6 +157,35 @@ async def enqueue_scan_job(session: AsyncSession, target_date: date) -> int:
     return len(result.all())
 
 
+async def backfill_scan_jobs(
+    session: AsyncSession,
+    *,
+    latest_target_date: date,
+    max_days: int = 7,
+) -> tuple[int, int]:
+    """Enqueue every missing T-1 date up to ``latest_target_date``.
+
+    Returns ``(enqueued, days)``. A worker that was down for N days fills the
+    gap on the next tick, capped at ``max_days`` to avoid a flood.
+    """
+    row = await session.execute(
+        text(
+            """
+            SELECT MIN(s.last_target_date)
+            FROM meta.apify_account a
+            LEFT JOIN meta.schedule_state s ON s.account_id = a.id
+            WHERE a.enabled
+            """
+        )
+    )
+    last = row.scalar()
+    dates = backfill_dates(last, latest_target_date, max_days)
+    enqueued = 0
+    for target_date in dates:
+        enqueued += await enqueue_scan_job(session, target_date)
+    return enqueued, len(dates)
+
+
 async def run_tick(
     session_factory: async_sessionmaker[AsyncSession],
     *,
@@ -158,7 +193,7 @@ async def run_tick(
     role: str,
     now: datetime | None = None,
 ) -> None:
-    """执行一次心跳；摄取角色在 02:15 额外入队 T-1 scan。
+    """执行一次心跳；摄取角色补齐缺失的 T-1 scan 日期。
 
     单个 tick 自成一个事务：先写业务行，再写心跳，最后一起 commit。
     任一语句失败时整个 tick 回滚，下一分钟重试。
@@ -167,15 +202,17 @@ async def run_tick(
     note: str | None = None
 
     async with session_factory() as session:
-        if role == "ingest" and is_scan_window(current):
-            target_date = compute_target_date(current)
-            enqueued = await enqueue_scan_job(session, target_date)
-            note = f"scan enqueued for {target_date}: {enqueued}"
-            logger.info(
-                "abi_scan_enqueued",
-                target_date=target_date.isoformat(),
-                enqueued=enqueued,
-            )
+        if role == "ingest":
+            latest = compute_target_date(current)
+            enqueued, days = await backfill_scan_jobs(session, latest_target_date=latest)
+            if enqueued:
+                note = f"scan backfill days={days} enqueued={enqueued}"
+                logger.info(
+                    "abi_scan_backfill",
+                    latest_target_date=latest.isoformat(),
+                    days=days,
+                    enqueued=enqueued,
+                )
         await write_heartbeat(session, worker_id=worker_id, role=f"abi-{role}", note=note)
         await session.commit()
 
@@ -303,8 +340,14 @@ async def _finish_scan_job(
                     (gen_random_uuid(), :account_id, :target_date,
                      clock_timestamp(), clock_timestamp())
                 ON CONFLICT (account_id) DO UPDATE
-                SET last_target_date = EXCLUDED.last_target_date,
-                    last_success_at = EXCLUDED.last_success_at,
+                SET last_target_date = GREATEST(
+                        schedule_state.last_target_date,
+                        EXCLUDED.last_target_date
+                    ),
+                    last_success_at = GREATEST(
+                        schedule_state.last_success_at,
+                        EXCLUDED.last_success_at
+                    ),
                     updated_at = clock_timestamp()
                 """
             ),
