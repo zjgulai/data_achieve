@@ -1,7 +1,7 @@
 {
   "schema_version": "mypy-baseline-provenance.v1",
-  "generated_at": "2026-11-02T01:46:18+00:00",
-  "commit": "6708547808dbdbeb92285bb76341508a7605a800",
+  "generated_at": "2026-11-02T09:27:24+00:00",
+  "commit": "167b8bc56c99f6330becab14f9365f082b14e9d1",
   "python_version": "3.12.13",
   "paths": [
     "src",
@@ -14,6 +14,6 @@
     "--no-error-summary",
     "--no-color-output"
   ],
-  "signatures": 478,
-  "diagnostics": 976
+  "signatures": 459,
+  "diagnostics": 934
 }
