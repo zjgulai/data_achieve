@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
 CONTRACT_PATH = PROJECT_ROOT / "docs/design/【契约冻结】v1-表名-枚举-接口.md"
@@ -28,13 +28,13 @@ REQUIRED_AUDIT_ACTIONS = (
 
 
 def _registry() -> dict[str, Any]:
-    return json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
+    return cast(dict[str, Any], json.loads(REGISTRY_PATH.read_text(encoding="utf-8")))
 
 
 def _table(registry: dict[str, Any], name: str) -> dict[str, Any]:
     for table in registry["tables"]:
         if table["name"] == name:
-            return table
+            return cast(dict[str, Any], table)
     raise AssertionError(f"table not registered: {name}")
 
 

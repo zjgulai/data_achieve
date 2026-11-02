@@ -19,6 +19,7 @@ from typing import Any
 import pytest
 
 from data_intelligence_hub.abi import ingest
+from data_intelligence_hub.repositories import abi as abi_repo
 from data_intelligence_hub.services import abi_export
 
 
@@ -50,7 +51,7 @@ def patched_claim(monkeypatch: pytest.MonkeyPatch):
         async def _claim(_session: Any, *, limit: int = 5) -> list[uuid.UUID]:
             return job_ids
 
-        monkeypatch.setattr(ingest.abi_repo, "claim_queued_export_jobs", _claim)
+        monkeypatch.setattr(abi_repo, "claim_queued_export_jobs", _claim)
 
     return _install
 
@@ -74,7 +75,7 @@ async def test_counts_successful_jobs(patched_claim, monkeypatch) -> None:
     async def _run(_session: Any, job_id_arg: uuid.UUID) -> None:
         ran.append(job_id_arg)
 
-    monkeypatch.setattr(ingest.abi_export, "run_job", _run)
+    monkeypatch.setattr(abi_export, "run_job", _run)
 
     result = await ingest.drain_export_queue(
         _FakeSessionFactory([job_id]), worker_id="w1"  # type: ignore[arg-type]
@@ -96,7 +97,7 @@ async def test_lost_race_counts_as_skipped_not_failed(
     async def _run(_session: Any, _job_id: uuid.UUID) -> None:
         raise abi_export.AbiExportNotReady("abi_export_not_queued")
 
-    monkeypatch.setattr(ingest.abi_export, "run_job", _run)
+    monkeypatch.setattr(abi_export, "run_job", _run)
 
     result = await ingest.drain_export_queue(
         _FakeSessionFactory([job_id]), worker_id="w1"  # type: ignore[arg-type]
@@ -117,7 +118,7 @@ async def test_one_failure_does_not_stop_the_batch(patched_claim, monkeypatch) -
         if job_id == bad:
             raise RuntimeError("boom")
 
-    monkeypatch.setattr(ingest.abi_export, "run_job", _run)
+    monkeypatch.setattr(abi_export, "run_job", _run)
 
     result = await ingest.drain_export_queue(
         _FakeSessionFactory([bad, good]), worker_id="w1"  # type: ignore[arg-type]
@@ -140,7 +141,7 @@ async def test_cancellation_propagates(patched_claim, monkeypatch) -> None:
     async def _run(_session: Any, _job_id: uuid.UUID) -> None:
         raise asyncio.CancelledError()
 
-    monkeypatch.setattr(ingest.abi_export, "run_job", _run)
+    monkeypatch.setattr(abi_export, "run_job", _run)
 
     with pytest.raises(asyncio.CancelledError):
         await ingest.drain_export_queue(

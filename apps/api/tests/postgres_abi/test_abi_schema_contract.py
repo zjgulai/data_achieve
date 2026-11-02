@@ -17,17 +17,19 @@
 
 from __future__ import annotations
 
-import pytest
-from sqlalchemy import inspect
+from collections.abc import Iterator
 
-from data_intelligence_hub.models.abi import AbiBase
+import pytest
+from sqlalchemy import Table, inspect
+
+from data_intelligence_hub.models.abi_base import AbiBase
 
 # AbiBase 注册的 public 占位表：只为了让 ABI 表的跨 schema 外键能在
 # 同一个 MetaData 里解析，真实列由主 Base 管，不在这里比对。
 PUBLIC_PLACEHOLDERS = {"users", "workspaces"}
 
 
-def _comparable_tables():
+def _comparable_tables() -> Iterator[Table]:
     for table in AbiBase.metadata.tables.values():
         if table.schema is None and table.name in PUBLIC_PLACEHOLDERS:
             continue

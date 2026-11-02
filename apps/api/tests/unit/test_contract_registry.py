@@ -3,6 +3,8 @@ from __future__ import annotations
 import importlib.util
 import json
 from pathlib import Path
+from types import ModuleType
+from typing import Any, cast
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
 SCRIPT_PATH = PROJECT_ROOT / "scripts/contract_registry.py"
@@ -11,7 +13,7 @@ BEGIN = "<!-- contract-registry:begin -->"
 END = "<!-- contract-registry:end -->"
 
 
-def load_module():
+def load_module() -> ModuleType:
     spec = importlib.util.spec_from_file_location("contract_registry", SCRIPT_PATH)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
@@ -19,7 +21,7 @@ def load_module():
     return module
 
 
-def minimal_registry() -> dict:
+def minimal_registry() -> dict[str, Any]:
     return {
         "registry_version": "contract-registry.v1",
         "contract_version": "v1.1",
@@ -413,12 +415,15 @@ SCHEMA_PATH = PROJECT_ROOT / "configs/contracts/v1.1.0/registry.schema.json"
 REGISTRY_PATH = PROJECT_ROOT / "configs/contracts/v1.1.0/registry.json"
 
 
-def load_contract_registry() -> dict:
+def load_contract_registry() -> dict[str, Any]:
     module = load_module()
-    return module.extract_registry_block(CONTRACT_PATH.read_text(encoding="utf-8"))
+    return cast(
+        dict[str, Any],
+        module.extract_registry_block(CONTRACT_PATH.read_text(encoding="utf-8")),
+    )
 
 
-def _table(registry: dict, name: str) -> dict:
+def _table(registry: dict[str, Any], name: str) -> dict[str, Any]:
     return next(item for item in registry["tables"] if item["name"] == name)
 
 

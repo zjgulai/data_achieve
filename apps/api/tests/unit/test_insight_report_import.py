@@ -11,7 +11,7 @@ import hashlib
 import json
 import shutil
 import uuid
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
 from pathlib import Path
 
 import pytest
@@ -145,7 +145,7 @@ def test_path_traversal_is_rejected(bundle_copy: Path) -> None:
 
 
 @pytest_asyncio.fixture()
-async def session_factory() -> async_sessionmaker[AsyncSession]:
+async def session_factory() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
     engine = create_async_engine(
         "sqlite+aiosqlite://",
         connect_args={"check_same_thread": False},

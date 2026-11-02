@@ -17,10 +17,11 @@ import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, NamedTuple
+from typing import Any, NamedTuple, cast
 
 from sqlalchemy import ColumnElement, Select, and_, delete, desc, func, or_, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from data_intelligence_hub.models.abi import (
@@ -1083,7 +1084,9 @@ async def delete_upload_errors(
     result = await session.execute(
         delete(UploadError).where(UploadError.batch_id == batch_id)
     )
-    return int(result.rowcount or 0)
+    # DML 的运行时返回值是 CursorResult；SQLAlchemy 的 execute 重载只声明
+    # Result，所以这里用 cast 取 rowcount。
+    return int(cast(CursorResult[Any], result).rowcount or 0)
 
 
 async def count_upload_errors(

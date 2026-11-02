@@ -49,8 +49,7 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.sql import quoted_name
 
 from data_intelligence_hub.core.config import get_settings
@@ -65,7 +64,9 @@ from data_intelligence_hub.models.abi import (
 from data_intelligence_hub.services.abi_errors import (
     AbiAccessDenied,
     AbiDatasetNotFound,
-    AbiQueryValidationError,
+)
+from data_intelligence_hub.services.abi_errors import (
+    AbiQueryValidationError as AbiQueryValidationError,
 )
 
 # upload/export 一直从本模块取 AbiServiceError，保留这条转出口，
@@ -1611,7 +1612,7 @@ async def build_query(
 # ---------------------------------------------------------------- 独立只读会话
 
 
-def _default_session_factory() -> sessionmaker[AsyncSession]:
+def _default_session_factory() -> async_sessionmaker[AsyncSession]:
     """延迟取全局工厂。
 
     不在模块顶层 import ``async_session_factory`` 有两个原因：
@@ -1627,7 +1628,7 @@ def _default_session_factory() -> sessionmaker[AsyncSession]:
 async def read_only_session(
     *,
     statement_timeout: str = QUERY_TIMEOUT,
-    session_factory: sessionmaker[AsyncSession] | None = None,
+    session_factory: async_sessionmaker[AsyncSession] | None = None,
 ) -> AsyncIterator[AsyncSession]:
     """开一个只读事务的会话。
 
@@ -1671,7 +1672,7 @@ async def run_query_page(
     limit: int = DEFAULT_PAGE_SIZE,
     cursor: str | None = None,
     min_role: str = "viewer",
-    session_factory: sessionmaker[AsyncSession] | None = None,
+    session_factory: async_sessionmaker[AsyncSession] | None = None,
 ) -> AbiQueryPage:
     """在独立只读事务里查询一页。这是查询端点的正式入口。
 

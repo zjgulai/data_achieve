@@ -24,10 +24,11 @@ import csv
 import hashlib
 import io
 import uuid
+from pathlib import Path
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from data_intelligence_hub.models.abi import ExportPolicy
 from data_intelligence_hub.models.user import User
@@ -35,6 +36,7 @@ from data_intelligence_hub.models.workspace import Workspace
 from data_intelligence_hub.schemas.abi import (
     AbiColumnCreate,
     AbiDatasetCreateRequest,
+    AbiDatasetSummary,
     AbiExportCreateRequest,
     AbiPolicyUpdateItem,
     AbiPolicyUpdateRequest,
@@ -70,7 +72,12 @@ async def _as_async_iter(chunks: list[bytes]):
         yield chunk
 
 
-async def _prepare_dataset(factory, *, tmp_path, monkeypatch):
+async def _prepare_dataset(
+    factory: async_sessionmaker[AsyncSession],
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[User, Workspace, AbiDatasetSummary]:
     """建一个已经有数据、策略已声明的 upload 数据集。"""
     monkeypatch.setenv("ABI_EXPORT_DIR", str(tmp_path))
     from data_intelligence_hub.core.config import get_settings

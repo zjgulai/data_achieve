@@ -653,11 +653,13 @@ def _stored_filters(
         raw_order = stored.get("order_by")
         order_names: list[str] | None = None
         if isinstance(raw_order, (list, tuple)):
-            names = [
-                item.get("column")
-                for item in raw_order
-                if isinstance(item, dict) and isinstance(item.get("column"), str)
-            ]
+            names: list[str] = []
+            for item in raw_order:
+                if not isinstance(item, dict):
+                    continue
+                column = item.get("column")
+                if isinstance(column, str):
+                    names.append(column)
             order_names = names or None
         return filters, order_names
     if isinstance(stored, (list, tuple)):

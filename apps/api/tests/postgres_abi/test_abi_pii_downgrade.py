@@ -18,10 +18,11 @@ import csv
 import hashlib
 import io
 import uuid
+from pathlib import Path
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from data_intelligence_hub.api.deps import DatasetAccess
 from data_intelligence_hub.models.abi import FieldPolicy
@@ -30,6 +31,7 @@ from data_intelligence_hub.models.workspace import Workspace
 from data_intelligence_hub.schemas.abi import (
     AbiColumnCreate,
     AbiDatasetCreateRequest,
+    AbiDatasetSummary,
     AbiGrantCreateRequest,
     AbiPolicyUpdateItem,
     AbiPolicyUpdateRequest,
@@ -65,7 +67,11 @@ async def _as_async_iter(chunks: list[bytes]):
         yield chunk
 
 
-async def _dataset_with_rows(factory, tmp_path, monkeypatch):
+async def _dataset_with_rows(
+    factory: async_sessionmaker[AsyncSession],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[User, Workspace, AbiDatasetSummary]:
     monkeypatch.setenv("ABI_EXPORT_DIR", str(tmp_path))
     from data_intelligence_hub.core.config import get_settings
 
@@ -138,7 +144,12 @@ async def _access(factory, workspace, user, dataset, role: str) -> DatasetAccess
         return DatasetAccess(dataset=resolved, grant=grant, workspace=workspace, user=user)
 
 
-async def _publisher_member(factory, workspace, owner, dataset):
+async def _publisher_member(
+    factory: async_sessionmaker[AsyncSession],
+    workspace: Workspace,
+    owner: User,
+    dataset: AbiDatasetSummary,
+) -> User:
     """建一个真实的 publisher 成员。
 
     不能靠给 owner 传 ``min_role="publisher"`` 来「降级」：workspace owner
