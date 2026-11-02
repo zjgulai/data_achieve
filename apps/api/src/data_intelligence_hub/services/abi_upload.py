@@ -88,7 +88,10 @@ MAX_UPLOAD_ROWS: Final[int] = 500_000
 UPLOAD_BATCH_ROWS: Final[int] = 10_000
 UPLOAD_TOKEN_TTL_SECONDS: Final[int] = 3600
 # PostgreSQL 单条语句的绑定参数上限是 65535。留出余量，按行宽切 INSERT。
-MAX_BIND_PARAMETERS: Final[int] = 60_000
+# asyncpg rejects more than 32767 query arguments. Keep a margin: the
+# earlier value of 60_000 let a 4,856-row x 12-column upload build a 58k
+# parameter statement and fail at commit time.
+MAX_BIND_PARAMETERS: Final[int] = 30_000
 MAX_ERROR_ROWS_PER_INSERT: Final[int] = 2_000
 UPLOAD_MODES: Final[frozenset[str]] = frozenset({"append", "upsert", "replace"})
 UPLOAD_SOURCE_KINDS: Final[frozenset[str]] = frozenset({"upload", "local_table"})
@@ -1022,7 +1025,7 @@ def _value_batches(
 ) -> list[list[dict[str, object]]]:
     """按绑定参数上限切分 INSERT。
 
-    10k 行 × 几十列会超过 PostgreSQL 的 65535 参数上限。
+    10k 行 × 几十列会超过 asyncpg 的 32767 参数上限。
     事务仍按 10k 行提交，但语句要再切小。
     """
 
