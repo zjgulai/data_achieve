@@ -163,4 +163,20 @@ create_abi_upload -> write_abi_upload_content -> commit_abi_upload
 - 自动队列：`drain_scan_queue` 已实现并用 2 个 `scan` job 验证；complex_homage 与 yueguz 均 `succeeded`，心跳 `scan claimed=2 ok=2 failed=0 skipped=0`，`schedule_state` 两账号 `last_target_date=2026-11-01`。
 - per-account token：A 已种子化 5 条（`complex_homage` 4、`yueguz` 1），Fernet 加密，`ABI_FERNET_KEY` 已配置。
 - actor 归因：`meta.actor_registry` 已种子化 9 个 actor，131 个 dataset 全部回填；分布 tiktok/post 40、youtube/post 32、x/post 24、instagram/post 16、tiktok/hashtag 16、reddit/post 3；`endpoint_source='unknown'` 为 0。脚本 `scripts/seed_abi_actor_registry.py`。
-- 未做：B 未种子化 token、未启动 ingest、未装数据；02:15 停机后的多日补扫未实现。
+- 多日补扫：`backfill_dates` 按 `schedule_state.last_target_date` 补齐缺失日期，最多 7 天；`enqueue_scan_job` 过滤已成功账号；`schedule_state` 用 `GREATEST` 防止乱序回填把水位改小。实测 yueguz 缺口 2 天：`scan backfill days=2 enqueued=1`，补扫 2026-10-31 成功。
+- 未做：B 未种子化 token、未启动 ingest、未装数据。
+
+## 8. 报告输入切换到 ABI：评估结论
+
+**结论：不是简单 SQL 替换，先不切。**
+
+- ABI raw 表有 `si_tiktok_video`、`si_tiktok_comment`、`si_tiktok_hashtag_snapshot`、`si_metric_snapshot`、`si_author_video_snapshot`，包含 caption、评论、播放/互动计数。
+- 爆款报告依赖 `deepread288.tsv` 的 `theme_tags` 与 `mechanism_tags`。这两个字段不在 ABI raw 表里，也不在 `insight_pipeline/tiktok_viral/` 的脚本里；该目录只消费已打标的 TSV。README §“换数据”明确要求保持 9 列与列序。
+- 因此要切换，必须先补一条 deepread 打标链：
+  1. 固定 prompt、模型、版本与输入字段（caption + 评论 + 指标）。
+  2. 先对 20 条做试点，与现有 288 条的标签比对，记录一致率与分歧。
+  3. 一致率达标后，把标签写入新的 ABI 数据集或派生表，保留 `assigned_by`、`model_version`、`prompt_hash`。
+  4. 重做 `theme-clusters.json`/`mech-clusters.json` 的映射（人工/模型判断，不是规则脚本）。
+  5. 保持 `deepread288.tsv` 的 9 列契约，或显式升级契约并同步渲染器。
+
+在完成 1-3 之前，报告继续读现有 `deepread288.tsv`；ABI 只作为原始数据底座，不冒充洞察输入。

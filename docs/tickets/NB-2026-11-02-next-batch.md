@@ -252,3 +252,4 @@ P1-1 迁移号 ──> P2 C2-C14
 | ABI T-1 扫描试点 | **A 已跑通**：2026-11-01 目标日 131 dataset / 4,163 item；`raw.apify_dataset` head=local=4,163；`raw.apify_item` 4,163（2026-10 2,609 / 2026-11 1,554）。手动 `--scan-once`。 |
 | ABI 自动 scan 队列 | **A 已完成**：`drain_scan_queue` 处理 2 个 job（complex_homage/yueguz）均 succeeded；`ABI_FERNET_KEY` + 5 个 token 加密入库；`schedule_state` 更新。B 未种子化、未启动 worker。 |
 | ABI actor 归因 | **A 已完成**：9 个 actor 入 `meta.actor_registry`；131 dataset 全部回填；分布 tiktok/post 40、youtube/post 32、x/post 24、instagram/post 16、tiktok/hashtag 16、reddit/post 3；unknown 0。 |
+| ABI 多日补扫 | **A 已完成**：`backfill_dates` 按 `schedule_state` 补齐缺失日期，最多 7 天；yueguz 缺口 2 天实测 `days=2 enqueued=1`，补扫 2026-10-31 成功；水位用 `GREATEST` 防回退。 |
