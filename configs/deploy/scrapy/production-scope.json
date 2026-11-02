@@ -1,20 +1,20 @@
 {
   "schema_version": "production-scope.v1",
-  "updated_at": "2026-11-02",
+  "updated_at": "2026-11-03",
   "decision_source": "docs/tickets/NB-2026-11-02-next-batch.md",
   "hosts": {
     "a": {
       "role": "active",
       "url": "https://scrapy.luteos.com",
       "branch": "main",
-      "note": "生产 A"
+      "note": "生产 A；2026-11-03 发布 60c9629，schema 068；本地 edge-nginx media-query 热修保留（OI-45）"
     },
     "b": {
       "role": "active",
       "url": "https://scrapy.lute-tlz-dddd.top",
       "branch": "deploy/tiktok-cdo-codex",
       "state": "current",
-      "note": "2026-11-02 已 fast-forward 到 144d7f2，schema 068；A 同为 144d7f2；备份 20261102-0909 / 20261102-1138；升级前为 main 严格祖先 217/0，0 独有提交"
+      "note": "2026-11-03 fast-forward 到 60c9629，schema 068；A 同为 60c9629；备份 20261103-0153；升级前为 main 严格祖先 217/0，0 独有提交"
     }
   }
 }

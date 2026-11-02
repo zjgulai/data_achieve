@@ -252,7 +252,7 @@ P1-1 迁移号 ──> P2 C2-C14
 | 洞察报告独立复核 | **已完成**：`report_count=1`；DB 正文 181,984 字节，SHA-256 `f7f7c4f0…`；manifest 归一化规则本地复现同一哈希；`source_status=snapshot_only`，UI 显示「数据快照」；GET 401、POST 405、`/insight` 307。 |
 | 日报 11-01 known_gap | 已写 `reports/achievements-20261101/MISSING.md`；健康检查 `KNOWN_GAP` 退出 0；20261102 健康检查 PASS。 |
 | 报告语言与数字闸门 | **已完成**：共享包 `data_intelligence_hub.report_quality` + 一份 `rules.json`；`tools/insight-report/validate.py --gate`、导入器、CI 共用；删除 `ir_impl/validate.py`；63 词夹具命中 63；当前报告 PASS（279 个百分比、6 张图）；日报 advisory。 |
-| 生产 8ecb28e | **已完成（2026-11-03）**：A/B api/abi-export/abi-ingest 新镜像；A/B schema 068；A 的 media-query edge 热修保留；健康 200、业务端点 401；A/B 账本已记。A 因热修用手动七步发布，`deploy-p0.sh` 仍拒绝脏工作区（OI-45）。 |
+| 生产 8ecb28e → 60c9629 | **已完成（2026-11-03）**：A/B api/abi-export/abi-ingest 新镜像；A/B schema 068；A 的 media-query edge 热修保留；健康 200、业务端点 401；A/B 账本已记。A 因热修用手动七步发布，`deploy-p0.sh` 仍拒绝脏工作区（OI-45）。 |
 | 凭证清理与扫描 | **部分完成**：`scripts/check_secrets.py` + 测试 + CI；1984 个 tracked 文件 0 命中；`reports/mcp-token.txt` 移出仓库；Apify/TikHub 控制台轮换待用户。 |
 | ABI 远端备份与恢复 | **部分完成**：A 首次加密备份 69M；Mac 与 B 各一份，sha256 一致；scratch Postgres 恢复 5 表 / 186,352 行，current-version 计数与 catalog 一致；脚本支持远端目标。持久 cron 目标待用户。 |
 | Workflow scope guard | **已完成**：`scripts/workflow_scope_guard.py` claim/audit/clean；重叠写集、越界写、secret 读、未批准付费调用均退出 1；测试通过。 |
