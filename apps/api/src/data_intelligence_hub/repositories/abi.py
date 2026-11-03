@@ -507,6 +507,80 @@ async def delete_access_grant(
     await session.flush()
 
 
+async def count_active_export_jobs(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    dataset_id: uuid.UUID,
+) -> int:
+    """该数据集上进行中的导出数。删除前用 409 拦住这类数据集。"""
+    result = await session.execute(
+        select(func.count(ExportJob.id)).where(
+            ExportJob.workspace_id == workspace_id,
+            ExportJob.dataset_id == dataset_id,
+            ExportJob.status.in_(_ACTIVE_EXPORT_STATUSES),
+        )
+    )
+    return int(result.scalar() or 0)
+
+
+async def count_active_upload_batches(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    dataset_id: uuid.UUID,
+) -> int:
+    """该数据集上进行中的上传批次数。"""
+    result = await session.execute(
+        select(func.count(UploadBatch.id)).where(
+            UploadBatch.workspace_id == workspace_id,
+            UploadBatch.dataset_id == dataset_id,
+            UploadBatch.status.in_(_ACTIVE_UPLOAD_STATUSES),
+        )
+    )
+    return int(result.scalar() or 0)
+
+
+async def list_upload_batches_for_dataset(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    dataset_id: uuid.UUID,
+) -> list[UploadBatch]:
+    """某 dataset 的全部批次（不分页）。删除数据集前用它清理落盘文件。"""
+    result = await session.execute(
+        select(UploadBatch).where(
+            UploadBatch.workspace_id == workspace_id,
+            UploadBatch.dataset_id == dataset_id,
+        )
+    )
+    return list(result.scalars().all())
+
+
+async def list_export_jobs_for_dataset(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    dataset_id: uuid.UUID,
+) -> list[ExportJob]:
+    """某 dataset 的全部导出作业（不分页）。删除前用它清理产物文件。"""
+    result = await session.execute(
+        select(ExportJob).where(
+            ExportJob.workspace_id == workspace_id,
+            ExportJob.dataset_id == dataset_id,
+        )
+    )
+    return list(result.scalars().all())
+
+
+async def delete_dataset(
+    session: AsyncSession,
+    dataset: CatalogDataset,
+) -> None:
+    """删除目录行。子表（列、策略、授权、批次、作业）靠 FK CASCADE 一并删。
+
+    物理表不在外键图里，由调用方先处理。
+    """
+    await session.delete(dataset)
+    await session.flush()
+
+
 async def create_upload_batch(
     session: AsyncSession,
     batch: UploadBatch,
@@ -1279,6 +1353,8 @@ __all__ = [
     "build_order_clause",
     "build_where_clause",
     "count_admin_grants",
+    "count_active_upload_batches",
+    "count_active_export_jobs",
     "count_dataset_rows",
     "count_datasets_for_user",
     "count_export_jobs",
@@ -1292,6 +1368,9 @@ __all__ = [
     "dataset_overview",
     "decode_dataset_cursor",
     "delete_access_grant",
+    "list_upload_batches_for_dataset",
+    "list_export_jobs_for_dataset",
+    "delete_dataset",
     "delete_grant",
     "delete_upload_errors",
     "encode_dataset_cursor",

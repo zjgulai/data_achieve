@@ -21,6 +21,7 @@ import hmac
 import io
 import json
 import re
+import shutil
 import uuid
 from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass
@@ -29,6 +30,8 @@ from decimal import Decimal
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final, cast
 
+import structlog
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -83,6 +86,8 @@ from data_intelligence_hub.schemas.abi import (
 from data_intelligence_hub.services.abi_errors import (
     AbiServiceError as AbiServiceError,
 )
+
+logger = structlog.get_logger(__name__)
 
 if TYPE_CHECKING:
     from data_intelligence_hub.api.deps import DatasetAccess
@@ -862,6 +867,96 @@ async def delete_abi_grant(
     await abi_repo.delete_access_grant(session, grant)
     await session.commit()
     return AbiDeleteResponse(deleted=True, id=grant_id)
+
+
+async def delete_abi_dataset(
+    session: AsyncSession,
+    access: DatasetAccess,
+) -> AbiDeleteResponse:
+    """删除一个数据集及其全部产物。需要 admin，且必须是当前版本。
+
+    删除是**不可逆**的，所以顺序与边界都要写死：
+
+    1. **先拒绝进行中的作业。** 有 ``queued``/``running`` 的导出，或有
+       ``pending``/``uploaded``/``validating`` 的上传批次时一律 409。
+       否则 worker 可能在我们删表之后继续写，落到一个已不存在的 dataset
+       上——那会变成孤儿行，且没有任何入口能再清掉。
+    2. **只删 ``upload`` 型的物理表。** ``local_table`` 型数据集指向共享
+       的 ``raw.<table>``，那是别的采集链路写的数据，删数据集不等于删数据。
+       这里按表名前缀 ``abi_upload_<uuid hex>`` 二次确认，不靠调用方传参。
+    3. **磁盘产物先删、库行后删。** 反过来的话，文件删除失败会留下无法
+       定位的孤儿文件（job 行已没了，不知道 artifact_path 是什么）。
+    4. **级联交给外键。** 列、策略、授权、批次、作业都有
+       ``ondelete="CASCADE"``；重复手写删除顺序只会与 schema 漂移。
+
+    删除后不可恢复。没有软删标记是刻意的：数据一旦按策略导出过，
+    「逻辑删除」反而会让人以为数据还在管控之下。
+    """
+    dataset = access.dataset
+
+    active_exports = await abi_repo.count_active_export_jobs(
+        session, access.workspace.id, dataset.id
+    )
+    if active_exports:
+        raise AbiServiceError("dataset_has_active_exports", 409)
+    active_uploads = await abi_repo.count_active_upload_batches(
+        session, access.workspace.id, dataset.id
+    )
+    if active_uploads:
+        raise AbiServiceError("dataset_has_active_uploads", 409)
+
+    # 产物路径必须在删库行之前取出来：删完 job 行就无从得知文件在哪。
+    uploads = await abi_repo.list_upload_batches_for_dataset(
+        session, access.workspace.id, dataset.id
+    )
+    exports = await abi_repo.list_export_jobs_for_dataset(
+        session, access.workspace.id, dataset.id
+    )
+
+    # ---- 磁盘清理。失败只记不抛：库行删掉后这些文件再也无人认领。
+    upload_root = _upload_root()
+    for batch in uploads:
+        target = upload_root / str(batch.id)
+        try:
+            resolved = target.resolve()
+            resolved.relative_to(upload_root.resolve())
+        except (ValueError, OSError):
+            continue
+        shutil.rmtree(resolved, ignore_errors=True)
+
+    export_root = _export_root()
+    for job in exports:
+        if not job.artifact_path:
+            continue
+        try:
+            resolved = Path(job.artifact_path).resolve()
+            resolved.relative_to(export_root)
+        except (ValueError, OSError):
+            continue
+        resolved.unlink(missing_ok=True)
+
+    # ---- 物理表。只有 upload 型有专属表，且表名由 dataset UUID 决定。
+    if dataset.source_kind == "upload":
+        from data_intelligence_hub.services.abi_upload import _bare_source_table
+
+        table_name = _bare_source_table(dataset.source_table or "")
+        if table_name.startswith("abi_upload_") and table_name[11:] == dataset.id.hex:
+            # 表名完全由 UUID 推导，不拼任何用户输入。仍用 quote 加引号。
+            await session.execute(
+                text(f'DROP TABLE IF EXISTS raw."{table_name}"')
+            )
+        else:
+            # source_table 与 UUID 不匹配 = 数据不一致。宁可不删表，
+            # 也不能猜一张表名去 DROP。
+            logger.warning(
+                "abi_dataset_delete_skipped_unexpected_table",
+                dataset_id=str(dataset.id),
+                source_table=dataset.source_table,
+            )
+
+    await abi_repo.delete_dataset(session, dataset)
+    await session.commit()
+    return AbiDeleteResponse(deleted=True, id=dataset.id)
 
 
 async def get_abi_policy(
@@ -1689,6 +1784,7 @@ __all__ = [
     "get_abi_export_policy",
     "create_abi_grant",
     "create_abi_upload",
+    "delete_abi_dataset",
     "delete_abi_grant",
     "get_abi_dataset_detail",
     "get_abi_export",

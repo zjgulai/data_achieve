@@ -184,6 +184,26 @@ async def delete_dataset_grant(
         _raise_http(exc)
 
 
+@router.delete(
+    "/datasets/{slug}",
+    response_model=AbiDeleteResponse,
+)
+async def delete_dataset(
+    access: AdminAccessDep,
+    session: SessionDep,
+) -> AbiDeleteResponse:
+    """删除数据集及其全部产物。需要 admin，不可逆。
+
+    进行中的上传或导出会被 409 拒绝——先让它们结束再删。只删
+    ``upload`` 型数据集的物理表；``local_table`` 指向共享 raw 表，
+    删数据集不会删数据。
+    """
+    try:
+        return await abi_service.delete_abi_dataset(session, access)
+    except AbiServiceError as exc:
+        _raise_http(exc)
+
+
 @router.get("/datasets/{slug}/policy", response_model=AbiPolicyResponse)
 async def get_dataset_policy(
     access: ViewerAccessDep,
