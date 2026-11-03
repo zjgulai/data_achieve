@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 AbiRole = Literal["viewer", "editor", "publisher", "admin"]
 PiiClass = Literal["unknown", "none", "quasi", "direct", "secret"]
@@ -72,11 +72,26 @@ class AbiDatasetSummary(BaseModel):
 
 
 class AbiColumnCreate(BaseModel):
-    """创建数据集时声明的列。
+    """创建数据集时声明的列，可同时声明 PII 分类。
 
-    ``extra="forbid"`` 是 2026-11-02 的拍板结果。此前 Pydantic 默认忽略
-    未知字段，调用方传 ``pii_class`` 会被静默丢弃，列一律落 ``unknown``，
-    而调用方以为策略已设置。现在改为在请求边界直接 422。
+    历史：2026-11-02 之前 Pydantic 默认 ``extra="ignore"``，调用方传
+    ``pii_class`` 会被静默丢弃，列一律落 ``unknown``，而调用方以为策略
+    已设置。当时的处置是 ``extra="forbid"`` —— 把静默丢弃变成 422 报错。
+
+    报错比静默丢弃好，但调用方仍然**做不到**「建数据集时声明分类」，
+    只能建完再调一次 ``PUT /policy``。浏览器验收时正是这样绕过去的。
+
+    现在补上真正的能力：``pii_class`` 是可声明字段，服务端在建数据集
+    的同一事务里写 ``abi.field_policy``。三处语义：
+
+    - 不传 ``pii_class``：不写策略行，字段按 ``unknown`` 处理（拒绝查询/
+      导出）。这与「尚未判定」一致，不是「已判定为无 PII」。
+    - 传 ``pii_class``：写一条 ``decided_by=user:<id>`` 的策略行。
+    - ``mask_rule`` 只能与 ``pii_class`` 同时出现：没有分类的遮罩规则
+      没有意义，单独传会被拒。
+
+    ``extra="forbid"`` 保留。它挡的是拼错的字段名（``pii_clas``），
+    与「支持 pii_class」不冲突。
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -86,6 +101,15 @@ class AbiColumnCreate(BaseModel):
     nullable: bool = True
     filterable: bool = True
     sortable: bool = True
+    # 可选：声明即写入 field_policy。``None`` 表示「还没判定」。
+    pii_class: PiiClass | None = None
+    mask_rule: MaskRule | None = None
+
+    @model_validator(mode="after")
+    def _mask_rule_requires_class(self) -> AbiColumnCreate:
+        if self.mask_rule is not None and self.pii_class is None:
+            raise ValueError("mask_rule_requires_pii_class")
+        return self
 
 
 class AbiDatasetCreateRequest(BaseModel):

@@ -377,6 +377,8 @@ async def create_abi_dataset(
     await abi_repo.create_dataset(session, dataset)
 
     columns: list[DatasetColumn] = []
+    declared_policies: list[FieldPolicy] = []
+    decided_by = f"user:{user.id}"
     if payload.columns is not None:
         seen: set[str] = set()
         for ordinal, item in enumerate(payload.columns):
@@ -395,6 +397,20 @@ async def create_abi_dataset(
                     sortable=item.sortable,
                 )
             )
+            # 只有显式声明了 pii_class 才写策略行。不传 = 「还没判定」，
+            # 字段按 unknown 处理（拒绝查询与导出）。这与 replace_abi_policy
+            # 的增量语义一致：不提交的字段不被改写。
+            if item.pii_class is not None:
+                declared_policies.append(
+                    FieldPolicy(
+                        id=uuid.uuid4(),
+                        dataset_id=dataset.id,
+                        field_path=item.column_name,
+                        pii_class=item.pii_class,
+                        mask_rule=item.mask_rule,
+                        decided_by=decided_by,
+                    )
+                )
     elif source_parts is not None:
         physical = await abi_repo.list_physical_columns(session, *source_parts)
         for ordinal, physical_column in enumerate(physical):
@@ -414,6 +430,9 @@ async def create_abi_dataset(
             )
     if columns:
         await abi_repo.add_dataset_columns(session, columns)
+    if declared_policies:
+        session.add_all(declared_policies)
+        await session.flush()
 
     grant = AccessGrant(
         id=uuid.uuid4(),
