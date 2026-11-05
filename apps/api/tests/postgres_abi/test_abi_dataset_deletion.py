@@ -34,6 +34,7 @@ from data_intelligence_hub.models.workspace import Workspace
 from data_intelligence_hub.schemas.abi import (
     AbiColumnCreate,
     AbiDatasetCreateRequest,
+    AbiUploadBatchResponse,
     AbiUploadCreateRequest,
 )
 from data_intelligence_hub.services import abi_service
@@ -120,7 +121,9 @@ async def _setup(factory, tmp_path, monkeypatch, *, slug: str = "del-probe"):
     return user, workspace, dataset, access
 
 
-async def _upload_and_commit(factory, workspace, user, dataset) -> UploadBatch:
+async def _upload_and_commit(factory, workspace, user, dataset) -> AbiUploadBatchResponse:
+    # commit_abi_upload 返回的是响应 schema,不是 ORM UploadBatch;
+    # 返回值只用于断言 batch 走完,计数断言直接查 ORM 模型。
     payload = _csv_bytes([["p-1", "第一条"], ["p-2", "第二条"]])
     async with factory() as session:
         created = await abi_service.create_abi_upload(
