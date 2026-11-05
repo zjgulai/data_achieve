@@ -48,10 +48,18 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-def http_post_json(url: str, payload: dict[str, Any], timeout: float) -> tuple[int | None, dict[str, Any]]:
+def http_post_json(
+    url: str,
+    payload: dict[str, Any],
+    timeout: float,
+    cookie: str | None = None,
+) -> tuple[int | None, dict[str, Any]]:
     body = json.dumps(payload).encode()
+    headers = {"Content-Type": "application/json"}
+    if cookie:
+        headers["Cookie"] = cookie
     req = urllib.request.Request(
-        url, data=body, headers={"Content-Type": "application/json"}, method="POST"
+        url, data=body, headers=headers, method="POST"
     )
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -66,9 +74,12 @@ def http_post_json(url: str, payload: dict[str, Any], timeout: float) -> tuple[i
         return None, {"error": str(exc)}
 
 
-def http_get_json(url: str, timeout: float = 30.0) -> dict[str, Any]:
+def http_get_json(
+    url: str, timeout: float = 30.0, cookie: str | None = None
+) -> dict[str, Any]:
     try:
-        with urllib.request.urlopen(url, timeout=timeout) as resp:
+        req = urllib.request.Request(url, headers={"Cookie": cookie} if cookie else {})
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
             return json.load(resp)
     except Exception as exc:  # noqa: BLE001
         return {"error": str(exc)}
@@ -226,11 +237,21 @@ def main() -> int:
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--report-dir", default=DEFAULT_REPORT_DIR)
+    parser.add_argument(
+        "--cookie",
+        default="",
+        help="access_token=<...>(登录态)。生产 quick-collect 需鉴权,401 即缺此参",
+    )
     args = parser.parse_args()
 
     os.makedirs(args.report_dir, exist_ok=True)
 
-    catalog = http_get_json(f"{args.base_url}/api/collectors/catalog")
+    cookie = args.cookie.strip()
+    if cookie and not cookie.startswith("access_token="):
+        cookie = f"access_token={cookie}"
+    catalog = http_get_json(
+        f"{args.base_url}/api/collectors/catalog", cookie=cookie or None
+    )
     if "error" in catalog:
         print(f"ERROR: cannot fetch catalog: {catalog['error']}", file=sys.stderr)
         return 1
@@ -284,7 +305,7 @@ def main() -> int:
         }
         started = time.time()
         http_status, resp = http_post_json(
-            f"{args.base_url}/api/quick-collect", payload, args.timeout
+            f"{args.base_url}/api/quick-collect", payload, args.timeout, cookie=cookie or None
         )
         duration_ms = int((time.time() - started) * 1000)
 
