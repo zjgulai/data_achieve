@@ -48,6 +48,7 @@ case "$DOW" in
   *) W=? ;;
 esac
 DATE_LABEL="$(date -j -f "%Y%m%d" "$TODAY" "+%Y-%m-%d")（周${W}）"
+READ_AT=$(date '+%F %T %Z')
 WORK="$PROJ/tmp/daily-ai-report-$TODAY"
 RAW="$WORK/raw.md"
 JSON="$WORK/report.json"
@@ -73,7 +74,7 @@ probe() {
   local body="$WORK/health-$name.json"
   local code
   code=$(curl -sS -m 15 -o "$body" -w '%{http_code}' "$url" 2> "$WORK/health-$name.err")
-  echo "### health-$name HTTP=$code"
+  echo "### health-$name HTTP=$code as_of=$READ_AT（运行时刻，不是报告日收盘）"
   head -c 400 "$body" 2>/dev/null
   echo
   echo
@@ -82,10 +83,11 @@ probe() {
 collect() {
   cd "$PROJ" || return 1
   echo "# 当日原始读数 · $DATE_LABEL"
+  echo "读数时间：$READ_AT（探活、进程、仓库 HEAD 都是这一刻的状态，不是报告日收盘值）"
   echo
   echo "## 仓库"
   echo "分支：$(git rev-parse --abbrev-ref HEAD)"
-  echo "HEAD：$(git log -1 --pretty='%h %s')"
+  echo "运行时刻 HEAD：$(git log -1 --pretty='%h %s')"
   echo "工作区：$(git status --porcelain | wc -l | tr -d ' ') 个改动"
   echo
   echo "## 今日提交"
@@ -93,21 +95,40 @@ collect() {
     --pretty=format:'%h %ad %s' --date=format:'%H:%M'
   echo
   echo
-  local count first parent
-  count=$(git log --since="$TODAY 00:00:00" --until="$TODAY 23:59:59" --pretty=%H | wc -l | tr -d ' ')
-  first=$(git log --since="$TODAY 00:00:00" --until="$TODAY 23:59:59" --pretty=%H | tail -1)
-  echo "提交数：$count"
+  local count first last parent
+  count=$(git log --since="$TODAY 00:00:00" --until="$TODAY 23:59:59" --pretty=format:%H | grep -c .)
+  first=$(git log --since="$TODAY 00:00:00" --until="$TODAY 23:59:59" --pretty=format:%H | tail -1)
+  last=$(git log --since="$TODAY 00:00:00" --until="$TODAY 23:59:59" --pretty=format:%H | head -1)
+  echo "提交数：$count（原样抄这一行，不要自己数）"
   if [[ -n "$first" ]]; then
     parent=$(git rev-parse "$first^" 2>/dev/null || echo "$first")
-    echo -n "代码量（$parent..HEAD）："
-    git diff --shortstat "$parent" HEAD
+    echo "报告日最后一条：$(git log -1 --pretty='%h %s' "$last")"
+    echo -n "代码量（$parent..$last，原样抄这一行）："
+    git diff --shortstat "$parent" "$last"
   fi
   echo
   echo "## 迁移文件（仓库）"
   ls -1 apps/api/alembic/versions | tail -3
   echo
-  echo "## 发布账本最后一条"
-  tail -1 docs/ops/releases.jsonl
+  echo "## 发布账本最后一条（按报告日，UTC 转 Asia/Shanghai）"
+  python3 - "$PROJ/docs/ops/releases.jsonl" "$TODAY" <<'PY'
+import json
+import sys
+from datetime import datetime, timedelta, timezone
+
+path, target = sys.argv[1], sys.argv[2]
+cst = timezone(timedelta(hours=8))
+last = None
+for line in open(path, encoding="utf-8"):
+    line = line.strip()
+    if not line:
+        continue
+    obj = json.loads(line)
+    ts = datetime.fromisoformat(obj["recorded_at"]).astimezone(cst)
+    if ts.strftime("%Y%m%d") <= target:
+        last = obj
+print(json.dumps(last, ensure_ascii=False) if last else "无（报告日及以前没有发布记录）")
+PY
   echo
   echo
   echo "## 本地测试"
@@ -127,7 +148,8 @@ collect() {
   echo
   echo "## CI（gh 可用时）"
   if command -v gh >/dev/null 2>&1; then
-    gh run list --limit 40 --json name,conclusion,createdAt,headSha,displayTitle 2>&1 \
+    gh run list --created "$(date -j -f "%Y%m%d" "$TODAY" "+%Y-%m-%d")" --limit 100 \
+      --json name,conclusion,createdAt,headSha,displayTitle 2>&1 \
       | python3 -c 'import json,sys
 try:
     rows=json.load(sys.stdin)
@@ -145,7 +167,13 @@ for r in rows:
 
 prompt_for_model() {
   cat <<EOF
-读 $RAW（当日实跑读数），写 $JSON。只写 raw 里有的数字；raw 里 EXIT 非 0、HTTP 非 200、或明确标了未跑的，不准写成通过。
+读 ${RAW}（当日实跑读数），写 ${JSON}。只写 raw 里有的数字；raw 里 EXIT 非 0、HTTP 非 200、或明确标了未跑的，不准写成通过。
+
+口径约束：
+- 「提交数」「代码量（…）」两行原样抄，不要自己数，也不要用运行时刻 HEAD 另算。
+- 「今日进展」只写 raw「今日提交」列表里的提交；运行时刻 HEAD 不在列表里就不要写进今日进展。
+- 探活、进程、仓库 HEAD 都是「读数时间」那一刻的状态，不是报告日收盘值；写进验证结果时必须注明读数时间。
+- 发布账本只抄 raw 的「发布账本最后一条」，不要另行推断。
 
 JSON 格式（严格）：
 {"date":"$DATE_LABEL","progress":["1. ...","1.1 ..."],"verification":["1. ..."],"todo":["1. ..."]}
@@ -157,7 +185,7 @@ JSON 格式（严格）：
 - 状态词固定：已完成 / 部分完成 / 未开始 / 进行中 / 已验证 / 未验证 / 失败 / 跳过 / 阻塞 / 未确认。
 - 今日进展按提交归纳，带提交号；验证结果逐项列检查与读数；没做完的只写需要人拍板或知情的。
 - 不写密钥、凭据、内网地址。
-只读 $RAW，只写 $JSON。不要运行其他命令，不要写别的文件。
+只读 ${RAW}，只写 ${JSON}。不要运行其他命令，不要写别的文件。
 EOF
 }
 
