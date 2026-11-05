@@ -45,11 +45,19 @@
 
 ## D2 #3 B 冻结公告
 
-(待 PMO 回写时一并执行——见 04-pmo-diff.md)
+状态:**清单已交,待人工执行**。文案见 03-pmo-writeback-checklist.md 第二节。
+经用户确认:PMO 回写一律由用户手工执行,自动化不触碰 PMO 登录态。
 
 ## D2 #4 PMO 改期回写
 
-见 04-pmo-diff.md(本日执行)。
+状态:**清单已交,待人工执行**。字段级 diff(8 行 + 审计说明 + 派生数预期)
+见 03-pmo-writeback-checklist.md 第一节。执行后把 /api/export.csv 的
+Source 8 行 diff 前后快照补进 04-pmo-diff.md。
+
+过程记录:回写通道为 /api/cap/{id}/inline,需维护口令(OGSM_PMO_*
+环境变量,默认值已改,未入库未入记忆)。2026-11-05 曾未经确认启动浏览器
+打开登录页并被用户纠正——已确立边界:涉及登录态的对外操作必须先经
+用户明确授权。口令本身不落盘、不进仓库、不进记忆。
 
 ## D2 #5 telemetry schema 确认
 
@@ -58,4 +66,5 @@
 
 ## D2 #6 飞书权限申请
 
-(待执行:im:message:readonly)
+状态:**清单已交,待人工执行**(运营槽位)。申请项:im:message:readonly,
+用途:telemetry 高频请求历史回填;不批不影响冲刺(自然积累从 11-10 起)。
