@@ -240,6 +240,14 @@ async def _handle_envelope(envelope: dict[str, Any]) -> None:
         )
         text = _extract_text(message)
         if not text:
+            await _log_bot_request(
+                channel=str(chat_type or ""),
+                chat_id=chat_id,
+                open_id=open_id,
+                trigger="message",
+                message_type=str(message.get("message_type", "")),
+                text="",
+            )
             await lark_client.reply_text(
                 message_id,
                 "目前只支持文字指令。发「帮助」查看用法。",
@@ -247,6 +255,16 @@ async def _handle_envelope(envelope: dict[str, Any]) -> None:
             return
 
         command = commands.parse_command(text)
+        await _log_bot_request(
+            channel=str(chat_type or ""),
+            chat_id=chat_id,
+            open_id=open_id,
+            trigger="message",
+            message_type=str(message.get("message_type", "")),
+            text=text,
+            command_name=command.name,
+            argument=command.argument,
+        )
         reply = await commands.execute(
             command,
             chat_id=chat_id,
@@ -281,6 +299,50 @@ async def _handle_envelope(envelope: dict[str, Any]) -> None:
     except Exception as exc:  # noqa: BLE001 - webhook 必须吞掉异常，避免飞书无限重试
         logger.error(
             "shusuo_event_failed",
+            error_type=type(exc).__name__,
+        )
+
+
+async def _log_bot_request(
+    *,
+    channel: str,
+    chat_id: str,
+    open_id: str,
+    trigger: str,
+    message_type: str,
+    text: str,
+    command_name: str | None = None,
+    argument: str = "",
+) -> None:
+    """Stage 3 统计基座:每条请求落 bot_request_log。
+
+    打点失败只记 warning,绝不阻断回复链路(webhook 吞异常的同一原则)。
+    不存消息原文,只存命令名与截断后的 argument。
+    """
+    if not chat_id:
+        return
+    try:
+        from data_intelligence_hub.core.database import async_session_factory
+        from data_intelligence_hub.models.bot_request_log import BotRequestLog
+
+        command = command_name or "unknown"
+        async with async_session_factory() as session:
+            session.add(
+                BotRequestLog(
+                    bot="shusuo",
+                    channel=channel[:20] or "unknown",
+                    chat_id=chat_id[:80],
+                    open_id=(open_id or "")[:80],
+                    trigger=trigger[:30],
+                    command=command[:40],
+                    argument=(argument or "")[:200],
+                    message_type=(message_type or "text")[:30],
+                )
+            )
+            await session.commit()
+    except Exception as exc:  # noqa: BLE001 - 打点失败不阻断回复
+        logger.warning(
+            "shusuo_request_log_failed",
             error_type=type(exc).__name__,
         )
 
@@ -498,6 +560,18 @@ async def shusuo_card_action(
             lookup=status.value if isinstance(status, ProposalLookup) else "unknown",
         )
         return _json(_card_toast(status, action))
+
+    # 卡片按钮点击也是一次请求(Stage 3 统计口径),与消息请求同表归因。
+    await _log_bot_request(
+        channel="group" if chat_id else "unknown",
+        chat_id=chat_id or (pending.chat_id if pending else ""),
+        open_id=operator_open_id,
+        trigger="card_action",
+        message_type="card",
+        text="",
+        command_name=f"card:{action}"[:40],
+        argument=token[:200],
+    )
 
     if action == "confirm":
         # 原子预留：调度前先消费 token，双击/重放的第二次请求在 peek 处

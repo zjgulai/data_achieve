@@ -52,6 +52,7 @@ from data_intelligence_hub.models.automation_plan import (
     SiteAnalysis,
 )
 from data_intelligence_hub.models.base import Base
+from data_intelligence_hub.models.bot_request_log import BotRequestLog
 from data_intelligence_hub.models.capability_governance import (
     CapabilityCandidateAssertionVersion,
     CapabilityCandidateEvidenceLink,
@@ -211,6 +212,7 @@ __all__ = [
     "AlertRule",
     "Authorization",
     "Base",
+    "BotRequestLog",
     "BrowserDiagnosticJob",
     "BrowserDiagnosticJobRun",
     "BrowserDiagnosticRun",
