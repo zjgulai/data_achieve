@@ -38,6 +38,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.models.abi import (
     AccessGrant,
+    AuditLog,
     CatalogDataset,
     DatasetColumn,
     ExportJob,
@@ -955,6 +956,30 @@ async def delete_abi_dataset(
             )
 
     await abi_repo.delete_dataset(session, dataset)
+    # 审计:删除是唯一不可逆操作,落 meta.audit_log。occurred_month 是
+    # 分区键,必须与 occurred_at 同月;失败不阻断删除本身(审计缺失
+    # 是合规问题,不是数据安全问题)。
+    try:
+        occurred_at = datetime.now(UTC)
+        session.add(
+            AuditLog(
+                occurred_month=occurred_at.date().replace(day=1),
+                actor=f"user:{access.user.id}",
+                action="abi_dataset_delete",
+                object_type="abi_dataset",
+                object_id=str(dataset.id),
+                workspace_id=access.workspace.id,
+                detail={
+                    "slug": dataset.slug,
+                    "name": dataset.name,
+                    "source_kind": dataset.source_kind,
+                    "uploads": len(uploads),
+                    "exports": len(exports),
+                },
+            )
+        )
+    except Exception:  # noqa: BLE001 - 审计失败不阻断删除
+        logger.warning("abi_dataset_delete_audit_failed", dataset_id=str(dataset.id))
     await session.commit()
     return AbiDeleteResponse(deleted=True, id=dataset.id)
 

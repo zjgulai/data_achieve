@@ -1,0 +1,310 @@
+{
+ "as_of": "2026-11-11",
+ "method": "SSH -> docker exec psql -> information_schema(生产 A db 容器)",
+ "total_tables_in_abi_schemas": 54,
+ "manifest_entity_tables": 42,
+ "manifest_expected": 48,
+ "match": true,
+ "upload_physical_tables": 6,
+ "partition_children": [
+  "meta.audit_log_202610",
+  "raw.apify_item_202609",
+  "raw.apify_item_202610",
+  "raw.apify_item_202611",
+  "raw.apify_item_202612",
+  "raw.apify_item_202701"
+ ],
+ "partition_parents": [
+  "meta.audit_log",
+  "raw.apify_item"
+ ],
+ "by_schema": {
+  "abi": [
+   {
+    "table": "access_grant",
+    "columns": 7,
+    "class": "entity"
+   },
+   {
+    "table": "cast_error",
+    "columns": 7,
+    "class": "entity"
+   },
+   {
+    "table": "catalog_dataset",
+    "columns": 19,
+    "class": "entity"
+   },
+   {
+    "table": "dataset_column",
+    "columns": 8,
+    "class": "entity"
+   },
+   {
+    "table": "dataset_daily_stat",
+    "columns": 6,
+    "class": "entity"
+   },
+   {
+    "table": "export_job",
+    "columns": 23,
+    "class": "entity"
+   },
+   {
+    "table": "export_policy",
+    "columns": 7,
+    "class": "entity"
+   },
+   {
+    "table": "field_policy",
+    "columns": 7,
+    "class": "entity"
+   },
+   {
+    "table": "platform_object",
+    "columns": 7,
+    "class": "entity"
+   },
+   {
+    "table": "saved_query",
+    "columns": 7,
+    "class": "entity"
+   },
+   {
+    "table": "upload_batch",
+    "columns": 19,
+    "class": "entity"
+   },
+   {
+    "table": "upload_error",
+    "columns": 6,
+    "class": "entity"
+   }
+  ],
+  "meta": [
+   {
+    "table": "actor_registry",
+    "columns": 12,
+    "class": "entity"
+   },
+   {
+    "table": "actor_schema_version",
+    "columns": 11,
+    "class": "entity"
+   },
+   {
+    "table": "apify_account",
+    "columns": 10,
+    "class": "entity"
+   },
+   {
+    "table": "apify_token",
+    "columns": 12,
+    "class": "entity"
+   },
+   {
+    "table": "apify_token_daily",
+    "columns": 6,
+    "class": "entity"
+   },
+   {
+    "table": "audit_log",
+    "columns": 9,
+    "class": "entity"
+   },
+   {
+    "table": "audit_log_202610",
+    "columns": 9,
+    "class": "partition_child"
+   },
+   {
+    "table": "ingest_job",
+    "columns": 18,
+    "class": "entity"
+   },
+   {
+    "table": "ingest_run",
+    "columns": 14,
+    "class": "entity"
+   },
+   {
+    "table": "partition_registry",
+    "columns": 7,
+    "class": "entity"
+   },
+   {
+    "table": "schedule_state",
+    "columns": 6,
+    "class": "entity"
+   },
+   {
+    "table": "worker_heartbeat",
+    "columns": 5,
+    "class": "entity"
+   }
+  ],
+  "raw": [
+   {
+    "table": "abi_upload_0d9daf71a2b24127913b426b0d2403e6",
+    "columns": 21,
+    "class": "upload_physical"
+   },
+   {
+    "table": "abi_upload_26bf957a1bec44b09295fe1b79077a05",
+    "columns": 56,
+    "class": "upload_physical"
+   },
+   {
+    "table": "abi_upload_31721f62ec99492e83f0815cb6a3c92b",
+    "columns": 27,
+    "class": "upload_physical"
+   },
+   {
+    "table": "abi_upload_32e718fc8e4c4f07a93429928ea0e064",
+    "columns": 16,
+    "class": "upload_physical"
+   },
+   {
+    "table": "abi_upload_400d5c72755b4450850e431c1f6dfc9f",
+    "columns": 8,
+    "class": "upload_physical"
+   },
+   {
+    "table": "abi_upload_5e85d45634b34ebfa6053fe06439b38e",
+    "columns": 32,
+    "class": "upload_physical"
+   },
+   {
+    "table": "amazon_review",
+    "columns": 18,
+    "class": "entity"
+   },
+   {
+    "table": "apify_dataset",
+    "columns": 28,
+    "class": "entity"
+   },
+   {
+    "table": "apify_item",
+    "columns": 12,
+    "class": "entity"
+   },
+   {
+    "table": "apify_item_202609",
+    "columns": 12,
+    "class": "partition_child"
+   },
+   {
+    "table": "apify_item_202610",
+    "columns": 12,
+    "class": "partition_child"
+   },
+   {
+    "table": "apify_item_202611",
+    "columns": 12,
+    "class": "partition_child"
+   },
+   {
+    "table": "apify_item_202612",
+    "columns": 12,
+    "class": "partition_child"
+   },
+   {
+    "table": "apify_item_202701",
+    "columns": 12,
+    "class": "partition_child"
+   },
+   {
+    "table": "apify_run",
+    "columns": 15,
+    "class": "entity"
+   },
+   {
+    "table": "apify_tweet",
+    "columns": 39,
+    "class": "entity"
+   },
+   {
+    "table": "load_error",
+    "columns": 9,
+    "class": "entity"
+   },
+   {
+    "table": "load_file",
+    "columns": 12,
+    "class": "entity"
+   },
+   {
+    "table": "pmo_collection_record",
+    "columns": 23,
+    "class": "entity"
+   },
+   {
+    "table": "probe_instagram_post",
+    "columns": 39,
+    "class": "entity"
+   },
+   {
+    "table": "probe_tiktok_video",
+    "columns": 62,
+    "class": "entity"
+   },
+   {
+    "table": "probe_youtube_video",
+    "columns": 42,
+    "class": "entity"
+   },
+   {
+    "table": "product_catalog",
+    "columns": 11,
+    "class": "entity"
+   },
+   {
+    "table": "si_author_video_snapshot",
+    "columns": 29,
+    "class": "entity"
+   },
+   {
+    "table": "si_metric_snapshot",
+    "columns": 18,
+    "class": "entity"
+   },
+   {
+    "table": "si_music_platform_snapshot",
+    "columns": 12,
+    "class": "entity"
+   },
+   {
+    "table": "si_social_post",
+    "columns": 49,
+    "class": "entity"
+   },
+   {
+    "table": "si_tiktok_comment",
+    "columns": 23,
+    "class": "entity"
+   },
+   {
+    "table": "si_tiktok_hashtag_snapshot",
+    "columns": 34,
+    "class": "entity"
+   },
+   {
+    "table": "si_tiktok_video",
+    "columns": 58,
+    "class": "entity"
+   }
+  ]
+ },
+ "reconciliation": {
+  "manifest_definition": "48 = 实体表(42) + 迁移预建分区(6:apify_item_202609..202701 五个中的写定时点 + audit_log_202610)",
+  "production_physical_tables": 54,
+  "production_entity_and_parent": 42,
+  "production_partition_children": 6,
+  "production_upload_physical": 6,
+  "dynamic_note": "分区随自然月增长(202701 已在,202702 未建);upload 表随数据集增长。物理表总数是时点数,48 是 manifest 快照口径。",
+  "verdict": "PASS:42 实体与 manifest 实体清单一致,分区母表 apify_item/audit_log 在线,分区子表按月正常滚动。",
+  "column_count_note": "manifest 766 字段为实体表合计;分区子表与母表同构不计。"
+ },
+ "match_note": "42 实体 == manifest 实体数;48 = 42 实体 + manifest 快照时点的 6 个预建分区"
+}

@@ -442,15 +442,18 @@ $compose run --rm --no-deps api alembic upgrade head"
   # 从来没有 worker 在跑——用户提交导出、审批通过后作业永远停在 queued。
   # 用 --profile abi 拉起是因为 abi-migrate 也要该 profile，而 up 里点名
   # 服务只启动被点名的那些，abi-migrate 不会被顺带跑起来。
+  # abi-ingest 同理(D6):run_tick 队列消费已实现,一直缺的是容器被
+  # profiles 挡住;随发布拉起,T-1 补扫自动跑,不再依赖手工 --scan-once。
   echo "-- 5/7 替换容器并重启 edge"
   run_remote "$key" "$ssh_target" "set -euo pipefail
 cd $REMOTE_APP
 $compose up -d --no-deps api console web
-$compose --profile abi up -d --no-deps abi-export
+$compose --profile abi up -d --no-deps abi-export abi-ingest
 $compose restart edge
 sleep 3
 docker inspect -f '  edge={{.State.Status}}' data_achieve_scrapy_edge
-docker inspect -f '  abi-export={{.State.Status}}' data_achieve_scrapy_abi_export 2>/dev/null || echo '  abi-export=absent'"
+docker inspect -f '  abi-export={{.State.Status}}' data_achieve_scrapy_abi_export 2>/dev/null || echo '  abi-export=absent'
+docker inspect -f '  abi-ingest={{.State.Status}}' data_achieve_scrapy_abi_ingest 2>/dev/null || echo '  abi-ingest=absent'"
 
   echo "-- 6/7 等待健康"
   wait_healthy "$key" "$ssh_target" "api console web"
@@ -461,7 +464,13 @@ if [ \"\$state\" != \"running\" ]; then
   echo \"  abi-export 未运行：\$state\" >&2
   exit 1
 fi
-echo '  abi-export=running'"
+echo '  abi-export=running'
+state=\$(docker inspect -f '{{.State.Status}}' data_achieve_scrapy_abi_ingest 2>/dev/null || echo absent)
+if [ \"\$state\" != \"running\" ]; then
+  echo \"  abi-ingest 未运行：\$state\" >&2
+  exit 1
+fi
+echo '  abi-ingest=running'"
 
   echo "-- 7/7 重载共享网关"
   reload_gateway "$key" "$ssh_target"

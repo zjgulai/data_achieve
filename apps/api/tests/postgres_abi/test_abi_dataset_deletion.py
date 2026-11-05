@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from data_intelligence_hub.models.abi import (
     AccessGrant,
+    AuditLog,
     CatalogDataset,
     DatasetColumn,
     ExportJob,
@@ -190,6 +191,20 @@ async def test_delete_removes_dataset_and_all_children(
             {"t": f"abi_upload_{dataset.id.hex}"},
         )
     assert exists == 0, "upload 物理表必须随数据集删除"
+
+    # 审计:删除必须落 meta.audit_log(分区键与 occurred_at 同月)。
+    async with session_factory() as session:
+        audits = (
+            (await session.execute(select(AuditLog).where(AuditLog.action == "abi_dataset_delete")))
+            .scalars()
+            .all()
+        )
+    assert len(audits) == 1, "删除必须写一条 audit_log"
+    audit = audits[0]
+    assert audit.object_id == str(dataset.id)
+    assert audit.workspace_id == workspace.id
+    assert audit.detail.get("slug") == "del-probe"
+    assert audit.occurred_month == audit.occurred_at.date().replace(day=1)
 
 
 async def test_delete_rejected_while_export_is_active(

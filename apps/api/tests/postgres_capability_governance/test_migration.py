@@ -538,8 +538,8 @@ def test_fresh_upgrade_has_single_head_objects_and_only_system_head_seed(
         for line in _run_alembic(postgres_database_url, "heads").stdout.splitlines()
         if line.strip()
     ]
-    assert heads == ["202610310069 (head)"]
-    assert _database_revision(postgres_database_url) == "202610310069"
+    assert heads == ["202610310070 (head)"]
+    assert _database_revision(postgres_database_url) == "202610310070"
     _assert_governance_objects_present(postgres_database_url)
 
     engine = _database_engine(postgres_database_url)
