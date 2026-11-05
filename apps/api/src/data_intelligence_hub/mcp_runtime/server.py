@@ -55,7 +55,8 @@ from data_intelligence_hub.services.answer_service import (
     workspace_answer as run_workspace_answer,
 )
 from data_intelligence_hub.services.research_service import start_research
-from data_intelligence_hub.services.tiktok_tools import TOOL_ENDPOINTS, run_tiktok_tool
+from data_intelligence_hub.services.social_tools import TOOL_ENDPOINTS, run_social_tool
+from data_intelligence_hub.services.tiktok_tools import run_tiktok_tool
 
 
 def _parse_project_id(value: str) -> uuid.UUID:
@@ -1452,6 +1453,147 @@ async def tiktok_ads_detail(
             "tiktok_ads_detail",
             resolve_bound_project(decision.identity, _parse_project_id(project_id)),
             {"ad_id": ad_id},
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
+        )
+        return result.as_dict()
+
+
+# ---------------------------------------------------------------------------
+# Reddit / YouTube(Plan C D7):与 TikTok 工具同构的薄封装。
+# ---------------------------------------------------------------------------
+
+
+@_tool(
+    description="Search public Reddit posts by keyword.",
+    read_only=False,
+    open_world=True,
+    destructive=False,
+    idempotent=False,
+)
+async def reddit_search(
+    context: Context,
+    project_id: str,
+    keyword: str,
+    limit: int = 50,
+) -> dict[str, object]:
+    async with governed_mcp_tool(
+        context, "reddit_search", project_id=project_id, is_collect=True
+    ) as decision:
+        assert_endpoints_allowed(decision.identity, TOOL_ENDPOINTS["reddit_search"])
+        result = await run_social_tool(
+            "reddit_search",
+            resolve_bound_project(decision.identity, _parse_project_id(project_id)),
+            {"keyword": keyword, "limit": limit},
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
+        )
+        return result.as_dict()
+
+
+@_tool(
+    description="Recent posts of a public subreddit.",
+    read_only=False,
+    open_world=True,
+    destructive=False,
+    idempotent=False,
+)
+async def reddit_subreddit_posts(
+    context: Context,
+    project_id: str,
+    subreddit: str,
+    limit: int = 50,
+) -> dict[str, object]:
+    async with governed_mcp_tool(
+        context, "reddit_subreddit_posts", project_id=project_id, is_collect=True
+    ) as decision:
+        assert_endpoints_allowed(
+            decision.identity, TOOL_ENDPOINTS["reddit_subreddit_posts"]
+        )
+        result = await run_social_tool(
+            "reddit_subreddit_posts",
+            resolve_bound_project(decision.identity, _parse_project_id(project_id)),
+            {"subreddit": subreddit, "limit": limit},
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
+        )
+        return result.as_dict()
+
+
+@_tool(
+    description="Comments of one Reddit post.",
+    read_only=False,
+    open_world=True,
+    destructive=False,
+    idempotent=False,
+)
+async def reddit_post_comments(
+    context: Context,
+    project_id: str,
+    post_id: str,
+    limit: int = 50,
+) -> dict[str, object]:
+    async with governed_mcp_tool(
+        context, "reddit_post_comments", project_id=project_id, is_collect=True
+    ) as decision:
+        assert_endpoints_allowed(
+            decision.identity, TOOL_ENDPOINTS["reddit_post_comments"]
+        )
+        result = await run_social_tool(
+            "reddit_post_comments",
+            resolve_bound_project(decision.identity, _parse_project_id(project_id)),
+            {"post_id": post_id, "limit": limit},
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
+        )
+        return result.as_dict()
+
+
+@_tool(
+    description="Search YouTube videos by keyword.",
+    read_only=False,
+    open_world=True,
+    destructive=False,
+    idempotent=False,
+)
+async def youtube_search(
+    context: Context,
+    project_id: str,
+    keyword: str,
+    limit: int = 50,
+) -> dict[str, object]:
+    async with governed_mcp_tool(
+        context, "youtube_search", project_id=project_id, is_collect=True
+    ) as decision:
+        assert_endpoints_allowed(decision.identity, TOOL_ENDPOINTS["youtube_search"])
+        result = await run_social_tool(
+            "youtube_search",
+            resolve_bound_project(decision.identity, _parse_project_id(project_id)),
+            {"keyword": keyword, "limit": limit},
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
+        )
+        return result.as_dict()
+
+
+@_tool(
+    description="Recent videos of a YouTube channel.",
+    read_only=False,
+    open_world=True,
+    destructive=False,
+    idempotent=False,
+)
+async def youtube_channel_videos(
+    context: Context,
+    project_id: str,
+    channel_id: str,
+    limit: int = 50,
+) -> dict[str, object]:
+    async with governed_mcp_tool(
+        context, "youtube_channel_videos", project_id=project_id, is_collect=True
+    ) as decision:
+        assert_endpoints_allowed(
+            decision.identity, TOOL_ENDPOINTS["youtube_channel_videos"]
+        )
+        result = await run_social_tool(
+            "youtube_channel_videos",
+            resolve_bound_project(decision.identity, _parse_project_id(project_id)),
+            {"channel_id": channel_id, "limit": limit},
             workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()

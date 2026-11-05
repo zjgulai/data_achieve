@@ -69,6 +69,9 @@ EXPECTED_TOOLS = (
     "list_monitors",
     "list_platforms",
     "list_records",
+    "reddit_post_comments",
+    "reddit_search",
+    "reddit_subreddit_posts",
     "stop",
     "tiktok_ads_detail",
     "tiktok_ads_top",
@@ -89,6 +92,8 @@ EXPECTED_TOOLS = (
     "web_fetch",
     "web_search",
     "workspace_answer",
+    "youtube_channel_videos",
+    "youtube_search",
 )
 
 
@@ -394,12 +399,13 @@ async def test_tool_count_snapshot() -> None:
     PRD 5.7 的「18 个」写于 TikTok R1 之前。
     R1 增加了 8 个 TikTok 工具，B3 增加了 get_run 与 list_records。
     B5 新增 discover、inspect、create_report。main 合入 13 个 Exa 与
-    监控、研究、富集工具。实际总数是 39。
+    监控、研究、富集工具。D7(Plan C)新增 Reddit 3 + YouTube 2。
+    实际总数是 44。
     """
     tools = await mcp_server.list_tools()
     names = tuple(sorted(tool.name for tool in tools))
     assert names == EXPECTED_TOOLS
-    assert len(names) == 39
+    assert len(names) == 44
 
 
 @pytest.mark.anyio

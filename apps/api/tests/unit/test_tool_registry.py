@@ -36,6 +36,9 @@ EXPECTED_TOOLS = {
     "enrichment_check",
     "get_run",
     "list_records",
+    "reddit_post_comments",
+    "reddit_search",
+    "reddit_subreddit_posts",
     "stop",
     "balance",
     "tiktok_trend_rank",
@@ -54,11 +57,13 @@ EXPECTED_TOOLS = {
     "tiktok_creator_showcase",
     "tiktok_ads_top",
     "tiktok_ads_detail",
+    "youtube_channel_videos",
+    "youtube_search",
 }
 
 
-def test_registry_covers_exactly_39_tools() -> None:
-    assert len(TOOL_POLICIES) == 39
+def test_registry_covers_exactly_44_tools() -> None:
+    assert len(TOOL_POLICIES) == 44
     assert set(TOOL_POLICIES) == EXPECTED_TOOLS
 
 

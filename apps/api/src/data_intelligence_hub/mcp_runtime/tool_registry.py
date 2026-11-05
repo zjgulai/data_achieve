@@ -72,6 +72,16 @@ TIKTOK_EXECUTE_TOOLS: tuple[str, ...] = (
     "tiktok_ads_detail",
 )
 
+# Plan C D7:Reddit 3 + YouTube 2。与 TikTok 同为 per_call 扣额度的执行工具;
+# preset group 用 "social",与 "tiktok" 平行。
+SOCIAL_EXECUTE_TOOLS: tuple[str, ...] = (
+    "reddit_search",
+    "reddit_subreddit_posts",
+    "reddit_post_comments",
+    "youtube_search",
+    "youtube_channel_videos",
+)
+
 TOOL_POLICIES: dict[str, McpToolPolicy] = {
     # ── Discovery（只读；不扣额度）────────────────────────────────
     "list_platforms": _p("list_platforms", access_mode="read", preset_groups=_DISCOVERY),
@@ -205,6 +215,18 @@ TOOL_POLICIES: dict[str, McpToolPolicy] = {
             preset_groups=("tiktok", "all"),
         )
         for name in TIKTOK_EXECUTE_TOOLS
+    },
+    **{
+        name: _p(
+            name,
+            access_mode="execute",
+            requires_project=True,
+            project_scope="bound_project",
+            consumes_quota="per_call",
+            run_mode="both",
+            preset_groups=("social", "all"),
+        )
+        for name in SOCIAL_EXECUTE_TOOLS
     },
     # ── 控制（不扣额度）────────────────────────────────────────────
     "stop": _p(
