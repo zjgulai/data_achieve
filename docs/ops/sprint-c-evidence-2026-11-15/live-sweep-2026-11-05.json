@@ -1,0 +1,1318 @@
+{
+  "base_url": "https://scrapy.luteos.com",
+  "project_id": "c86025e2-5209-48e3-b2ea-6d5c49038311",
+  "generated_at": "2026-11-05T18:23:17+00:00",
+  "group": "",
+  "only": "apify_facebook_comments_scraper,apify_facebook_groups_scraper,apify_facebook_marketplace_scraper,apify_facebook_media_page_scraper,apify_facebook_pages_scraper,apify_facebook_posts_scraper,apify_facebook_search_scraper,apify_google_trends_scraper,apify_instagram_comment_scraper,apify_instagram_hashtag_scraper,apify_instagram_media_profile_scraper,apify_instagram_post_scraper,apify_instagram_profile_scraper,apify_instagram_reel_scraper,apify_instagram_scraper,tikhub_instagram_post_comments,tikhub_instagram_search,tikhub_instagram_user_followers,tikhub_instagram_user_posts,apify_reddit_scraper,tikhub_reddit_post_comments,tikhub_reddit_search,tikhub_reddit_subreddit_posts,tikhub_reddit_trending,apify_tiktok_comments_scraper,apify_tiktok_creative_center,apify_tiktok_media_profile_scraper,apify_tiktok_scraper,apify_tiktok_shop_search_scraper,apify_tiktok_transcript_extractor,tikhub_tiktok_ads_detail,tikhub_tiktok_ads_keyword_suggest,tikhub_tiktok_ads_search,tikhub_tiktok_ads_trends,tikhub_tiktok_comment_keywords,tikhub_tiktok_comment_replies_app,tikhub_tiktok_comments_app,tikhub_tiktok_creator_account_health,tikhub_tiktok_creator_info,tikhub_tiktok_creator_insights,tikhub_tiktok_creator_insights_trend,tikhub_tiktok_fake_views,tikhub_tiktok_hashtag_detail_app,tikhub_tiktok_hashtag_posts,tikhub_tiktok_identity_by_username,tikhub_tiktok_live_room_detail,tikhub_tiktok_live_search,tikhub_tiktok_live_user,tikhub_tiktok_music_chart,tikhub_tiktok_search_web,tikhub_tiktok_sec_uid,tikhub_tiktok_shop_products,tikhub_tiktok_tag_posts_web,tikhub_tiktok_top_ads,tikhub_tiktok_trending_searchwords,tikhub_tiktok_user_fans_web,tikhub_tiktok_user_followers,tikhub_tiktok_user_id,tikhub_tiktok_user_posts,tikhub_tiktok_user_posts_web,tikhub_tiktok_user_profile_web,tikhub_tiktok_video_detail,tikhub_tiktok_video_search,apify_youtube_comments_scraper,apify_youtube_media_channel_scraper,apify_youtube_scraper,apify_youtube_transcript_scraper,tikhub_youtube_channel_videos,tikhub_youtube_search,tikhub_youtube_trending,tikhub_youtube_video_comments,tikhub_youtube_video_search",
+  "total": 72,
+  "tested": 72,
+  "summary": {
+    "ok": 22,
+    "unknown": 7,
+    "config_gated": 15,
+    "upstream_4xx": 26,
+    "upstream_rate_limit": 2
+  },
+  "results": [
+    {
+      "endpoint_type": "tikhub_tiktok_user_posts",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 10,
+      "error_message": "",
+      "params_used": {
+        "unique_id": "tiktok"
+      },
+      "run_id": "53c33604-066c-4220-9c80-742e324d7b0d",
+      "duration_ms": 3789,
+      "checked_at": "2026-11-05T18:22:46+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_hashtag_posts",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 20,
+      "error_message": "",
+      "params_used": {
+        "ch_id": "7340824418278440993"
+      },
+      "run_id": "7de865b7-68e8-4722-825c-028ca5d62934",
+      "duration_ms": 4433,
+      "checked_at": "2026-11-05T18:22:47+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_video_search",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "unknown",
+      "records_count": 0,
+      "error_message": "collector_empty_result: expected >= 1 record(s), got 0 (collector_type=tikhub_social, endpoint_type=tikhub_tiktok_video_search)",
+      "params_used": {
+        "keyword": "python"
+      },
+      "run_id": "8e275cdf-9df3-47db-88ad-113de23a661e",
+      "duration_ms": 4480,
+      "checked_at": "2026-11-05T18:22:47+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_instagram_search",
+      "platform": "instagram",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 8,
+      "error_message": "",
+      "params_used": {
+        "keyword": "python"
+      },
+      "run_id": "9960d76a-f966-4987-8b32-c86b7d7f6739",
+      "duration_ms": 5519,
+      "checked_at": "2026-11-05T18:22:48+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_youtube_video_search",
+      "platform": "youtube",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "config_gated",
+      "records_count": 0,
+      "error_message": "tikhub_missing_param: tikhub_youtube_video_search requires keyword or query",
+      "params_used": {},
+      "run_id": "87877eae-ac53-4bad-9b77-e2791cfbed73",
+      "duration_ms": 153,
+      "checked_at": "2026-11-05T18:22:49+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_reddit_search",
+      "platform": "reddit",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 7,
+      "error_message": "",
+      "params_used": {
+        "keyword": "python"
+      },
+      "run_id": "c161f70b-b529-4bb8-9e1b-e93720e6d5e3",
+      "duration_ms": 1258,
+      "checked_at": "2026-11-05T18:22:50+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_youtube_channel_videos",
+      "platform": "youtube",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 20,
+      "error_message": "",
+      "params_used": {
+        "channel_id": "UC8butISFwT-Wl7EV0hUK0BQ"
+      },
+      "run_id": "c4f53d71-22dc-4212-afc2-a2565fa4d8bb",
+      "duration_ms": 3452,
+      "checked_at": "2026-11-05T18:22:51+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_youtube_search",
+      "platform": "youtube",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 11,
+      "error_message": "",
+      "params_used": {
+        "keyword": "python tutorial"
+      },
+      "run_id": "00a402df-9183-4b6d-92ce-62ccc9ef657b",
+      "duration_ms": 3891,
+      "checked_at": "2026-11-05T18:22:51+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_instagram_user_posts",
+      "platform": "instagram",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 12,
+      "error_message": "",
+      "params_used": {
+        "user_id": "25025320"
+      },
+      "run_id": "83642fbb-7911-4188-bb91-c53d0bcdc3a6",
+      "duration_ms": 4543,
+      "checked_at": "2026-11-05T18:22:51+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_ads_search",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "unknown",
+      "records_count": 0,
+      "error_message": "collector_empty_result: expected >= 1 record(s), got 0 (collector_type=tikhub_social, endpoint_type=tikhub_tiktok_ads_search)",
+      "params_used": {
+        "material_id": "7182310470102122497"
+      },
+      "run_id": "95be9689-0805-4e62-861d-546716563751",
+      "duration_ms": 938,
+      "checked_at": "2026-11-05T18:22:52+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_reddit_subreddit_posts",
+      "platform": "reddit",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 7,
+      "error_message": "",
+      "params_used": {
+        "subreddit": "python"
+      },
+      "run_id": "bfeccf1d-db9c-49a5-9489-94fcf8aa3fbd",
+      "duration_ms": 1814,
+      "checked_at": "2026-11-05T18:22:53+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_top_ads",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 5,
+      "error_message": "",
+      "params_used": {},
+      "run_id": "bd64d5e6-260c-4cfb-b3a1-9ae56eb30689",
+      "duration_ms": 1096,
+      "checked_at": "2026-11-05T18:22:53+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_creator_info",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "upstream_4xx",
+      "records_count": 0,
+      "error_message": "http_status_error: upstream returned 400 | {\"detail\":{\"code\":400,\"request_id\":\"1e461ae2-3e5b-4882-8c74-3053184126c5\",\"message\":\"Request failed. Please retry. Check the docs below to verify your parameters, test with the default demo parameters, and send the response JSON to support. You won't be charged for this request.\",\"message_zh\":\"请求失败，请重试。请查看下方文档核对参数，使用默认演示参数测试，并将响应 JSON 提交给支持团队。本次请求不会被扣费。\",\"docs\":\"https://api.tikhub.io/#/TikTok-App-V3-API/fetch_creator_info_api_v1_tiktok_app_v3_fetch_creator_info_get\",\"support\":\"Discord: https://d",
+      "params_used": {
+        "creator_uid": "6622057683300417542"
+      },
+      "run_id": "6d5da492-3a1b-4e25-9a08-e23e30f690a3",
+      "duration_ms": 604,
+      "checked_at": "2026-11-05T18:22:53+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_shop_products",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 15,
+      "error_message": "",
+      "params_used": {
+        "keyword": "phone case"
+      },
+      "run_id": "9fae6b12-0b7d-4aa5-9279-b182396b3407",
+      "duration_ms": 2578,
+      "checked_at": "2026-11-05T18:22:54+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_reddit_post_comments",
+      "platform": "reddit",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 1,
+      "error_message": "",
+      "params_used": {
+        "post_id": "t3_1x0wpat"
+      },
+      "run_id": "194d0ca9-3360-4cef-a30a-65ca88d00ffd",
+      "duration_ms": 1952,
+      "checked_at": "2026-11-05T18:22:56+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_instagram_post_comments",
+      "platform": "instagram",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 15,
+      "error_message": "",
+      "params_used": {
+        "shortcode": "DMVbQ0MAzn8"
+      },
+      "run_id": "417a3ca0-f09f-4c95-9083-389653260e24",
+      "duration_ms": 3051,
+      "checked_at": "2026-11-05T18:22:56+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_live_room_detail",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "unknown",
+      "records_count": 0,
+      "error_message": "collector_empty_result: expected >= 1 record(s), got 0 (collector_type=tikhub_social, endpoint_type=tikhub_tiktok_live_room_detail)",
+      "params_used": {
+        "room_id": "7694650101042170654"
+      },
+      "run_id": "9a4408a4-7204-4edd-8653-6fdcb2dad84d",
+      "duration_ms": 694,
+      "checked_at": "2026-11-05T18:22:57+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_youtube_video_comments",
+      "platform": "youtube",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 20,
+      "error_message": "",
+      "params_used": {
+        "video_id": "dQw4w9WgXcQ"
+      },
+      "run_id": "d8a952a7-d051-4437-86cf-53fb257c44f8",
+      "duration_ms": 3739,
+      "checked_at": "2026-11-05T18:22:57+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_live_user",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "upstream_4xx",
+      "records_count": 0,
+      "error_message": "http_status_error: upstream returned 400 | {\"detail\":{\"code\":400,\"request_id\":\"4a2d970f-31dd-4133-94c8-96b88ac2ade4\",\"message\":\"Request failed. Please retry. Check the docs below to verify your parameters, test with the default demo parameters, and send the response JSON to support. You won't be charged for this request.\",\"message_zh\":\"请求失败，请重试。请查看下方文档核对参数，使用默认演示参数测试，并将响应 JSON 提交给支持团队。本次请求不会被扣费。\",\"docs\":\"https://api.tikhub.io/#/TikTok-App-V3-API/fetch_creator_info_api_v1_tiktok_app_v3_fetch_creator_info_get\",\"support\":\"Discord: https://d",
+      "params_used": {
+        "creator_uid": "6622057683300417542"
+      },
+      "run_id": "29296ad0-380a-4b08-8355-5c8f5ebf87c5",
+      "duration_ms": 597,
+      "checked_at": "2026-11-05T18:22:57+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_live_search",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 20,
+      "error_message": "",
+      "params_used": {
+        "keyword": "music"
+      },
+      "run_id": "9de5e9bf-6036-4e5e-a775-53c6bae57689",
+      "duration_ms": 3967,
+      "checked_at": "2026-11-05T18:22:59+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_reddit_trending",
+      "platform": "reddit",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 8,
+      "error_message": "",
+      "params_used": {},
+      "run_id": "d46d5fe1-6ea9-4808-8f30-6d82a4ecdc68",
+      "duration_ms": 2290,
+      "checked_at": "2026-11-05T18:23:00+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_user_followers",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 20,
+      "error_message": "",
+      "params_used": {
+        "sec_user_id": "MS4wLjABAAAAJSeUGWT_kX5G9KuMcBscOt3abx3ymUBIblbLD3LSn6_NUj9hAdk1eeSM2WPdJs65"
+      },
+      "run_id": "5ed1618e-3488-47c8-ae4a-fb539136ef74",
+      "duration_ms": 2144,
+      "checked_at": "2026-11-05T18:23:00+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_youtube_trending",
+      "platform": "youtube",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 7,
+      "error_message": "",
+      "params_used": {},
+      "run_id": "ed2179ff-562a-4c8f-96c4-39e8bf1ddc43",
+      "duration_ms": 3441,
+      "checked_at": "2026-11-05T18:23:01+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_creator_insights_trend",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "unknown",
+      "records_count": 0,
+      "error_message": "collector_empty_result: expected >= 1 record(s), got 0 (collector_type=tikhub_social, endpoint_type=tikhub_tiktok_creator_insights_trend)",
+      "params_used": {
+        "unique_id": "tiktok"
+      },
+      "run_id": "71c7dc75-3db3-4652-94a5-5280cf3ec49e",
+      "duration_ms": 819,
+      "checked_at": "2026-11-05T18:23:01+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_creator_insights",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "unknown",
+      "records_count": 0,
+      "error_message": "collector_empty_result: expected >= 1 record(s), got 0 (collector_type=tikhub_social, endpoint_type=tikhub_tiktok_creator_insights)",
+      "params_used": {
+        "unique_id": "tiktok"
+      },
+      "run_id": "8ec7ff30-65c2-407f-afe2-7256cd2c950d",
+      "duration_ms": 1221,
+      "checked_at": "2026-11-05T18:23:02+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_creator_account_health",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "unknown",
+      "records_count": 0,
+      "error_message": "collector_empty_result: expected >= 1 record(s), got 0 (collector_type=tikhub_social, endpoint_type=tikhub_tiktok_creator_account_health)",
+      "params_used": {
+        "unique_id": "tiktok"
+      },
+      "run_id": "5ed719c0-7620-4b4b-8557-ba5b0a3f03df",
+      "duration_ms": 705,
+      "checked_at": "2026-11-05T18:23:02+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_sec_uid",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "config_gated",
+      "records_count": 0,
+      "error_message": "tikhub_missing_param: tikhub_tiktok_sec_uid requires url",
+      "params_used": {},
+      "run_id": "2f29f299-0d59-4488-9fdd-a8d8e5d3a9e0",
+      "duration_ms": 147,
+      "checked_at": "2026-11-05T18:23:03+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_ads_detail",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 1,
+      "error_message": "",
+      "params_used": {
+        "ad_id": "7182310470102122497"
+      },
+      "run_id": "6abc7507-4c87-4842-a713-e31e6d9cebc8",
+      "duration_ms": 1062,
+      "checked_at": "2026-11-05T18:23:03+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_ads_keyword_suggest",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "unknown",
+      "records_count": 0,
+      "error_message": "collector_empty_result: expected >= 1 record(s), got 0 (collector_type=tikhub_social, endpoint_type=tikhub_tiktok_ads_keyword_suggest)",
+      "params_used": {
+        "keyword": "python"
+      },
+      "run_id": "ee74df1d-d87b-4366-8bff-23b98b1d302d",
+      "duration_ms": 890,
+      "checked_at": "2026-11-05T18:23:03+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_user_id",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "config_gated",
+      "records_count": 0,
+      "error_message": "tikhub_missing_param: tikhub_tiktok_user_id requires url",
+      "params_used": {},
+      "run_id": "8ad25714-8c95-46f2-b3d0-f71428a3a22a",
+      "duration_ms": 171,
+      "checked_at": "2026-11-05T18:23:04+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_identity_by_username",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "config_gated",
+      "records_count": 0,
+      "error_message": "tikhub_missing_param: tikhub_tiktok_identity_by_username requires username or unique_id",
+      "params_used": {},
+      "run_id": "f9178d42-a08c-49aa-8d7b-aabb0e412073",
+      "duration_ms": 154,
+      "checked_at": "2026-11-05T18:23:04+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_video_detail",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "config_gated",
+      "records_count": 0,
+      "error_message": "tikhub_missing_param: tikhub_tiktok_video_detail requires item_id or aweme_id or video_id",
+      "params_used": {},
+      "run_id": "3f0a57eb-e6aa-4ed3-9520-c650f85f3613",
+      "duration_ms": 145,
+      "checked_at": "2026-11-05T18:23:04+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_search_web",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "config_gated",
+      "records_count": 0,
+      "error_message": "tikhub_missing_param: tikhub_tiktok_search_web requires keyword",
+      "params_used": {},
+      "run_id": "a12816ad-e915-46e1-8095-1dda785bb293",
+      "duration_ms": 154,
+      "checked_at": "2026-11-05T18:23:04+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_user_posts_web",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "config_gated",
+      "records_count": 0,
+      "error_message": "tikhub_missing_param: tikhub_tiktok_user_posts_web requires sec_user_id or sec_uid",
+      "params_used": {},
+      "run_id": "4bb2f130-ccf2-45ad-84a9-728bfcb2bd73",
+      "duration_ms": 172,
+      "checked_at": "2026-11-05T18:23:04+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_comments_app",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "config_gated",
+      "records_count": 0,
+      "error_message": "tikhub_missing_param: tikhub_tiktok_comments_app requires aweme_id or video_id",
+      "params_used": {},
+      "run_id": "275c0aa3-ba99-458f-bbc4-6448e6e8c685",
+      "duration_ms": 157,
+      "checked_at": "2026-11-05T18:23:04+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_instagram_user_followers",
+      "platform": "instagram",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 20,
+      "error_message": "",
+      "params_used": {
+        "user_id": "25025320"
+      },
+      "run_id": "59c792f5-b55a-4b97-9b98-aeb4f654d852",
+      "duration_ms": 5174,
+      "checked_at": "2026-11-05T18:23:05+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_comment_replies_app",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "config_gated",
+      "records_count": 0,
+      "error_message": "tikhub_missing_param: tikhub_tiktok_comment_replies_app requires item_id or aweme_id, comment_id",
+      "params_used": {},
+      "run_id": "712bd546-65cd-4886-bdd5-c8b083cf790f",
+      "duration_ms": 187,
+      "checked_at": "2026-11-05T18:23:05+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_user_profile_web",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "config_gated",
+      "records_count": 0,
+      "error_message": "tikhub_missing_param: tikhub_tiktok_user_profile_web requires unique_id or username or sec_user_id or sec_uid",
+      "params_used": {},
+      "run_id": "a1bb3aa0-fe64-40f3-96a0-a73cabc2e65d",
+      "duration_ms": 169,
+      "checked_at": "2026-11-05T18:23:05+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_user_fans_web",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "config_gated",
+      "records_count": 0,
+      "error_message": "tikhub_missing_param: tikhub_tiktok_user_fans_web requires sec_user_id or sec_uid",
+      "params_used": {},
+      "run_id": "c8fa5c90-fac8-4f82-bd65-a9206dfaf854",
+      "duration_ms": 147,
+      "checked_at": "2026-11-05T18:23:05+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_hashtag_detail_app",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "config_gated",
+      "records_count": 0,
+      "error_message": "tikhub_missing_param: tikhub_tiktok_hashtag_detail_app requires ch_id or hashtag_id",
+      "params_used": {},
+      "run_id": "61367537-0a8d-4834-b10d-fe80bad8306b",
+      "duration_ms": 221,
+      "checked_at": "2026-11-05T18:23:05+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_tag_posts_web",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "config_gated",
+      "records_count": 0,
+      "error_message": "tikhub_missing_param: tikhub_tiktok_tag_posts_web requires challenge_id or ch_id",
+      "params_used": {},
+      "run_id": "88ce3d4d-bd24-4f10-985d-76b0b1c0f2f5",
+      "duration_ms": 178,
+      "checked_at": "2026-11-05T18:23:06+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_fake_views",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "config_gated",
+      "records_count": 0,
+      "error_message": "tikhub_missing_param: tikhub_tiktok_fake_views requires item_id or aweme_id",
+      "params_used": {},
+      "run_id": "0dcb9660-0664-4a6a-82fc-99faeef42e00",
+      "duration_ms": 173,
+      "checked_at": "2026-11-05T18:23:06+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_comment_keywords",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "config_gated",
+      "records_count": 0,
+      "error_message": "tikhub_missing_param: tikhub_tiktok_comment_keywords requires item_id or aweme_id",
+      "params_used": {},
+      "run_id": "19935595-e90d-4f4c-bd91-af0efd8a3adf",
+      "duration_ms": 154,
+      "checked_at": "2026-11-05T18:23:06+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_trending_searchwords",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 20,
+      "error_message": "",
+      "params_used": {},
+      "run_id": "b66e825e-21a3-4fa6-9358-9906f1e9f203",
+      "duration_ms": 1346,
+      "checked_at": "2026-11-05T18:23:07+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_music_chart",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 20,
+      "error_message": "",
+      "params_used": {},
+      "run_id": "8c84c7be-d8cb-4f69-8510-61897471ac22",
+      "duration_ms": 1277,
+      "checked_at": "2026-11-05T18:23:07+00:00"
+    },
+    {
+      "endpoint_type": "apify_instagram_scraper",
+      "platform": "instagram",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "upstream_rate_limit",
+      "records_count": 0,
+      "error_message": "http_forbidden: upstream returned 403 | {   \"error\": {     \"type\": \"platform-feature-disabled\",     \"message\": \"You've reached your monthly usage limit of $199.00, so Actor runs and other Apify services are blocked until your monthly usage cycle resets. To increase the limit, open https://console.apify.com/billing/limits?openMonthlyUsageLimitsModal=1. Over the API, send PUT https://api.apify.com/v2/users/me/limits with a new maxMonthlyUsageUsd value. A GET on the same URL shows when the cycle re",
+      "params_used": {
+        "usernames": [
+          "instagram"
+        ],
+        "maxItems": 3
+      },
+      "run_id": "6ad85454-33bb-4b77-9139-b345f939daed",
+      "duration_ms": 879,
+      "checked_at": "2026-11-05T18:23:08+00:00"
+    },
+    {
+      "endpoint_type": "tikhub_tiktok_ads_trends",
+      "platform": "tiktok",
+      "collector_type": "tikhub_social",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 20,
+      "error_message": "",
+      "params_used": {},
+      "run_id": "d94ac5ff-14b8-4d76-b1d4-f1600e745352",
+      "duration_ms": 1266,
+      "checked_at": "2026-11-05T18:23:08+00:00"
+    },
+    {
+      "endpoint_type": "apify_instagram_post_scraper",
+      "platform": "instagram",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "upstream_4xx",
+      "records_count": 0,
+      "error_message": "http_forbidden: upstream returned 403 | {   \"error\": {     \"type\": \"platform-feature-disabled\",     \"message\": \"You've reached your monthly usage limit of $199.00, so Actor runs and other Apify services are blocked until your monthly usage cycle resets. To increase the limit, open https://console.apify.com/billing/limits?openMonthlyUsageLimitsModal=1. Over the API, send PUT https://api.apify.com/v2/users/me/limits with a new maxMonthlyUsageUsd value. A GET on the same URL shows when the cycle re",
+      "params_used": {},
+      "run_id": "31123083-3757-4389-b631-b29a9b4823db",
+      "duration_ms": 875,
+      "checked_at": "2026-11-05T18:23:08+00:00"
+    },
+    {
+      "endpoint_type": "apify_instagram_profile_scraper",
+      "platform": "instagram",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "upstream_4xx",
+      "records_count": 0,
+      "error_message": "http_forbidden: upstream returned 403 | {   \"error\": {     \"type\": \"platform-feature-disabled\",     \"message\": \"You've reached your monthly usage limit of $199.00, so Actor runs and other Apify services are blocked until your monthly usage cycle resets. To increase the limit, open https://console.apify.com/billing/limits?openMonthlyUsageLimitsModal=1. Over the API, send PUT https://api.apify.com/v2/users/me/limits with a new maxMonthlyUsageUsd value. A GET on the same URL shows when the cycle re",
+      "params_used": {
+        "usernames": [
+          "instagram"
+        ],
+        "maxItems": 3
+      },
+      "run_id": "620200c7-d185-41c5-a6fc-d71b3e6aa0e4",
+      "duration_ms": 880,
+      "checked_at": "2026-11-05T18:23:08+00:00"
+    },
+    {
+      "endpoint_type": "apify_instagram_reel_scraper",
+      "platform": "instagram",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "upstream_4xx",
+      "records_count": 0,
+      "error_message": "http_forbidden: upstream returned 403 | {   \"error\": {     \"type\": \"platform-feature-disabled\",     \"message\": \"You've reached your monthly usage limit of $199.00, so Actor runs and other Apify services are blocked until your monthly usage cycle resets. To increase the limit, open https://console.apify.com/billing/limits?openMonthlyUsageLimitsModal=1. Over the API, send PUT https://api.apify.com/v2/users/me/limits with a new maxMonthlyUsageUsd value. A GET on the same URL shows when the cycle re",
+      "params_used": {},
+      "run_id": "8d204dab-3e6b-4d69-a1b1-fe3c764e7419",
+      "duration_ms": 944,
+      "checked_at": "2026-11-05T18:23:09+00:00"
+    },
+    {
+      "endpoint_type": "apify_facebook_posts_scraper",
+      "platform": "facebook",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "upstream_4xx",
+      "records_count": 0,
+      "error_message": "http_forbidden: upstream returned 403 | {   \"error\": {     \"type\": \"platform-feature-disabled\",     \"message\": \"You've reached your monthly usage limit of $199.00, so Actor runs and other Apify services are blocked until your monthly usage cycle resets. To increase the limit, open https://console.apify.com/billing/limits?openMonthlyUsageLimitsModal=1. Over the API, send PUT https://api.apify.com/v2/users/me/limits with a new maxMonthlyUsageUsd value. A GET on the same URL shows when the cycle re",
+      "params_used": {
+        "startUrls": [
+          {
+            "url": "https://www.facebook.com/facebook"
+          }
+        ],
+        "maxItems": 3
+      },
+      "run_id": "dec9358e-0c98-4e62-bdd9-bfe212f4a767",
+      "duration_ms": 861,
+      "checked_at": "2026-11-05T18:23:10+00:00"
+    },
+    {
+      "endpoint_type": "apify_instagram_comment_scraper",
+      "platform": "instagram",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "upstream_4xx",
+      "records_count": 0,
+      "error_message": "http_forbidden: upstream returned 403 | {   \"error\": {     \"type\": \"platform-feature-disabled\",     \"message\": \"You've reached your monthly usage limit of $199.00, so Actor runs and other Apify services are blocked until your monthly usage cycle resets. To increase the limit, open https://console.apify.com/billing/limits?openMonthlyUsageLimitsModal=1. Over the API, send PUT https://api.apify.com/v2/users/me/limits with a new maxMonthlyUsageUsd value. A GET on the same URL shows when the cycle re",
+      "params_used": {},
+      "run_id": "ddf08cdd-9612-4dcf-a49b-d6da80ffedb7",
+      "duration_ms": 884,
+      "checked_at": "2026-11-05T18:23:10+00:00"
+    },
+    {
+      "endpoint_type": "apify_instagram_hashtag_scraper",
+      "platform": "instagram",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "upstream_4xx",
+      "records_count": 0,
+      "error_message": "http_forbidden: upstream returned 403 | {   \"error\": {     \"type\": \"platform-feature-disabled\",     \"message\": \"You've reached your monthly usage limit of $199.00, so Actor runs and other Apify services are blocked until your monthly usage cycle resets. To increase the limit, open https://console.apify.com/billing/limits?openMonthlyUsageLimitsModal=1. Over the API, send PUT https://api.apify.com/v2/users/me/limits with a new maxMonthlyUsageUsd value. A GET on the same URL shows when the cycle re",
+      "params_used": {
+        "hashtags": [
+          "python"
+        ],
+        "resultsPerPage": 3
+      },
+      "run_id": "b96987f1-ddd1-4372-98ac-3f26c2eaca43",
+      "duration_ms": 1866,
+      "checked_at": "2026-11-05T18:23:10+00:00"
+    },
+    {
+      "endpoint_type": "apify_facebook_comments_scraper",
+      "platform": "facebook",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "upstream_rate_limit",
+      "records_count": 0,
+      "error_message": "http_forbidden: upstream returned 403 | {   \"error\": {     \"type\": \"platform-feature-disabled\",     \"message\": \"You've reached your monthly usage limit of $199.00, so Actor runs and other Apify services are blocked until your monthly usage cycle resets. To increase the limit, open https://console.apify.com/billing/limits?openMonthlyUsageLimitsModal=1. Over the API, send PUT https://api.apify.com/v2/users/me/limits with a new maxMonthlyUsageUsd value. A GET on the same URL shows when the cycle re",
+      "params_used": {
+        "startUrls": [
+          {
+            "url": "https://www.facebook.com/facebook"
+          }
+        ],
+        "maxItems": 3
+      },
+      "run_id": "40ac7456-935a-4fbe-b84e-35c327f76bf1",
+      "duration_ms": 859,
+      "checked_at": "2026-11-05T18:23:11+00:00"
+    },
+    {
+      "endpoint_type": "apify_facebook_groups_scraper",
+      "platform": "facebook",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "upstream_4xx",
+      "records_count": 0,
+      "error_message": "http_forbidden: upstream returned 403 | {   \"error\": {     \"type\": \"platform-feature-disabled\",     \"message\": \"You've reached your monthly usage limit of $199.00, so Actor runs and other Apify services are blocked until your monthly usage cycle resets. To increase the limit, open https://console.apify.com/billing/limits?openMonthlyUsageLimitsModal=1. Over the API, send PUT https://api.apify.com/v2/users/me/limits with a new maxMonthlyUsageUsd value. A GET on the same URL shows when the cycle re",
+      "params_used": {},
+      "run_id": "12473425-bb88-4c32-a973-9b59127dc651",
+      "duration_ms": 878,
+      "checked_at": "2026-11-05T18:23:11+00:00"
+    },
+    {
+      "endpoint_type": "apify_facebook_pages_scraper",
+      "platform": "facebook",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "upstream_4xx",
+      "records_count": 0,
+      "error_message": "http_forbidden: upstream returned 403 | {   \"error\": {     \"type\": \"platform-feature-disabled\",     \"message\": \"You've reached your monthly usage limit of $199.00, so Actor runs and other Apify services are blocked until your monthly usage cycle resets. To increase the limit, open https://console.apify.com/billing/limits?openMonthlyUsageLimitsModal=1. Over the API, send PUT https://api.apify.com/v2/users/me/limits with a new maxMonthlyUsageUsd value. A GET on the same URL shows when the cycle re",
+      "params_used": {},
+      "run_id": "027c364d-a0b1-43cc-b001-5f480bffd5ec",
+      "duration_ms": 891,
+      "checked_at": "2026-11-05T18:23:11+00:00"
+    },
+    {
+      "endpoint_type": "apify_facebook_search_scraper",
+      "platform": "facebook",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "upstream_4xx",
+      "records_count": 0,
+      "error_message": "http_forbidden: upstream returned 403 | {   \"error\": {     \"type\": \"platform-feature-disabled\",     \"message\": \"You've reached your monthly usage limit of $199.00, so Actor runs and other Apify services are blocked until your monthly usage cycle resets. To increase the limit, open https://console.apify.com/billing/limits?openMonthlyUsageLimitsModal=1. Over the API, send PUT https://api.apify.com/v2/users/me/limits with a new maxMonthlyUsageUsd value. A GET on the same URL shows when the cycle re",
+      "params_used": {},
+      "run_id": "d0db4cde-6253-41cc-8a0c-10487ff7d1ad",
+      "duration_ms": 897,
+      "checked_at": "2026-11-05T18:23:12+00:00"
+    },
+    {
+      "endpoint_type": "apify_tiktok_scraper",
+      "platform": "tiktok",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "upstream_4xx",
+      "records_count": 0,
+      "error_message": "http_forbidden: upstream returned 403 | {   \"error\": {     \"type\": \"platform-feature-disabled\",     \"message\": \"You've reached your monthly usage limit of $199.00, so Actor runs and other Apify services are blocked until your monthly usage cycle resets. To increase the limit, open https://console.apify.com/billing/limits?openMonthlyUsageLimitsModal=1. Over the API, send PUT https://api.apify.com/v2/users/me/limits with a new maxMonthlyUsageUsd value. A GET on the same URL shows when the cycle re",
+      "params_used": {
+        "profiles": [
+          "tiktok"
+        ],
+        "maxItems": 3
+      },
+      "run_id": "51bbe339-fc78-4c53-9fa2-f03b7ff75b0b",
+      "duration_ms": 865,
+      "checked_at": "2026-11-05T18:23:12+00:00"
+    },
+    {
+      "endpoint_type": "apify_tiktok_comments_scraper",
+      "platform": "tiktok",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "upstream_4xx",
+      "records_count": 0,
+      "error_message": "http_forbidden: upstream returned 403 | {   \"error\": {     \"type\": \"platform-feature-disabled\",     \"message\": \"You've reached your monthly usage limit of $199.00, so Actor runs and other Apify services are blocked until your monthly usage cycle resets. To increase the limit, open https://console.apify.com/billing/limits?openMonthlyUsageLimitsModal=1. Over the API, send PUT https://api.apify.com/v2/users/me/limits with a new maxMonthlyUsageUsd value. A GET on the same URL shows when the cycle re",
+      "params_used": {
+        "postURLs": [
+          "https://www.tiktok.com/@tiktok/video/7106594312292453675"
+        ],
+        "maxItems": 5
+      },
+      "run_id": "78fd6b97-ad63-43bf-97f5-cb7743df6316",
+      "duration_ms": 859,
+      "checked_at": "2026-11-05T18:23:12+00:00"
+    },
+    {
+      "endpoint_type": "apify_youtube_scraper",
+      "platform": "youtube",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "upstream_4xx",
+      "records_count": 0,
+      "error_message": "http_forbidden: upstream returned 403 | {   \"error\": {     \"type\": \"platform-feature-disabled\",     \"message\": \"You've reached your monthly usage limit of $199.00, so Actor runs and other Apify services are blocked until your monthly usage cycle resets. To increase the limit, open https://console.apify.com/billing/limits?openMonthlyUsageLimitsModal=1. Over the API, send PUT https://api.apify.com/v2/users/me/limits with a new maxMonthlyUsageUsd value. A GET on the same URL shows when the cycle re",
+      "params_used": {
+        "searchKeywords": "python tutorial",
+        "maxResults": 3
+      },
+      "run_id": "28dd749b-432c-4358-9fad-e2ee37b89b6c",
+      "duration_ms": 876,
+      "checked_at": "2026-11-05T18:23:12+00:00"
+    },
+    {
+      "endpoint_type": "apify_youtube_comments_scraper",
+      "platform": "youtube",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "upstream_4xx",
+      "records_count": 0,
+      "error_message": "http_forbidden: upstream returned 403 | {   \"error\": {     \"type\": \"platform-feature-disabled\",     \"message\": \"You've reached your monthly usage limit of $199.00, so Actor runs and other Apify services are blocked until your monthly usage cycle resets. To increase the limit, open https://console.apify.com/billing/limits?openMonthlyUsageLimitsModal=1. Over the API, send PUT https://api.apify.com/v2/users/me/limits with a new maxMonthlyUsageUsd value. A GET on the same URL shows when the cycle re",
+      "params_used": {
+        "videoUrls": [
+          "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        ],
+        "maxComments": 5
+      },
+      "run_id": "509ac6c1-55c4-4661-a098-d5637c48dcd3",
+      "duration_ms": 866,
+      "checked_at": "2026-11-05T18:23:13+00:00"
+    },
+    {
+      "endpoint_type": "apify_reddit_scraper",
+      "platform": "reddit",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "upstream_4xx",
+      "records_count": 0,
+      "error_message": "http_forbidden: upstream returned 403 | {   \"error\": {     \"type\": \"platform-feature-disabled\",     \"message\": \"You've reached your monthly usage limit of $199.00, so Actor runs and other Apify services are blocked until your monthly usage cycle resets. To increase the limit, open https://console.apify.com/billing/limits?openMonthlyUsageLimitsModal=1. Over the API, send PUT https://api.apify.com/v2/users/me/limits with a new maxMonthlyUsageUsd value. A GET on the same URL shows when the cycle re",
+      "params_used": {
+        "searches": [
+          "python"
+        ],
+        "maxItems": 5
+      },
+      "run_id": "d1f7c7d0-e299-4603-8ede-ad7cd089ecc4",
+      "duration_ms": 874,
+      "checked_at": "2026-11-05T18:23:13+00:00"
+    },
+    {
+      "endpoint_type": "apify_google_trends_scraper",
+      "platform": "google_trends",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "upstream_4xx",
+      "records_count": 0,
+      "error_message": "http_forbidden: upstream returned 403 | {   \"error\": {     \"type\": \"platform-feature-disabled\",     \"message\": \"You've reached your monthly usage limit of $199.00, so Actor runs and other Apify services are blocked until your monthly usage cycle resets. To increase the limit, open https://console.apify.com/billing/limits?openMonthlyUsageLimitsModal=1. Over the API, send PUT https://api.apify.com/v2/users/me/limits with a new maxMonthlyUsageUsd value. A GET on the same URL shows when the cycle re",
+      "params_used": {
+        "searchTerms": [
+          "python"
+        ],
+        "geo": "US"
+      },
+      "run_id": "8d25bdc2-a52f-49a8-9ddc-3635d7a3c0b1",
+      "duration_ms": 898,
+      "checked_at": "2026-11-05T18:23:14+00:00"
+    },
+    {
+      "endpoint_type": "apify_instagram_media_profile_scraper",
+      "platform": "instagram",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "upstream_4xx",
+      "records_count": 0,
+      "error_message": "http_forbidden: upstream returned 403 | {   \"error\": {     \"type\": \"platform-feature-disabled\",     \"message\": \"You've reached your monthly usage limit of $199.00, so Actor runs and other Apify services are blocked until your monthly usage cycle resets. To increase the limit, open https://console.apify.com/billing/limits?openMonthlyUsageLimitsModal=1. Over the API, send PUT https://api.apify.com/v2/users/me/limits with a new maxMonthlyUsageUsd value. A GET on the same URL shows when the cycle re",
+      "params_used": {
+        "usernames": [
+          "instagram"
+        ],
+        "maxItems": 3
+      },
+      "run_id": "7354cb47-905f-446c-9a72-8bb780450707",
+      "duration_ms": 863,
+      "checked_at": "2026-11-05T18:23:14+00:00"
+    },
+    {
+      "endpoint_type": "apify_tiktok_media_profile_scraper",
+      "platform": "tiktok",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "upstream_4xx",
+      "records_count": 0,
+      "error_message": "http_forbidden: upstream returned 403 | {   \"error\": {     \"type\": \"platform-feature-disabled\",     \"message\": \"You've reached your monthly usage limit of $199.00, so Actor runs and other Apify services are blocked until your monthly usage cycle resets. To increase the limit, open https://console.apify.com/billing/limits?openMonthlyUsageLimitsModal=1. Over the API, send PUT https://api.apify.com/v2/users/me/limits with a new maxMonthlyUsageUsd value. A GET on the same URL shows when the cycle re",
+      "params_used": {
+        "profiles": [
+          "tiktok"
+        ],
+        "maxItems": 3
+      },
+      "run_id": "695837fd-d2c3-4d7a-b770-be19e9fbffa7",
+      "duration_ms": 883,
+      "checked_at": "2026-11-05T18:23:14+00:00"
+    },
+    {
+      "endpoint_type": "apify_youtube_media_channel_scraper",
+      "platform": "youtube",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "upstream_4xx",
+      "records_count": 0,
+      "error_message": "http_forbidden: upstream returned 403 | {   \"error\": {     \"type\": \"platform-feature-disabled\",     \"message\": \"You've reached your monthly usage limit of $199.00, so Actor runs and other Apify services are blocked until your monthly usage cycle resets. To increase the limit, open https://console.apify.com/billing/limits?openMonthlyUsageLimitsModal=1. Over the API, send PUT https://api.apify.com/v2/users/me/limits with a new maxMonthlyUsageUsd value. A GET on the same URL shows when the cycle re",
+      "params_used": {
+        "channelUrls": [
+          "https://www.youtube.com/@Python"
+        ],
+        "maxResults": 3
+      },
+      "run_id": "c1dd5b45-6ce4-4f33-b129-f39c8285c756",
+      "duration_ms": 886,
+      "checked_at": "2026-11-05T18:23:15+00:00"
+    },
+    {
+      "endpoint_type": "apify_tiktok_transcript_extractor",
+      "platform": "tiktok",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "upstream_4xx",
+      "records_count": 0,
+      "error_message": "http_forbidden: upstream returned 403 | {   \"error\": {     \"type\": \"platform-feature-disabled\",     \"message\": \"You've reached your monthly usage limit of $199.00, so Actor runs and other Apify services are blocked until your monthly usage cycle resets. To increase the limit, open https://console.apify.com/billing/limits?openMonthlyUsageLimitsModal=1. Over the API, send PUT https://api.apify.com/v2/users/me/limits with a new maxMonthlyUsageUsd value. A GET on the same URL shows when the cycle re",
+      "params_used": {
+        "postURLs": [
+          "https://www.tiktok.com/@tiktok/video/7106594312292453675"
+        ]
+      },
+      "run_id": "d316218c-ebcc-4407-a04d-ca2058a4e4b5",
+      "duration_ms": 861,
+      "checked_at": "2026-11-05T18:23:15+00:00"
+    },
+    {
+      "endpoint_type": "apify_facebook_media_page_scraper",
+      "platform": "facebook",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "upstream_4xx",
+      "records_count": 0,
+      "error_message": "http_forbidden: upstream returned 403 | {   \"error\": {     \"type\": \"platform-feature-disabled\",     \"message\": \"You've reached your monthly usage limit of $199.00, so Actor runs and other Apify services are blocked until your monthly usage cycle resets. To increase the limit, open https://console.apify.com/billing/limits?openMonthlyUsageLimitsModal=1. Over the API, send PUT https://api.apify.com/v2/users/me/limits with a new maxMonthlyUsageUsd value. A GET on the same URL shows when the cycle re",
+      "params_used": {
+        "startUrls": [
+          {
+            "url": "https://www.facebook.com/facebook"
+          }
+        ],
+        "maxItems": 3
+      },
+      "run_id": "af0f7d16-e82b-40dd-b7a2-fc96bcaffba3",
+      "duration_ms": 935,
+      "checked_at": "2026-11-05T18:23:15+00:00"
+    },
+    {
+      "endpoint_type": "apify_youtube_transcript_scraper",
+      "platform": "youtube",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "upstream_4xx",
+      "records_count": 0,
+      "error_message": "http_forbidden: upstream returned 403 | {   \"error\": {     \"type\": \"platform-feature-disabled\",     \"message\": \"You've reached your monthly usage limit of $199.00, so Actor runs and other Apify services are blocked until your monthly usage cycle resets. To increase the limit, open https://console.apify.com/billing/limits?openMonthlyUsageLimitsModal=1. Over the API, send PUT https://api.apify.com/v2/users/me/limits with a new maxMonthlyUsageUsd value. A GET on the same URL shows when the cycle re",
+      "params_used": {
+        "videoUrls": [
+          "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        ]
+      },
+      "run_id": "71308331-5d43-48b2-a028-f7d0782cc15e",
+      "duration_ms": 881,
+      "checked_at": "2026-11-05T18:23:16+00:00"
+    },
+    {
+      "endpoint_type": "apify_tiktok_creative_center",
+      "platform": "tiktok",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "upstream_4xx",
+      "records_count": 0,
+      "error_message": "http_forbidden: upstream returned 403 | {   \"error\": {     \"type\": \"platform-feature-disabled\",     \"message\": \"You've reached your monthly usage limit of $199.00, so Actor runs and other Apify services are blocked until your monthly usage cycle resets. To increase the limit, open https://console.apify.com/billing/limits?openMonthlyUsageLimitsModal=1. Over the API, send PUT https://api.apify.com/v2/users/me/limits with a new maxMonthlyUsageUsd value. A GET on the same URL shows when the cycle re",
+      "params_used": {
+        "keywords": [
+          "python"
+        ],
+        "maxItems": 3
+      },
+      "run_id": "65c8728e-4af8-4338-be6e-7059dcc598fd",
+      "duration_ms": 872,
+      "checked_at": "2026-11-05T18:23:16+00:00"
+    },
+    {
+      "endpoint_type": "apify_tiktok_shop_search_scraper",
+      "platform": "tiktok",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "upstream_4xx",
+      "records_count": 0,
+      "error_message": "http_forbidden: upstream returned 403 | {   \"error\": {     \"type\": \"platform-feature-disabled\",     \"message\": \"You've reached your monthly usage limit of $199.00, so Actor runs and other Apify services are blocked until your monthly usage cycle resets. To increase the limit, open https://console.apify.com/billing/limits?openMonthlyUsageLimitsModal=1. Over the API, send PUT https://api.apify.com/v2/users/me/limits with a new maxMonthlyUsageUsd value. A GET on the same URL shows when the cycle re",
+      "params_used": {
+        "keyword": "phone case",
+        "maxItems": 3
+      },
+      "run_id": "5ae97ece-a329-448d-bcf2-5be6d4ee0050",
+      "duration_ms": 883,
+      "checked_at": "2026-11-05T18:23:17+00:00"
+    },
+    {
+      "endpoint_type": "apify_facebook_marketplace_scraper",
+      "platform": "facebook",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "failed",
+      "outcome": "failed",
+      "failure_class": "upstream_4xx",
+      "records_count": 0,
+      "error_message": "http_forbidden: upstream returned 403 | {   \"error\": {     \"type\": \"platform-feature-disabled\",     \"message\": \"You've reached your monthly usage limit of $199.00, so Actor runs and other Apify services are blocked until your monthly usage cycle resets. To increase the limit, open https://console.apify.com/billing/limits?openMonthlyUsageLimitsModal=1. Over the API, send PUT https://api.apify.com/v2/users/me/limits with a new maxMonthlyUsageUsd value. A GET on the same URL shows when the cycle re",
+      "params_used": {
+        "searchQuery": "laptop",
+        "maxItems": 3
+      },
+      "run_id": "9b918883-39e5-4220-b5bf-1c0e0361cd38",
+      "duration_ms": 870,
+      "checked_at": "2026-11-05T18:23:17+00:00"
+    }
+  ]
+}
