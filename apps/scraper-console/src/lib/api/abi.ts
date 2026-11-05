@@ -635,3 +635,21 @@ export async function deleteAbiGrant(
 export async function fetchAbiPolicy(slug: string): Promise<AbiPolicyResponse> {
   return apiFetch<AbiPolicyResponse>(`/api/abi/datasets/${slugPath(slug)}/policy`);
 }
+
+/**
+ * 删除数据集及其全部产物。需要 admin grant，不可逆。
+ *
+ * 服务端会在两种情况下回 409：还有进行中的导出或上传批次。此时先让它们
+ * 结束（或失败）再删，否则 worker 会在表被删后继续写入孤儿行。
+ *
+ * ``local_table`` 型数据集指向共享 ``raw.<table>``，删目录项不动数据；
+ * ``upload`` 型有专属 ``raw.abi_upload_<uuid>`` 物理表，会一并 DROP。
+ */
+export async function deleteAbiDataset(
+  slug: string,
+): Promise<{ deleted: boolean; id: string }> {
+  return apiFetch<{ deleted: boolean; id: string }>(
+    `/api/abi/datasets/${slugPath(slug)}`,
+    { method: "DELETE" },
+  );
+}

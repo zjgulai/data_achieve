@@ -26,6 +26,7 @@ import {
   approveAbiExport,
   createAbiExport,
   createAbiGrant,
+  deleteAbiDataset,
   deleteAbiGrant,
   downloadAbiExport,
   fetchAbiDataset,
@@ -214,6 +215,15 @@ function describeError(error: unknown): string {
     }
     if (error.status === 413) {
       return `超出限制（413）：${error.message}`;
+    }
+    if (error.status === 409) {
+      if (error.message === "dataset_has_active_exports") {
+        return "服务端拒绝（409）：该数据集还有进行中的导出（排队 / 待审批 / 运行中）。先让它们结束或失败，再执行删除。";
+      }
+      if (error.message === "dataset_has_active_uploads") {
+        return "服务端拒绝（409）：该数据集还有未结束的上传批次（待上传 / 已上传 / 校验中）。先让它们结束或失败，再执行删除。";
+      }
+      return `服务端拒绝（409）：${error.message}`;
     }
     if (error.status === 422) {
       return `校验失败（422）：${error.message}`;
@@ -1929,6 +1939,30 @@ function AdminTab() {
     onError: (error) => setActionError(describeError(error)),
   });
 
+  // 删除数据集。不可逆，因此表单要求把 slug 原样敲一遍——单靠
+  // window.confirm 挡不住手滑，而下拉框里相邻数据集的 slug 往往很像。
+  const deleteTarget = datasets.find((item) => item.slug === slug) ?? null;
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleteConfirmOwner, setDeleteConfirmOwner] = useState("");
+  // 切换数据集时清掉已敲的确认文本：确认串永远对应"当前选中的 slug",
+  // 残留上一个数据集的输入会让下一个人手滑删错目标。
+  if (deleteConfirmOwner !== slug) {
+    setDeleteConfirmOwner(slug);
+    setDeleteConfirm("");
+  }
+  const deleteDataset = useMutation<{ deleted: boolean; id: string }, Error, string>({
+    mutationFn: (targetSlug) => deleteAbiDataset(targetSlug),
+    onSuccess: () => {
+      setActionError(null);
+      setDeleteConfirm("");
+      setSlug("");
+      // 删除只清了目录项,授权/策略/导出策略/导出列表在服务端也随之消失,
+      // 全部失效一次,避免下一次选中 slug 时命中本地缓存里的旧行。
+      void queryClient.invalidateQueries({ queryKey: ["abi"] });
+    },
+    onError: (error) => setActionError(describeError(error)),
+  });
+
   function onCreateGrant(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!slug || !userId.trim()) return;
@@ -2135,6 +2169,69 @@ function AdminTab() {
               </form>
             </AsyncSection>
           </Panel>
+
+          {/* 只有拿到 grant 列表（与删除端点同一个 AdminAccessDep 门）才渲染。
+              取消授权会隐藏按钮，这是对的：没有 admin 就没有删除权限。 */}
+          {grants.data ? (
+            <Panel
+              title={`危险操作 · ${slug}`}
+              description="删除数据集会移除目录项、列登记、字段策略、授权、上传批次与导出记录。不可恢复。"
+            >
+              <div className="grid gap-3">
+                <p className="text-xs text-[var(--text-secondary)]">
+                  服务端会在还有进行中的导出（排队 / 待审批 / 运行中）或上传批次
+                  （待上传 / 已上传 / 校验中）时拒绝删除，先让它们结束再试。
+                </p>
+                <p className="text-xs text-[var(--text-tertiary)]">
+                  {deleteTarget?.source_kind === "upload"
+                    ? "该数据集是用户上传型，删除会一并 DROP 专属物理表 raw.abi_upload_*，数据不可找回。"
+                    : "该数据集指向共享 raw 表，删除只移除目录项，不动原始数据。"}
+                </p>
+                <label className="grid gap-1 text-xs text-[var(--text-secondary)]">
+                  <span>
+                    确认删除请输入 slug：
+                    <span className="ml-1 break-all font-mono text-[var(--text-primary)]">
+                      {slug}
+                    </span>
+                  </span>
+                  <input
+                    value={deleteConfirm}
+                    onChange={(event) => setDeleteConfirm(event.target.value)}
+                    placeholder={slug}
+                    autoComplete="off"
+                    className="w-80 rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] px-3 py-2 font-mono text-sm"
+                  />
+                </label>
+                <div>
+                  <button
+                    type="button"
+                    disabled={
+                      deleteDataset.isPending ||
+                      !deleteTarget ||
+                      deleteConfirm !== slug ||
+                      slug === ""
+                    }
+                    onClick={() => {
+                      const target = deleteTarget;
+                      if (!target) return;
+                      if (deleteConfirm !== slug) return;
+                      if (
+                        !window.confirm(
+                          `永久删除数据集「${target.name}」（${slug}）及其全部产物？此操作不可恢复。`,
+                        )
+                      ) {
+                        return;
+                      }
+                      deleteDataset.mutate(slug);
+                    }}
+                    className="rounded-[var(--radius-2)] border border-[var(--state-danger)] px-4 py-2 text-sm font-semibold text-[var(--state-danger)] hover:bg-[var(--surface-muted)] disabled:opacity-50"
+                  >
+                    {deleteDataset.isPending ? "删除中…" : "永久删除数据集"}
+                  </button>
+                </div>
+              </div>
+            </Panel>
+          ) : null}
         </>
       ) : null}
     </div>
