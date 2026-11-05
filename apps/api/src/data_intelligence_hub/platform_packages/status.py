@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
@@ -10,6 +10,13 @@ from data_intelligence_hub.collectors.outbound_policy import is_policy_failure
 from data_intelligence_hub.platform_packages.models import PlatformPackageCatalog
 
 Availability = Literal["verified", "config-gated", "degraded", "empty", "untested", "disabled"]
+
+# verified 证据的时效窗。SP-65 口径:超过该天数的实测不再当作有效验证。
+# 保守取 14 天——一次 live sweep 周期 + 缓冲。只影响 freshness 派生字段,
+# 不改 availability 本身(下游 20 个符号依赖 verified 语义,行为兼容优先;
+# 口径切换由 service 层的 SCRAPY_VERIFIED_TTL_DAYS=0 之外的环境开关控制,
+# 见 service.get_provider_status)。
+VERIFIED_TTL_DAYS = 14
 
 
 class EndpointEvidence(BaseModel):
@@ -30,6 +37,10 @@ class EndpointAvailability(BaseModel):
     last_records_count: int | None
     last_error_message: str | None
     policy_block_reason: str | None = None
+    # verified 证据的新鲜度派生字段(SP-65):fresh=证据在 TTL 窗口内,
+    # stale=超窗,stale 的 verified 在汇总口径里不应再计入「实测通过」。
+    # None = 非 verified(无时效语义)。
+    evidence_freshness: Literal["fresh", "stale"] | None = None
 
 
 class ProviderStatusResponse(BaseModel):
@@ -66,7 +77,11 @@ def build_provider_status(
     catalog: PlatformPackageCatalog,
     configured: Mapping[str, bool],
     evidence: Mapping[str, EndpointEvidence],
+    *,
+    now: datetime | None = None,
+    verified_ttl_days: int = VERIFIED_TTL_DAYS,
 ) -> ProviderStatusResponse:
+    checked_at = now or datetime.now(UTC)
     endpoint_map: dict[str, EndpointAvailability] = {}
     for package in catalog.packages:
         for endpoint in package.endpoints:
@@ -100,6 +115,24 @@ def build_provider_status(
                 availability = "empty"
             else:
                 availability = "verified"
+            # verified 的时效判定:只标派生字段,不改 availability——
+            # 下游(数说 commands、MCP collect、platform-packages 路由)
+            # 依赖 verified 表示「最近一次实测成功」,这里不动它的语义。
+            evidence_freshness: Literal["fresh", "stale"] | None = None
+            if availability == "verified" and latest is not None:
+                if latest.finished_at is None:
+                    evidence_freshness = "stale"
+                else:
+                    finished = (
+                        latest.finished_at
+                        if latest.finished_at.tzinfo
+                        else latest.finished_at.replace(tzinfo=UTC)
+                    )
+                    evidence_freshness = (
+                        "fresh"
+                        if finished >= checked_at - timedelta(days=verified_ttl_days)
+                        else "stale"
+                    )
             endpoint_map[endpoint.endpoint_type] = EndpointAvailability(
                 endpoint_type=endpoint.endpoint_type,
                 availability=availability,
@@ -109,6 +142,7 @@ def build_provider_status(
                 last_records_count=latest.records_count if latest else None,
                 last_error_message=latest.error_message if latest else None,
                 policy_block_reason=policy_reason,
+                evidence_freshness=evidence_freshness,
             )
     return ProviderStatusResponse(
         catalog_digest=catalog.catalog_digest,

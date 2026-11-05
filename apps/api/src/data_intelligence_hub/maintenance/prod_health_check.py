@@ -72,6 +72,10 @@ class HealthConfig:
     lark_app_id: str
     lark_app_secret: str
     alerts_disabled: bool
+    # 额外巡检目标(SP-43):name -> base_url。由 SCRAPY_HEALTH_EXTRA_TARGETS
+    # 注入(格式 "nameA=urlA,nameB=urlB"),用于把生产 B 纳入巡检——
+    # B 是冻结快照,口径为「监控不验收」:掉线要告警,但不阻塞 A 的发布。
+    extra_targets: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -143,6 +147,7 @@ def config_from_env(env: Mapping[str, str] | None = None) -> HealthConfig:
             open_id.strip() for open_id in raw_alert_ids.split(",") if open_id.strip()
         )
     disabled_value = (values.get("HEALTH_ALERTS_DISABLED") or "").strip().lower()
+    extra_targets = _parse_extra_targets(values.get("SCRAPY_HEALTH_EXTRA_TARGETS"))
     return HealthConfig(
         base_url=base_url,
         expected_schema=expected_schema or DEFAULT_EXPECTED_SCHEMA,
@@ -151,7 +156,23 @@ def config_from_env(env: Mapping[str, str] | None = None) -> HealthConfig:
         lark_app_id=(values.get("LARK_SHUSUO_APP_ID") or "").strip(),
         lark_app_secret=(values.get("LARK_SHUSUO_APP_SECRET") or "").strip(),
         alerts_disabled=disabled_value in {"1", "true", "yes", "on"},
+        extra_targets=extra_targets,
     )
+
+
+def _parse_extra_targets(raw: str | None) -> tuple[tuple[str, str], ...]:
+    """解析 "nameA=urlA,nameB=urlB"。空段与坏段跳过,不炸整个巡检。"""
+    if not raw or not raw.strip():
+        return ()
+    targets: list[tuple[str, str]] = []
+    for part in raw.split(","):
+        if "=" not in part:
+            continue
+        name, _, url = part.partition("=")
+        name, url = name.strip(), url.strip().rstrip("/")
+        if name and url:
+            targets.append((name, url))
+    return tuple(targets)
 
 
 def evaluate_health_payload(
@@ -308,7 +329,7 @@ def build_state(
 
 def build_alert_text(report: HealthReport, *, reason: str, base_url: str) -> str:
     lines = [
-        f"[生产 A 健康告警] {len(report.failed_checks)} 项检查失败",
+        f"[采集平台健康告警] {len(report.failed_checks)} 项检查失败",
         f"时间: {report.checked_at.isoformat()}",
         f"地址: {base_url}",
         f"触发: {REASON_LABELS.get(reason, reason)}",
@@ -474,52 +495,72 @@ def main(env: Mapping[str, str] | None = None) -> int:
     now = datetime.now(UTC)
     previous_state = load_state(config.state_file)
 
-    with httpx.Client(timeout=REQUEST_TIMEOUT_SECONDS) as client:
-        report = run_checks(
-            client,
-            base_url=config.base_url,
-            expected_schema=config.expected_schema,
-            now=now,
-        )
-        decision = decide_alert(previous_state, report, now)
-        alert_sent = False
-        alert_error = ""
-        if decision.should_alert and not config.alerts_disabled:
-            text = build_alert_text(report, reason=decision.reason, base_url=config.base_url)
-            try:
-                send_feishu_text(
-                    client,
-                    open_ids=config.alert_open_ids,
-                    text=text,
-                    app_id=config.lark_app_id,
-                    app_secret=config.lark_app_secret,
-                )
-                alert_sent = True
-            except Exception as exc:  # noqa: BLE001 - report the send error in JSON
-                alert_error = f"{type(exc).__name__}: {exc}"
+    def _check_one(base_url: str, state_file: Path) -> tuple[HealthReport, dict[str, Any]]:
+        nonlocal_block: dict[str, Any] = {}
+        with httpx.Client(timeout=REQUEST_TIMEOUT_SECONDS) as client:
+            report = run_checks(
+                client,
+                base_url=base_url,
+                expected_schema=config.expected_schema,
+                now=now,
+            )
+            previous = load_state(state_file)
+            decision = decide_alert(previous, report, now)
+            alert_sent = False
+            alert_error = ""
+            if decision.should_alert and not config.alerts_disabled:
+                text = build_alert_text(report, reason=decision.reason, base_url=base_url)
+                try:
+                    send_feishu_text(
+                        client,
+                        open_ids=config.alert_open_ids,
+                        text=text,
+                        app_id=config.lark_app_id,
+                        app_secret=config.lark_app_secret,
+                    )
+                    alert_sent = True
+                except Exception as exc:  # noqa: BLE001 - report the send error in JSON
+                    alert_error = f"{type(exc).__name__}: {exc}"
+        state = build_state(previous, report, decision, now, alert_sent=alert_sent)
+        state_error = ""
+        try:
+            save_state(state_file, state)
+        except OSError as exc:
+            state_error = f"{type(exc).__name__}: {exc}"
+        payload = report.to_dict()
+        payload["base_url"] = base_url
+        payload["expected_schema"] = config.expected_schema
+        payload["state_file"] = str(state_file)
+        payload["alert"] = {
+            "should_alert": decision.should_alert,
+            "reason": decision.reason,
+            "sent": alert_sent,
+            "disabled": config.alerts_disabled,
+        }
+        if alert_error:
+            payload["alert"]["error"] = alert_error
+        if state_error:
+            payload["state_error"] = state_error
+        nonlocal_block["payload"] = payload
+        return report, payload
 
-    state = build_state(previous_state, report, decision, now, alert_sent=alert_sent)
-    state_error = ""
-    try:
-        save_state(config.state_file, state)
-    except OSError as exc:
-        state_error = f"{type(exc).__name__}: {exc}"
-
-    payload = report.to_dict()
-    payload["base_url"] = config.base_url
-    payload["expected_schema"] = config.expected_schema
-    payload["state_file"] = str(config.state_file)
-    payload["alert"] = {
-        "should_alert": decision.should_alert,
-        "reason": decision.reason,
-        "sent": alert_sent,
-        "disabled": config.alerts_disabled,
-    }
-    if alert_error:
-        payload["alert"]["error"] = alert_error
-    if state_error:
-        payload["state_error"] = state_error
+    # 主目标(A):失败返回非零。
+    report, payload = _check_one(config.base_url, config.state_file)
     print(json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True))
+
+    # 额外目标(SP-43,如生产 B):独立 state 文件、独立告警决策;
+    # 监控不验收——B 掉线要告警,但不改变 A 的退出码。
+    for extra_name, extra_url in config.extra_targets:
+        state_file = config.state_file.with_name(
+            f"{config.state_file.stem}-{extra_name}{config.state_file.suffix}"
+        )
+        _, extra_payload = _check_one(extra_url, state_file)
+        extra_payload["target_name"] = extra_name
+        print(
+            json.dumps(
+                extra_payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True
+            )
+        )
     return 0 if report.ok else 1
 
 

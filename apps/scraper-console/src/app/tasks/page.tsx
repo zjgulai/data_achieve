@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/app-shell";
-import { fetchTasks, runTask } from "@/lib/api/tasks";
+import { fetchTasks, runTask, pauseTask, resumeTask } from "@/lib/api/tasks";
 import type { CollectionTask } from "@/lib/api/tasks";
-import { Play, RefreshCw, CheckCircle, AlertCircle, Clock, Loader2 } from "lucide-react";
+import { Play, RefreshCw, CheckCircle, AlertCircle, Clock, Loader2, Pause } from "lucide-react";
 
 /* ── Status badge ── */
 const STATUS_CONFIG: Record<string, { label: string; style: string }> = {
@@ -15,6 +15,25 @@ const STATUS_CONFIG: Record<string, { label: string; style: string }> = {
   disabled: { label: "已禁用", style: "bg-[var(--surface-muted)] text-[var(--text-tertiary)]" },
   draft:    { label: "草稿",   style: "bg-[var(--surface-muted)] text-[var(--text-tertiary)]" },
 };
+
+/* ── freshness 徽章(后端 freshness_status: fresh/stale/unknown)── */
+const FRESHNESS_CONFIG: Record<string, { label: string; style: string }> = {
+  fresh:   { label: "新鲜", style: "bg-[var(--success-soft)] text-[var(--state-success)]" },
+  stale:   { label: "超期", style: "bg-[var(--danger-soft)] text-[var(--state-danger)]" },
+  unknown: { label: "未知", style: "bg-[var(--surface-muted)] text-[var(--text-tertiary)]" },
+};
+
+function FreshnessBadge({ task }: { task: CollectionTask }) {
+  const cfg = FRESHNESS_CONFIG[task.freshness_status] ?? FRESHNESS_CONFIG.unknown;
+  const title = task.stale_hours != null
+    ? `目标 ${task.freshness_target_hours}h,超期 ${task.stale_hours}h`
+    : `目标 ${task.freshness_target_hours}h`;
+  return (
+    <span title={title} className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${cfg.style}`}>
+      {cfg.label}
+    </span>
+  );
+}
 
 const RUN_STATUS_ICON: Record<string, React.ReactNode> = {
   completed: <CheckCircle size={14} className="text-[var(--state-success)]" />,
@@ -39,12 +58,20 @@ function TaskRow({ task }: { task: CollectionTask }) {
     mutationFn: () => runTask(task.id, `console-manual-${task.id}-${Date.now()}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["tasks"] }),
   });
+  const pauseOrResume = useMutation({
+    mutationFn: () =>
+      task.status === "paused" ? resumeTask(task.id) : pauseTask(task.id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["tasks"] }),
+  });
 
   const lastRunAt = task.latest_run_started_at
     ? new Date(task.latest_run_started_at).toLocaleString("zh-CN", { dateStyle: "short", timeStyle: "short" })
     : task.last_run_at
       ? new Date(task.last_run_at).toLocaleString("zh-CN", { dateStyle: "short", timeStyle: "short" })
       : "—";
+  const nextRunAt = task.next_run_at
+    ? new Date(task.next_run_at).toLocaleString("zh-CN", { dateStyle: "short", timeStyle: "short" })
+    : null;
 
   return (
     <tr className="border-b border-[var(--border-subtle)] transition-colors hover:bg-[var(--surface-muted)]">
@@ -59,6 +86,9 @@ function TaskRow({ task }: { task: CollectionTask }) {
       </td>
       <td className="px-4 py-3">
         <StatusPill status={task.status} />
+      </td>
+      <td className="px-4 py-3">
+        <FreshnessBadge task={task} />
       </td>
       <td className="px-4 py-3">
         {task.latest_run_status ? (
@@ -89,6 +119,9 @@ function TaskRow({ task }: { task: CollectionTask }) {
         ) : (
           <span className="text-[var(--text-tertiary)]">手动</span>
         )}
+        {nextRunAt ? (
+          <div className="mt-0.5 text-[11px] text-[var(--text-tertiary)]">下次 {nextRunAt}</div>
+        ) : null}
       </td>
       <td className="px-4 py-3 text-xs text-[var(--text-tertiary)]">{lastRunAt}</td>
       <td className="px-4 py-3">
@@ -104,6 +137,21 @@ function TaskRow({ task }: { task: CollectionTask }) {
               ? <Loader2 size={14} className="animate-spin" />
               : <Play size={14} />}
           </button>
+          {(task.status === "enabled" || task.status === "paused") && (
+            <button
+              type="button"
+              title={task.status === "paused" ? "恢复调度" : "暂停调度"}
+              disabled={pauseOrResume.isPending}
+              onClick={() => pauseOrResume.mutate()}
+              className="rounded-[var(--radius-1)] border border-[var(--border-subtle)] p-1.5 text-[var(--text-tertiary)] transition-colors hover:bg-[var(--surface-muted)] hover:text-[var(--state-warning)] disabled:opacity-40"
+            >
+              {pauseOrResume.isPending
+                ? <Loader2 size={14} className="animate-spin" />
+                : task.status === "paused"
+                  ? <Play size={14} />
+                  : <Pause size={14} />}
+            </button>
+          )}
         </div>
       </td>
     </tr>
@@ -198,7 +246,7 @@ export default function TasksPage() {
             <table className="w-full min-w-[840px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-[var(--border-subtle)]">
-                  {["任务名称", "状态", "最近运行", "记录数", "成功/失败", "定时", "最近执行", "操作"].map((h) => (
+                  {["任务名称", "状态", "新鲜度", "最近运行", "记录数", "成功/失败", "定时", "最近执行", "操作"].map((h) => (
                     <th
                       key={h}
                       className="px-4 py-3 text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wide"

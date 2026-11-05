@@ -348,7 +348,7 @@ def test_build_alert_text_lists_failed_checks_status_and_bitable_link() -> None:
 
     text = build_alert_text(report, reason=ALERT_REASON_TRANSITION, base_url="http://127.0.0.1:8000")
 
-    assert "[生产 A 健康告警] 2 项检查失败" in text
+    assert "[采集平台健康告警] 2 项检查失败" in text
     assert NOW.isoformat() in text
     assert "http://127.0.0.1:8000" in text
     assert "- health: HTTP 503 database='unavailable'" in text

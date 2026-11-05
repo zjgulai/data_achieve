@@ -88,3 +88,106 @@ def test_provider_status_treats_success_without_records_as_empty() -> None:
     )
     by_endpoint = {item.endpoint_type: item for item in status.endpoints}
     assert by_endpoint["tikhub_tiktok_video_search"].availability == "empty"
+
+
+def test_provider_status_marks_stale_verified_evidence() -> None:
+    """SP-65:verified 证据超过 14 天 TTL 只降 freshness,不改 availability。
+
+    availability 语义(最近一次实测成功)被数说 commands/MCP collect/
+    platform-packages 路由依赖;时效判定走独立派生字段,行为兼容。
+    """
+    from datetime import UTC, datetime, timedelta
+
+    source = asyncio.run(get_collector_catalog())
+    catalog = build_platform_package_catalog(source)
+    now = datetime.now(UTC)
+    status = build_provider_status(
+        catalog,
+        configured={"TIKHUB_API_KEY": True},
+        evidence={
+            "tikhub_tiktok_video_search": EndpointEvidence(
+                status="success",
+                records_count=3,
+                finished_at=now - timedelta(days=20),
+            )
+        },
+        now=now,
+    )
+    endpoint = {item.endpoint_type: item for item in status.endpoints}[
+        "tikhub_tiktok_video_search"
+    ]
+    # availability 不变(兼容),时效走 evidence_freshness
+    assert endpoint.availability == "verified"
+    assert endpoint.evidence_freshness == "stale"
+
+
+def test_provider_status_marks_fresh_verified_evidence() -> None:
+    from datetime import UTC, datetime, timedelta
+
+    source = asyncio.run(get_collector_catalog())
+    catalog = build_platform_package_catalog(source)
+    now = datetime.now(UTC)
+    status = build_provider_status(
+        catalog,
+        configured={"TIKHUB_API_KEY": True},
+        evidence={
+            "tikhub_tiktok_video_search": EndpointEvidence(
+                status="success",
+                records_count=3,
+                finished_at=now - timedelta(days=2),
+            )
+        },
+        now=now,
+    )
+    endpoint = {item.endpoint_type: item for item in status.endpoints}[
+        "tikhub_tiktok_video_search"
+    ]
+    assert endpoint.availability == "verified"
+    assert endpoint.evidence_freshness == "fresh"
+
+
+def test_provider_status_non_verified_has_no_freshness() -> None:
+    from datetime import UTC, datetime, timedelta
+
+    source = asyncio.run(get_collector_catalog())
+    catalog = build_platform_package_catalog(source)
+    now = datetime.now(UTC)
+    status = build_provider_status(
+        catalog,
+        configured={"TIKHUB_API_KEY": True},
+        evidence={
+            "tikhub_tiktok_video_search": EndpointEvidence(
+                status="failed",
+                error_message="upstream_timeout",
+                finished_at=now - timedelta(days=2),
+            )
+        },
+        now=now,
+    )
+    endpoint = {item.endpoint_type: item for item in status.endpoints}[
+        "tikhub_tiktok_video_search"
+    ]
+    assert endpoint.availability == "degraded"
+    assert endpoint.evidence_freshness is None
+
+
+def test_provider_status_verified_without_timestamp_counts_stale() -> None:
+    """没有时间戳的 verified 证据不可辩护,按 stale 处理。"""
+    source = asyncio.run(get_collector_catalog())
+    catalog = build_platform_package_catalog(source)
+    status = build_provider_status(
+        catalog,
+        configured={"TIKHUB_API_KEY": True},
+        evidence={
+            "tikhub_tiktok_video_search": EndpointEvidence(
+                status="success",
+                records_count=3,
+                finished_at=None,
+            )
+        },
+    )
+    endpoint = {item.endpoint_type: item for item in status.endpoints}[
+        "tikhub_tiktok_video_search"
+    ]
+    assert endpoint.availability == "verified"
+    assert endpoint.evidence_freshness == "stale"

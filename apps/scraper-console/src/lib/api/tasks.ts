@@ -7,6 +7,11 @@ export type CollectionTask = {
   status: string;
   source_name: string | null;
   schedule_cron: string | null;
+  schedule_policy: string;
+  freshness_status: string;
+  freshness_target_hours: number;
+  stale_hours: number | null;
+  next_run_at: string | null;
   success_count: number;
   failure_count: number;
   last_run_at: string | null;
@@ -61,4 +66,12 @@ export async function runTask(
     method: "POST",
     headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {},
   });
+}
+
+export async function pauseTask(taskId: string): Promise<CollectionTask> {
+  return apiFetch<CollectionTask>(`/api/tasks/${taskId}/pause`, { method: "POST" });
+}
+
+export async function resumeTask(taskId: string): Promise<CollectionTask> {
+  return apiFetch<CollectionTask>(`/api/tasks/${taskId}/resume`, { method: "POST" });
 }
