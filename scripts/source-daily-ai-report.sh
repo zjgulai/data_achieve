@@ -74,7 +74,7 @@ probe() {
   local body="$WORK/health-$name.json"
   local code
   code=$(curl -sS -m 15 -o "$body" -w '%{http_code}' "$url" 2> "$WORK/health-$name.err")
-  echo "### health-$name HTTP=$code as_of=$READ_AT（运行时刻，不是报告日收盘）"
+  echo "### health-$name HTTP=$code as_of=${READ_AT}（运行时刻，不是报告日收盘）"
   head -c 400 "$body" 2>/dev/null
   echo
   echo
@@ -83,7 +83,7 @@ probe() {
 collect() {
   cd "$PROJ" || return 1
   echo "# 当日原始读数 · $DATE_LABEL"
-  echo "读数时间：$READ_AT（探活、进程、仓库 HEAD 都是这一刻的状态，不是报告日收盘值）"
+  echo "读数时间：${READ_AT}（探活、进程、仓库 HEAD 都是这一刻的状态，不是报告日收盘值）"
   echo
   echo "## 仓库"
   echo "分支：$(git rev-parse --abbrev-ref HEAD)"
@@ -99,11 +99,11 @@ collect() {
   count=$(git log --since="$TODAY 00:00:00" --until="$TODAY 23:59:59" --pretty=format:%H | grep -c .)
   first=$(git log --since="$TODAY 00:00:00" --until="$TODAY 23:59:59" --pretty=format:%H | tail -1)
   last=$(git log --since="$TODAY 00:00:00" --until="$TODAY 23:59:59" --pretty=format:%H | head -1)
-  echo "提交数：$count（原样抄这一行，不要自己数）"
+  echo "提交数：${count}（原样抄这一行，不要自己数）"
   if [[ -n "$first" ]]; then
     parent=$(git rev-parse "$first^" 2>/dev/null || echo "$first")
     echo "报告日最后一条：$(git log -1 --pretty='%h %s' "$last")"
-    echo -n "代码量（$parent..$last，原样抄这一行）："
+    echo -n "代码量（${parent}..${last}，原样抄这一行）："
     git diff --shortstat "$parent" "$last"
   fi
   echo
@@ -148,16 +148,18 @@ PY
   echo
   echo "## CI（gh 可用时）"
   if command -v gh >/dev/null 2>&1; then
-    gh run list --created "$(date -j -f "%Y%m%d" "$TODAY" "+%Y-%m-%d")" --limit 100 \
-      --json name,conclusion,createdAt,headSha,displayTitle 2>&1 \
+    gh run list --limit 200 --json name,conclusion,createdAt,headSha,displayTitle 2>&1 \
       | python3 -c 'import json,sys
+from datetime import datetime,timedelta,timezone
 try:
     rows=json.load(sys.stdin)
 except Exception as exc:
     print("CI 未查：", exc); raise SystemExit(0)
+cst=timezone(timedelta(hours=8))
 for r in rows:
-    if r.get("createdAt","").startswith(sys.argv[1]) and r.get("name")=="CI":
-        print(r["createdAt"][:16], r.get("conclusion"), r.get("headSha","")[:7], r.get("displayTitle","")[:60])
+    ts=datetime.fromisoformat(r["createdAt"].replace("Z","+00:00")).astimezone(cst)
+    if ts.strftime("%Y%m%d")==sys.argv[1] and r.get("name")=="CI":
+        print(ts.strftime("%Y-%m-%d %H:%M CST"), r.get("conclusion"), r.get("headSha","")[:7], r.get("displayTitle","")[:60])
 ' "$TODAY" 2>&1 | head -30
   else
     echo "CI 未查：gh 不在 PATH"
