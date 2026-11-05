@@ -493,7 +493,6 @@ def send_feishu_text(
 def main(env: Mapping[str, str] | None = None) -> int:
     config = config_from_env(env)
     now = datetime.now(UTC)
-    previous_state = load_state(config.state_file)
 
     def _check_one(base_url: str, state_file: Path) -> tuple[HealthReport, dict[str, Any]]:
         nonlocal_block: dict[str, Any] = {}
