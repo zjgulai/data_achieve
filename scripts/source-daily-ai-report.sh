@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Source 项目每日 AI 日报（launchd 定时任务入口）
-# 由 ~/Library/LaunchAgents/com.source.daily-ai-report.plist 每天 21:07 触发。
+# Main 每日 AI 日报（飞书 + 仓内 md，04:00）
+# 由 ~/Library/LaunchAgents/com.source.main-daily-ai-report.plist 每天 04:00 触发。
+# 04:00 跑的是前一天：报告日期取「昨天」，与文件名、飞书标题一致。
 # 日志：/Users/lute/Project/data_scrapy/tmp/daily-ai-report.log
 #
 # 分工：
@@ -12,6 +13,7 @@
 # 用法：
 #   bash scripts/source-daily-ai-report.sh            # 正常跑
 #   bash scripts/source-daily-ai-report.sh --collect-only  # 只收数，不调模型、不写飞书
+#   bash scripts/source-daily-ai-report.sh --report-date 20261105  # 指定报告日期（手动补跑）
 
 set -uo pipefail
 
@@ -19,21 +21,38 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:/usr/bin:/bin:$PA
 
 PROJ=/Users/lute/Project/data_scrapy
 LOG="$PROJ/tmp/daily-ai-report.log"
-TODAY=$(date +%Y%m%d)
-DOW=$(date +%u)
+COLLECT_ONLY=0
+REPORT_DATE_OVERRIDE=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --collect-only) COLLECT_ONLY=1; shift ;;
+    --report-date) REPORT_DATE_OVERRIDE="${2:-}"; shift 2 ;;
+    *) echo "unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
+
+RUN_DATE=$(date +%Y%m%d)
+HOUR=$(date +%H)
+if [[ -n "$REPORT_DATE_OVERRIDE" ]]; then
+  TODAY="$REPORT_DATE_OVERRIDE"
+elif (( 10#$HOUR < 6 )); then
+  TODAY=$(date -v-1d +%Y%m%d)
+else
+  TODAY="$RUN_DATE"
+fi
+[[ "$TODAY" =~ ^[0-9]{8}$ ]] || { echo "--report-date 必须是 YYYYMMDD" >&2; exit 2; }
+DOW=$(date -j -f "%Y%m%d" "$TODAY" "+%u")
 case "$DOW" in
   1) W=一 ;; 2) W=二 ;; 3) W=三 ;; 4) W=四 ;;
   5) W=五 ;; 6) W=六 ;; 7) W=日 ;;
   *) W=? ;;
 esac
-DATE_LABEL="$(date +%Y-%m-%d)（周${W}）"
+DATE_LABEL="$(date -j -f "%Y%m%d" "$TODAY" "+%Y-%m-%d")（周${W}）"
 WORK="$PROJ/tmp/daily-ai-report-$TODAY"
 RAW="$WORK/raw.md"
 JSON="$WORK/report.json"
 MD="$PROJ/reports/Source-项目日报-$TODAY.md"
 CONFIG="$HOME/.config/source-daily-report/feishu.json"
-COLLECT_ONLY=0
-[[ "${1:-}" == "--collect-only" ]] && COLLECT_ONLY=1
 
 mkdir -p "$PROJ/tmp" "$WORK" "$PROJ/reports"
 
@@ -143,7 +162,7 @@ EOF
 }
 
 {
-  echo "===== $(date '+%F %T') start collect-only=$COLLECT_ONLY ====="
+  echo "===== $(date '+%F %T') start run=$RUN_DATE report=$TODAY collect-only=$COLLECT_ONLY ====="
   collect > "$RAW" 2>&1
   echo "RAW $RAW $(stat -f%z "$RAW" 2>/dev/null || echo 0) bytes"
 
