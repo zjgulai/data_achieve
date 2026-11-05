@@ -1,24 +1,34 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { verifyAccessToken } from "./lib/jwt";
 
 /**
- * 登录门禁：没有 access_token Cookie 时把页面请求送到 /login。
+ * 登录门禁：校验 access_token Cookie 的 JWT 签名与有效期。
  *
- * 只做存在性检查，不验签。API 仍是权限的最终判定者：
- * 过期或伪造的 Cookie 会让 API 返回 401，页面显示错误。
+ * 2026-11-03 变更：原实现只检查 Cookie 是否存在，不验签——
+ * 任意伪造值都能通过门禁。现改为真实验签（HS256），与 API 侧
+ * core/security.py 使用同一个 JWT_SECRET。
+ *
+ * 密钥缺失时 fail closed（一律跳登录页），不退回"仅检查存在性"，
+ * 否则一个配置疏漏就会让门禁重新失效。
  */
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
-  const hasToken = Boolean(request.cookies.get("access_token")?.value);
   const isLoginPage = pathname === "/login";
 
-  if (!hasToken && !isLoginPage) {
+  const token = request.cookies.get("access_token")?.value;
+  const valid = token ? await verifyAccessToken(token) : false;
+
+  if (!valid && !isLoginPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = `?next=${encodeURIComponent(pathname + search)}`;
-    return NextResponse.redirect(url);
+    const redirect = NextResponse.redirect(url);
+    // 清掉失效 Cookie，避免带着过期 token 反复跳转
+    if (token) redirect.cookies.delete("access_token");
+    return redirect;
   }
 
-  if (hasToken && isLoginPage) {
+  if (valid && isLoginPage) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 

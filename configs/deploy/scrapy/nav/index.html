@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Data Intelligence Hub · 功能导航</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2128; --line:#30363d;
+    --text:#e6edf3; --muted:#8b949e; --accent:#539bf5; --accent2:#3d7ce0;
+    --green:#3fb950; --purple:#a371f7; --orange:#f0883e;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);
+       font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+       display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px}
+  .wrap{width:100%;max-width:980px}
+  header{text-align:center;margin-bottom:44px}
+  h1{font-size:26px;margin:0 0 8px;font-weight:600;letter-spacing:.5px}
+  .sub{color:var(--muted);font-size:13px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+  a.card{display:block;background:var(--panel);border:1px solid var(--line);border-radius:12px;
+         padding:22px 24px;text-decoration:none;color:inherit;transition:.18s;
+         position:relative;overflow:hidden}
+  a.card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
+                 background:var(--accent);opacity:.75;transition:.18s}
+  a.card:hover{background:var(--panel2);border-color:var(--accent);transform:translateY(-2px)}
+  a.card:hover::before{opacity:1;width:4px}
+  .card .ico{font-size:20px;margin-bottom:10px;display:block}
+  .card h2{font-size:15px;margin:0 0 6px;font-weight:600}
+  .card p{margin:0;color:var(--muted);font-size:12.5px;line-height:1.55}
+  .card .path{display:inline-block;margin-top:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+              font-size:11.5px;color:var(--accent);background:rgba(83,155,245,.1);
+              padding:3px 9px;border-radius:5px}
+  .card.q::before{background:var(--green)}
+  .card.q:hover{border-color:var(--green)}
+  .card.q .path{color:var(--green);background:rgba(63,185,80,.1)}
+  .card.i::before{background:var(--purple)}
+  .card.i:hover{border-color:var(--purple)}
+  .card.i .path{color:var(--purple);background:rgba(163,113,247,.1)}
+  .card.a::before{background:var(--orange)}
+  .card.a:hover{border-color:var(--orange)}
+  .card.a .path{color:var(--orange);background:rgba(240,136,62,.1)}
+  footer{margin-top:44px;text-align:center;color:var(--muted);font-size:12px;
+         border-top:1px solid var(--line);padding-top:20px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Data Intelligence Hub</h1>
+    <div class="sub">数据采集 · 素材检索 · 洞察分析</div>
+  </header>
+
+  <div class="grid">
+    <a class="card q" href="/media-query/">
+      <span class="ico">🔍</span>
+      <h2>数据查询</h2>
+      <p>TikTok 素材检索：5,285 条视频，支持主题筛选、全文搜索、在线播放与 CSV 导出</p>
+      <span class="path">/media-query/</span>
+    </a>
+
+    <a class="card" href="/">
+      <span class="ico">⚙️</span>
+      <h2>采集控制台</h2>
+      <p>采集任务管理、运行监控、项目配置、资产目录与报告</p>
+      <span class="path">/</span>
+    </a>
+
+    <a class="card i" href="/insight/">
+      <span class="ico">📊</span>
+      <h2>洞察报告</h2>
+      <p>采集数据的分析视图与业务洞察</p>
+      <span class="path">/insight/</span>
+    </a>
+
+    <a class="card a" href="/api/docs">
+      <span class="ico">🔌</span>
+      <h2>API 文档</h2>
+      <p>采集服务接口说明与调试入口</p>
+      <span class="path">/api/</span>
+    </a>
+  </div>
+
+  <footer>scrapy.luteos.com · Data Intelligence Hub</footer>
+</div>
+</body>
+</html>
