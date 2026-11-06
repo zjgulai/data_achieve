@@ -24,13 +24,17 @@
   ③ABI 摄取路径(meta.apify_token,4 个 complex_homage active)未动,
   与 env 同账号,无冲突。
 
-### NB-2 · T-1 补齐确认(非动作,验收)
+### NB-2 · T-1 补齐确认 ✅ 已完成(2026-11-06)
 
-- abi-ingest 已常驻(e92a008),backfill 按 tick 逐日推进(11-05 起每天
-  +1,直到 11-10)。11-07 检查一次:schedule_state == 2026-11-10 且
-  ingest_job 无 failed。
-- 若 failed>0:查 meta.ingest_run 的错误计数,按 abi-wiring-decision
-  的六 blocker 清单排查。
+- 实测:schedule_state = **2026-11-05**(两账号)= 当日北京时间的
+  T-1(compute_target_date 语义:北京日期-1 天);ingest_job 全部
+  succeeded(11,无 failed);心跳正常;raw.apify_dataset
+  max(modified_at)= 11-05 06:10。
+- 结论:backfill 已追平进入稳态,「缺 11-05~11-10 六天」的判断
+  **作废**——11-05 发布当天就把水位推到了当日 T-1,不需要再补 5 天
+  (此前按「每天 +1 天」外推是错的:backfill 一次 enqueue 全部缺口,
+  当晚就跑完了)。
+- 保留动作:无。每日稳态由 abi-ingest 常驻保证。
 
 ## P1(11-22 ~ 12-05)
 
