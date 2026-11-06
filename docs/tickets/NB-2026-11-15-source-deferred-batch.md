@@ -7,18 +7,22 @@
 
 ## P0(11-22 前,blocker 性质)
 
-### NB-1 · Apify token 切换(yueguz → complex_homage)
+### NB-1 · Apify token 切换(yueguz → complex_homage)✅ 已完成(2026-11-06)
 
 - 现象:live sweep(2026-11-05)26 个 Apify 端点全部 403
   "platform-feature-disabled: You've reached your monthly usage limit of
   $199.00"——facebook 0/7、google_trends 0/1 瘫在这里。
-- 动作:compose 的 APIFY_API_TOKEN 切 complex_homage 账号(记忆
-  apify-accounts-inventory:complex_homage 上限 $500/月,当前 $372);
-  或 yueguz 下月 1 日重置后切回并做双 token 分摊。
-- 验收:切 token 后重跑 sweep --only 六渠道 Apify 端点,403→200。
-- 预算:0.5 人日(改 env + compose environment 列表 + 重启 + 复测)。
-- 教训挂钩:provider-key-install.md——装密钥必须同时改 compose 的
-  environment 列表。
+- 执行:env 值从 meta.apify_token 加密表解密(complex_homage,在 api
+  容器内完成,明文不落盘不外泄)→ 原地替换 .env.production →
+  **compose force-recreate api**(docker restart 不重做变量替换,这是
+  本次唯一的坑)→ 按规约 restart edge → 公网 200。
+- 验收:复测 26 个 Apify 端点 → **23 ok / 3 读超时**(120s 上限内
+  actor 未完成,非权限;facebook 0/7→4/7,trends 1/1)。证据:
+  live-sweep-apify-after-token-switch.json。
+- 遗留:①3 个超时端点下次 sweep 观察(actor 时长问题,可能需要
+  --timeout 上调);②yueguz 12-01 重置后可做双 token 分摊(可选);
+  ③ABI 摄取路径(meta.apify_token,4 个 complex_homage active)未动,
+  与 env 同账号,无冲突。
 
 ### NB-2 · T-1 补齐确认(非动作,验收)
 

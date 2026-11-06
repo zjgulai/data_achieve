@@ -1,0 +1,529 @@
+{
+  "base_url": "https://scrapy.luteos.com",
+  "project_id": "c86025e2-5209-48e3-b2ea-6d5c49038311",
+  "generated_at": "2026-11-06T01:54:39+00:00",
+  "group": "",
+  "only": "apify_facebook_comments_scraper,apify_facebook_groups_scraper,apify_facebook_marketplace_scraper,apify_facebook_media_page_scraper,apify_facebook_pages_scraper,apify_facebook_posts_scraper,apify_facebook_search_scraper,apify_google_trends_scraper,apify_instagram_comment_scraper,apify_instagram_hashtag_scraper,apify_instagram_media_profile_scraper,apify_instagram_post_scraper,apify_instagram_profile_scraper,apify_instagram_reel_scraper,apify_instagram_scraper,apify_reddit_scraper,apify_tiktok_comments_scraper,apify_tiktok_creative_center,apify_tiktok_media_profile_scraper,apify_tiktok_scraper,apify_tiktok_shop_search_scraper,apify_tiktok_transcript_extractor,apify_youtube_comments_scraper,apify_youtube_media_channel_scraper,apify_youtube_scraper,apify_youtube_transcript_scraper",
+  "total": 26,
+  "tested": 26,
+  "summary": {
+    "ok": 23,
+    "request_error": 3
+  },
+  "results": [
+    {
+      "endpoint_type": "apify_instagram_scraper",
+      "platform": "instagram",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 1,
+      "error_message": "",
+      "params_used": {
+        "usernames": [
+          "instagram"
+        ],
+        "maxItems": 3
+      },
+      "run_id": "4f653bad-9bab-4463-9838-5c832c59d841",
+      "duration_ms": 7498,
+      "checked_at": "2026-11-06T01:49:49+00:00"
+    },
+    {
+      "endpoint_type": "apify_instagram_profile_scraper",
+      "platform": "instagram",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 1,
+      "error_message": "",
+      "params_used": {
+        "usernames": [
+          "instagram"
+        ],
+        "maxItems": 3
+      },
+      "run_id": "2e3e1793-0695-4682-84aa-48c342e2aea0",
+      "duration_ms": 13424,
+      "checked_at": "2026-11-06T01:49:55+00:00"
+    },
+    {
+      "endpoint_type": "apify_instagram_post_scraper",
+      "platform": "instagram",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 5,
+      "error_message": "",
+      "params_used": {},
+      "run_id": "52126ac6-31b9-4425-8b3b-51a4bffbf976",
+      "duration_ms": 19204,
+      "checked_at": "2026-11-06T01:50:00+00:00"
+    },
+    {
+      "endpoint_type": "apify_instagram_hashtag_scraper",
+      "platform": "instagram",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 5,
+      "error_message": "",
+      "params_used": {
+        "hashtags": [
+          "python"
+        ],
+        "resultsPerPage": 3
+      },
+      "run_id": "2675eb64-8b56-47cd-958a-995d93ea87b4",
+      "duration_ms": 12674,
+      "checked_at": "2026-11-06T01:50:08+00:00"
+    },
+    {
+      "endpoint_type": "apify_instagram_reel_scraper",
+      "platform": "instagram",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 5,
+      "error_message": "",
+      "params_used": {},
+      "run_id": "152fcc7b-8aed-412f-979e-3955d13010f8",
+      "duration_ms": 19224,
+      "checked_at": "2026-11-06T01:50:08+00:00"
+    },
+    {
+      "endpoint_type": "apify_instagram_comment_scraper",
+      "platform": "instagram",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 1,
+      "error_message": "",
+      "params_used": {},
+      "run_id": "621c4de2-59a2-4c51-97df-87787119d5ba",
+      "duration_ms": 13364,
+      "checked_at": "2026-11-06T01:50:14+00:00"
+    },
+    {
+      "endpoint_type": "apify_facebook_comments_scraper",
+      "platform": "facebook",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 3,
+      "error_message": "",
+      "params_used": {
+        "startUrls": [
+          {
+            "url": "https://www.facebook.com/facebook"
+          }
+        ],
+        "maxItems": 3
+      },
+      "run_id": "3e967cb9-7342-4d5e-af22-9cb9687258cb",
+      "duration_ms": 7460,
+      "checked_at": "2026-11-06T01:50:16+00:00"
+    },
+    {
+      "endpoint_type": "apify_facebook_pages_scraper",
+      "platform": "facebook",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 1,
+      "error_message": "",
+      "params_used": {},
+      "run_id": "04070787-4d8d-4152-be27-dc4f3fd2b504",
+      "duration_ms": 7370,
+      "checked_at": "2026-11-06T01:50:24+00:00"
+    },
+    {
+      "endpoint_type": "apify_facebook_search_scraper",
+      "platform": "facebook",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 5,
+      "error_message": "",
+      "params_used": {},
+      "run_id": "068985ca-5ee5-4a93-aeee-5bee5b64c55f",
+      "duration_ms": 7379,
+      "checked_at": "2026-11-06T01:50:32+00:00"
+    },
+    {
+      "endpoint_type": "apify_facebook_groups_scraper",
+      "platform": "facebook",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 5,
+      "error_message": "",
+      "params_used": {},
+      "run_id": "1ad3089b-6133-4224-a5e3-b0b0039e245c",
+      "duration_ms": 26149,
+      "checked_at": "2026-11-06T01:50:41+00:00"
+    },
+    {
+      "endpoint_type": "apify_tiktok_scraper",
+      "platform": "tiktok",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 1,
+      "error_message": "",
+      "params_used": {
+        "profiles": [
+          "tiktok"
+        ],
+        "maxItems": 3
+      },
+      "run_id": "85b77003-f1c1-4cc7-9942-f0b957f9a30b",
+      "duration_ms": 13049,
+      "checked_at": "2026-11-06T01:50:46+00:00"
+    },
+    {
+      "endpoint_type": "apify_tiktok_comments_scraper",
+      "platform": "tiktok",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 5,
+      "error_message": "",
+      "params_used": {
+        "postURLs": [
+          "https://www.tiktok.com/@tiktok/video/7106594312292453675"
+        ],
+        "maxItems": 5
+      },
+      "run_id": "ef1ec068-ce97-4f32-a797-36e3a997f217",
+      "duration_ms": 18767,
+      "checked_at": "2026-11-06T01:51:00+00:00"
+    },
+    {
+      "endpoint_type": "apify_youtube_scraper",
+      "platform": "youtube",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 3,
+      "error_message": "",
+      "params_used": {
+        "searchKeywords": "python tutorial",
+        "maxResults": 3
+      },
+      "run_id": "acc4ecab-4882-46ec-91c3-e6573b35d6cb",
+      "duration_ms": 24009,
+      "checked_at": "2026-11-06T01:51:10+00:00"
+    },
+    {
+      "endpoint_type": "apify_youtube_comments_scraper",
+      "platform": "youtube",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 5,
+      "error_message": "",
+      "params_used": {
+        "videoUrls": [
+          "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        ],
+        "maxComments": 5
+      },
+      "run_id": "fbe954ec-a956-4e47-b912-068edc5b3994",
+      "duration_ms": 13123,
+      "checked_at": "2026-11-06T01:51:14+00:00"
+    },
+    {
+      "endpoint_type": "apify_google_trends_scraper",
+      "platform": "google_trends",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 1,
+      "error_message": "",
+      "params_used": {
+        "searchTerms": [
+          "python"
+        ],
+        "geo": "US"
+      },
+      "run_id": "d316ae61-6067-4968-8456-11eac5135298",
+      "duration_ms": 7317,
+      "checked_at": "2026-11-06T01:51:22+00:00"
+    },
+    {
+      "endpoint_type": "apify_reddit_scraper",
+      "platform": "reddit",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 5,
+      "error_message": "",
+      "params_used": {
+        "searches": [
+          "python"
+        ],
+        "maxItems": 5
+      },
+      "run_id": "fcc7b710-068d-4085-b894-68d57a687bc7",
+      "duration_ms": 24360,
+      "checked_at": "2026-11-06T01:51:35+00:00"
+    },
+    {
+      "endpoint_type": "apify_instagram_media_profile_scraper",
+      "platform": "instagram",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 1,
+      "error_message": "",
+      "params_used": {
+        "usernames": [
+          "instagram"
+        ],
+        "maxItems": 3
+      },
+      "run_id": "d2dafa0e-054f-42eb-b2ee-8e3dbcece8af",
+      "duration_ms": 13298,
+      "checked_at": "2026-11-06T01:51:35+00:00"
+    },
+    {
+      "endpoint_type": "apify_youtube_media_channel_scraper",
+      "platform": "youtube",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 3,
+      "error_message": "",
+      "params_used": {
+        "channelUrls": [
+          "https://www.youtube.com/@Python"
+        ],
+        "maxResults": 3
+      },
+      "run_id": "67f5533a-44aa-402d-a677-f87e468c240e",
+      "duration_ms": 18777,
+      "checked_at": "2026-11-06T01:51:55+00:00"
+    },
+    {
+      "endpoint_type": "apify_tiktok_media_profile_scraper",
+      "platform": "tiktok",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 3,
+      "error_message": "",
+      "params_used": {
+        "profiles": [
+          "tiktok"
+        ],
+        "maxItems": 3
+      },
+      "run_id": "7d47367e-cd68-47f0-8a03-49622d8c78a4",
+      "duration_ms": 24679,
+      "checked_at": "2026-11-06T01:52:00+00:00"
+    },
+    {
+      "endpoint_type": "apify_facebook_posts_scraper",
+      "platform": "facebook",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": null,
+      "run_status": "request_error",
+      "outcome": "request_error",
+      "failure_class": "request_error",
+      "records_count": 0,
+      "error_message": "The read operation timed out",
+      "params_used": {
+        "startUrls": [
+          {
+            "url": "https://www.facebook.com/facebook"
+          }
+        ],
+        "maxItems": 3
+      },
+      "run_id": "",
+      "duration_ms": 120105,
+      "checked_at": "2026-11-06T01:52:08+00:00"
+    },
+    {
+      "endpoint_type": "apify_youtube_transcript_scraper",
+      "platform": "youtube",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 1,
+      "error_message": "",
+      "params_used": {
+        "videoUrls": [
+          "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        ]
+      },
+      "run_id": "42bc33ae-2ef7-48ca-b066-57f2038af7f0",
+      "duration_ms": 7407,
+      "checked_at": "2026-11-06T01:52:16+00:00"
+    },
+    {
+      "endpoint_type": "apify_tiktok_creative_center",
+      "platform": "tiktok",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 1,
+      "error_message": "",
+      "params_used": {
+        "keywords": [
+          "python"
+        ],
+        "maxItems": 3
+      },
+      "run_id": "7ed529a0-6d08-4a87-804f-c1a147c29af4",
+      "duration_ms": 7602,
+      "checked_at": "2026-11-06T01:52:24+00:00"
+    },
+    {
+      "endpoint_type": "apify_tiktok_shop_search_scraper",
+      "platform": "tiktok",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 3,
+      "error_message": "",
+      "params_used": {
+        "keyword": "phone case",
+        "maxItems": 3
+      },
+      "run_id": "31c24fe7-ce95-4300-9175-5dad7e2f22c5",
+      "duration_ms": 13227,
+      "checked_at": "2026-11-06T01:52:38+00:00"
+    },
+    {
+      "endpoint_type": "apify_tiktok_transcript_extractor",
+      "platform": "tiktok",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": 201,
+      "run_status": "success",
+      "outcome": "success",
+      "failure_class": "ok",
+      "records_count": 1,
+      "error_message": "",
+      "params_used": {
+        "postURLs": [
+          "https://www.tiktok.com/@tiktok/video/7106594312292453675"
+        ]
+      },
+      "run_id": "abcc4f5d-533b-4422-ae13-dfb81b7c34b0",
+      "duration_ms": 47312,
+      "checked_at": "2026-11-06T01:52:48+00:00"
+    },
+    {
+      "endpoint_type": "apify_facebook_media_page_scraper",
+      "platform": "facebook",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": null,
+      "run_status": "request_error",
+      "outcome": "request_error",
+      "failure_class": "request_error",
+      "records_count": 0,
+      "error_message": "The read operation timed out",
+      "params_used": {
+        "startUrls": [
+          {
+            "url": "https://www.facebook.com/facebook"
+          }
+        ],
+        "maxItems": 3
+      },
+      "run_id": "",
+      "duration_ms": 120120,
+      "checked_at": "2026-11-06T01:53:55+00:00"
+    },
+    {
+      "endpoint_type": "apify_facebook_marketplace_scraper",
+      "platform": "facebook",
+      "collector_type": "apify_actor",
+      "catalog_status": "verified",
+      "http_status": null,
+      "run_status": "request_error",
+      "outcome": "request_error",
+      "failure_class": "request_error",
+      "records_count": 0,
+      "error_message": "The read operation timed out",
+      "params_used": {
+        "searchQuery": "laptop",
+        "maxItems": 3
+      },
+      "run_id": "",
+      "duration_ms": 120093,
+      "checked_at": "2026-11-06T01:54:39+00:00"
+    }
+  ]
+}
