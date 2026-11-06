@@ -1,0 +1,1 @@
+{"window_days":30,"since":"2026-10-07T02:20:26.578641+00:00","total_requests":30,"by_command":[{"command":"collect","count":15},{"command":"card:confirm","count":5},{"command":"status","count":5},{"command":"help","count":5}],"by_channel":[{"channel":"group","count":20},{"channel":"p2p","count":10}],"by_trigger":[{"trigger":"message","count":30}]}
